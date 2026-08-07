@@ -58,6 +58,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **历史治理锚点（保留，不表示当前态）**：`adc7c8d3df42f0ecfb6dd846317ce6de04760cc5`（tag: `gov-sync-001-verified`）— 早期治理收尾 commit（含 TASK-GOV-SYNC-001 关闭证据 + 全部治理文件）。机器锚点首选真实 SHA，tag 仅作人类别名；解析见 `git rev-parse gov-sync-001-verified`。Review/Audit Mode（`AGENTS.md §9`）可 `git checkout gov-sync-001-verified` 复盘，但**不得再称其为"当前最后 verified commit"**。
 - **领域模型完整验证快照**：`94bedb5be60b1678fb033c5d8735e38dae9a46a9`（`94bedb5`）— TASK-DM-002 关闭提交，含 domain_model v1.1.4 approved + SRS impact review（`d166992`）/ spec_sync=clean + TASK-DM-002 Closed 的完整验证态；为当前领域模型 v1.1.4 的可审计快照。
-- **最新验证锚点（本次治理修正完成后回填）**：`（待 TASK-GOV-002 关闭提交 sha）`— 本回合"证据校正"提交，含 TASK-GOV-001 计数口径校正 + 本 PROJECT_STATE 同步 + TASK-GOV-002 任务单。回填后本锚点取代上条成为当前有效"最后 verified commit"。
+- **最新验证锚点（当前有效"最后 verified commit"）**：`65fc7a5f76f2e5a5baff62993bcbc56ec2bed4ba`（`65fc7a5`）— 本回合"证据校正"提交（TASK-GOV-002 关闭），含 TASK-GOV-001 计数口径校正 + 本 PROJECT_STATE 同步 + TASK-GOV-002 任务单。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

@@ -55,7 +55,7 @@
 ## 交付证据（任务关闭前必须填写）
 
 - commit / PR：治理校正本身见本任务关闭提交（sha 见下「verified_commit」）；`f56a478`（TASK-GOV-001 关闭提交，仅引用，本任务不改动）为被校正对象。
-- verified_commit：**（本治理修正提交 sha，创建后回填）** —— 含 `tasks/TASK-GOV-001.md` 计数口径校正 + `PROJECT_STATE.md` 验证锚点同步 + 本任务单。
+- verified_commit：**65fc7a5f76f2e5a5baff62993bcbc56ec2bed4ba**（`65fc7a5`）—— 本治理修正提交（含 `tasks/TASK-GOV-001.md` 计数口径校正 + `PROJECT_STATE.md` 验证锚点同步 + 本任务单）；亦为 PROJECT_STATE「最后 verified commit」节登记的最新验证锚点。
 - 被校正事实：`f56a478` 实际改动 **12 个 Git 路径**（8 memory 取消跟踪 + 4 文件），超出 TASK-GOV-001 声明的 `max_files=5`；偏差仅限预算计数，授权范围未越界。
 - 测试命令及结果：无（治理操作）；交付后 `git status` 校验 `.workbuddy/` 仍不在索引、`PROJECT_STATE.md` 与 `TASK-GOV-001.md` 已更新。
 - 变更预算实际值：max_files=3，实际改 3 文件，未超预算（本任务自身计数准确）。

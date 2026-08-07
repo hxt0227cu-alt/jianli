@@ -105,29 +105,31 @@
 - 验收证据：① R1–R26 覆盖检查（全部映射到 SRS 节）；② UC-01–23 覆盖检查；③ SRS 内部交叉引用检查；④ 与领域模型 v1.1.2 不变量冲突检查（无新增/冲突）；⑤ deferred/非目标越界检查（未新增功能/未扩 MVP）；Grep 校验无 `review` 硬编码残留。待用户/独立评审通过后方可 approved
 - 变更预算实际值：`max_files` = 8（含本任务单）；**实际累计去重 6 个文件**（5 处改动 + 1 处删除，清单见上），**未超预算**。本轮 impact review 未引入新文件——所触 3 个文件（`docs/baseline.yml` / `docs/requirements/SRS.md` / `tasks/TASK-SRS-001.md`）均已在既有清单内且在「允许修改路径」内。
   - 账目说明：此前记为"≈ 4 文件改动 + 1 删除"为**估算且偏低**，遗漏 `PROJECT_STATE.md`（`bdba9f4`）与越界的 `docs/design/domain-model.md`（`8794aea`）。现按 `git show --stat` 逐提交核实改为 6，避免重演 TASK-DM-002 的账目偏差。
-- 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
+- 未解决风险：无（范围内已闭环）。SRS 现已 approved，参与 baseline precedence 裁决（srs 高于 PRD/用例规约，行为唯一源生效）；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线（范围外开放项，不阻塞本任务关闭）；UI 线框冻结、架构/安全/OpenAPI/测试计划 pending 为下游阶段，非本任务范围。
 - 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
 - 规范影响结论（两类，须分开读，不得互相顶替）：
   1. **本任务自身改动 → 对其他规范的影响**：`none`。本任务产出为 SRS 正文与治理收口，不改业务行为、不新增实体/接口/状态迁移；SRS 由 review→approved 属状态推进，不影响 PRD / 领域模型 / OpenAPI / 安全设计。
   2. **上游 domain_model 1.1.3→1.1.4 → 对本任务工件（SRS）的影响**：**`需文字同步、不改变用户可观察行为`（明确不是 none）**。SRS §6.3 原括注"领域模型 §6.1 记为 Argon2id"在 v1.1.4 后已成事实性错误，必须改写；另有四处上游版本引用需同步。已于 2026-08-08 impact review 中处理完毕（详见「阶段性证据」末条）。按 `AGENTS.md §9.4` 分类，属"不改变用户可观察行为"，**不触发 Change Request**。
 - spec_sync：**clean**（2026-08-08：上游 `domain_model` v1.1.4 已获用户明确批准（独立锚点 `f537296`），本任务据此执行 SRS impact review 并完成全部文字同步——`baseline.srs.based_on.domain_model` 1.1.3→**1.1.4**；SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正；SRS 顶部 based_on / §1.1 / §1.3 / §6 标题四处上游版本引用同步至 1.1.4。`based_on` 与 `artifacts` 现一致，机器门禁不再报 needs impact check。**影响结论记为「需文字同步、不改变用户可观察行为」，未记为 none**——详见「阶段性证据」末条。SRS 自身仍 `status=review`，spec_sync=clean 只表示上游同步已完成，**不表示 SRS 已获批准**。）
-- verified_commit：<回填> — 待用户独立评审批准 SRS（baseline srs.status: review→approved）后由后续提交生成；旧 173cf9b6 已作废（误批准锚点）
+- approval_commit：`26ae8440c89ed680341ee1c6cecb036b27b224ec`（本回合单一用途提交，仅推进 baseline `srs.status` review→approved；**不得复用旧误批准锚点 173cf9b6ffdf75acc4802398644ba67fb06f6cf6**）
+- verified_commit：<回填 — 关闭快照提交 sha，由 S3 纯证据提交回填>（含 SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照）
 
-## 关闭结论（已作废 — 系误批准，2026-08-07 回退至 review；实际关闭待用户独立评审批准 SRS 后）
+## 关闭结论（SRS v1.0 独立评审批准，2026-08-08 正式关闭）
 
-任务于 SRS 独立评审通过后正式关闭（用户授权 2026-08-07 将 srs.status 置 approved）。关闭门禁四条件逐项复核：
+任务于 SRS 独立评审通过后正式关闭（用户 2026-08-08 指令：「我独立评审通过并批准 SRS v1.0」；AI 不代签）。关闭门禁四条件逐项复核：
 
 1. **测试通过**：纯文档/治理变更，无代码/测试；一致性 Grep 校验通过（无 `review` 硬编码残留 / 无 `待复评` / 无违规 `PRD §8.5` 引用 / 活动规范正文无 `purge_before` 残留字段）。
 2. **规范影响已处理**：规范影响结论 = none（纯文档收口，不改业务行为）；SRS 由 review→approved 是状态推进，不影响其他规范。
-3. **spec_sync = clean**：SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.2，上游版本未变且均为 approved；R1–R26 / UC-01–23 双向追踪完整，无 impact check 需求。
-4. **真实 verified_commit**：`173cf9b6ffdf75acc4802398644ba67fb06f6cf6`（SRS v1.0 正式 approved 锚点，非 tag 占位）。
+3. **spec_sync = clean**：SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4，上游版本未变且均为 approved（1.1.4 于 `f537296` 批准）；R1–R26 / UC-01–23 双向追踪完整，无 impact check 需求（2026-08-08 impact review：需文字同步、不改变用户可观察行为，已处理且 spec_sync=clean）。
+4. **真实 verified_commit**：`<回填 — 关闭快照提交 sha，由 S3 纯证据提交回填>`（SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照）。
 
 其他治理账目收正确认：
+- 批准锚点（approval_commit）= 单一用途提交 `26ae8440c89ed680341ee1c6cecb036b27b224ec`：仅推进 baseline `srs.status` review→approved；**不得复用旧误批准锚点 173cf9b6ffdf75acc4802398644ba67fb06f6cf6**（该锚点为 2026-08-07 误批准，已作废历史，仍保留但不复用）。
 - 基线 commit = `d7510254…`（SRS 启动前基线，未被完成态覆盖）。
-- SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ 173cf9b6（approved 锚点）。
-- TASK-SRS-001 关闭后，用例规约冻结为历史输入（SRS 行为唯一源生效）。
+- SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ d166992（impact review）→ 26ae844（批准锚点）→ <关闭快照提交 sha，S3 回填>。
+- TASK-SRS-001 关闭后，用例规约冻结为历史输入（SRS 行为唯一源生效；precedence 中 srs 高于 use_cases/prd）。
 
-状态：已作废（原误批准；实际：已重新打开，status=Open，等待领域模型独立修正 + impact review + 用户批准）
+状态：Closed（2026-08-08）。
 
 ## 阶段性证据
 - 治理微补丁（上轮）全仓 Grep：通过（无 `待复评` / `accepted_adr` / `security_design` / 旧 v2.3 准入结论 / 硬编码 `review` / `approved` 重复 残留）

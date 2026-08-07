@@ -62,7 +62,7 @@
 - expected_test_lines：0
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填 G1>
+- commit / PR：80662b2a57238ce996d17cf8f6a57d2fc49b804d（TASK-GOV-006 快照 / 本任务 verified_commit=G1）
 - 修改文件清单（按路径逐条计数）：
   1. tasks/TASK-UI-002.md — 硬停条件 + 规范影响评估 + 精确规范引用补 §5.3/§7 + 安全隐私验收
   2. tasks/TASK-GOV-004.md — 第 72/86/92 行锚点语义校正
@@ -78,13 +78,13 @@
 - 是否偏离 TASK：否（全部在授权 5 项内）
 - 规范影响结论：none（纯治理/文档校正，不改规范）
 - spec_sync：clean
-- verified_commit：<回填 G1>
+- verified_commit：80662b2a57238ce996d17cf8f6a57d2fc49b804d（TASK-GOV-006 快照 / G1；G2 为纯证据回填/关闭提交，不得循环指向自身）
 
 ## 关闭门禁（四条件全满足方可关闭）
 ① 测试通过（Grep 复核无残留错误表述）；② 规范影响 none；③ spec_sync=clean；④ verified_commit 已记录真实 sha（= G1 快照，非关闭提交）。任一不满足→不得关闭。
 
 ## 关闭结论
-任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=<回填 G1>（被验证的交付物快照，非关闭提交）。状态：Closed。
+任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=80662b2a57238ce996d17cf8f6a57d2fc49b804d（被验证的交付物快照，非关闭提交）。状态：Closed。
 
 ## 锚点语义（防混淆）
 - 5666982 = 被验证的交付物快照（G1）；f2cfb88 = 纯证据回填/关闭提交（G2）。二者各司其职，不循环。

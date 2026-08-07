@@ -45,7 +45,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 > 注：当前门禁顺序（**2026-08-08 第三轮修正，①②③ 已完成，现处 ④**）——
 > ① ✅ 用户批准 **domain_model v1.1.4** → baseline `domain_model.status: review→approved`，独立批准锚点 `f537296`（**不复用 `f64b6de`**）；
 > ② ✅ **TASK-SRS-001 执行 SRS impact review**（`srs.based_on.domain_model`→1.1.4 + 修正 SRS §6.3 过期的 Argon2id 描述；结论 = "需文字同步、不改变用户可观察行为"，**非 none**）→ TASK-SRS-001 `spec_sync` 转 clean；
-> ③ ✅ **TASK-DM-002 `spec_sync` 转 clean + 关闭**（verified_commit=`f537296`，对齐 TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
+> ③ ✅ **TASK-DM-002 `spec_sync` 转 clean + 关闭**（verified_commit=`94bedb5`，approval_commit=`f537296` 即 domain_model v1.1.4 独立批准锚点；对齐 TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
 > ④ ⏳ 用户独立评审批准 **SRS**（AI 不代签）→ 关闭 TASK-SRS-001、用例规约冻结为历史输入或 SRS 附录；
 > ⑤ ⏳ UI 线框重新 impact review 决定是否沿用 → 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
 > `development_gate` 全 10 项 approved 前不得进入编码。

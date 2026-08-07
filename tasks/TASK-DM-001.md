@@ -22,7 +22,7 @@
 
 ## 目标
 对 `docs/design/domain-model.md` 升版至 v1.1.3，将 `8794aea` 已落地的 4 处修改作为独立任务的正式修正进行评审与留痕；确认：
-1. **密码算法裁定边界**：`password_hash` 仅规定存储密码哈希（不存明文），具体哈希算法待《安全设计》ADR 裁定，领域模型不预选 Argon2id/BCrypt——边界清晰且符合"安全/架构 ADR 未出前不锁死算法"的工程判断。
+1. **密码算法裁定边界**：`password_hash` 仅规定存储密码哈希（不存明文），具体哈希算法待《安全设计》ADR 裁定，领域模型不预选 Argon2id/BCrypt——边界清晰且符合"安全/架构 ADR 未出前不锁死算法"的工程判断。<br>**【2026-08-08 复核限定】本目标当时只落实到边界声明文字，v1.1.3 正文 5 处 Argon2id 实现指向未清除，故本目标在 v1.1.3 未真正达成；实际达成于 v1.1.4 / TASK-DM-002。**
 2. **门禁引用**：§10 编码准入说明改引用 baseline `development_gate` 全 10 项门禁，纠正原"仅接口契约+测试计划通过即开放编码"误述。
 3. **字段清理**：§9 遗留 `purge_before→purge_after` 改名痕迹已清除，术语一致。
 并同步更新 `docs/baseline.yml` 的 `domain_model.version` 至 1.1.3，作为 SRS impact review 的升版锚点。
@@ -52,6 +52,7 @@
 - domain-model.md 升版至 v1.1.3（标题 + 整改说明段 + 页脚版本号一致）
 - baseline.yml `domain_model.version` = "1.1.3"、status = approved（本任务关闭时态，批准锚点 `f64b6de`）。**后续说明**：v1.1.3 批准后经复评发现 P0 算法锁定缺陷，因同一版本号不得对应批准前后两份内容，修正由**新任务 TASK-DM-002 升版 v1.1.4** 承载；baseline 当前 `domain_model` 已为 1.1.4/review。本任务不因此重开。
 - 密码算法裁定边界、门禁引用、字段清理 3 类修改经本任务评审，均确认不改动领域实体/不变量
+- **【2026-08-08 复核追记 — 历史结论限定】** 本任务对"密码算法裁定边界"的验收结论**被证明不完整**：v1.1.3 在 `f64b6de` 获批时，其规范正文**仍保留 5 处 Argon2id 实现指向**（顶部整改记录、§1 存储策略、§2.3 类图、§4 ER 图、§6.1 字段表）。当时判定为"已不预选算法"，实际上只做到了**边界声明层面的表述**，正文实现指向未清除，声明与正文自相矛盾。**算法的彻底中性化不属于 v1.1.3，属于 v1.1.4 / TASK-DM-002**，不得反写为"v1.1.3 已完成中性化"。
 - 活动规范正文（domain-model.md）无 `purge_before` 残留字段、无"仅接口契约+测试计划通过即开放编码"误述（任务文件中的 purge_before 为历史清理记录引用，非活动残留）
 
 ## 安全与隐私验收
@@ -85,7 +86,7 @@
 - 验收证据：① 升版号三处一致（标题/整改段/页脚）；② baseline domain_model=1.1.3；③ 3 类修改评审结论（见「阶段性证据」）；④ Grep 无残留
 - 变更预算实际值：max_files=3、实际 3 文件（domain-model.md / baseline.yml / TASK-DM-001.md）；prod 行数小幅（升版号 3 处 + 整改说明段约 6 行，共约 9 行）；test_lines=0；未超出 TASK-DM-001 change_budget
 - 一致性检查结果（Grep 校验，2026-08-07 首轮 + 2026-08-08 关闭轮；均为**本任务关闭时点**的校验结论）：① 活动规范正文（domain-model.md）无 `purge_before` 残留字段（已清除为 purge_after，§9）；任务文件中的 `purge_before` 为历史清理记录引用，非活动残留；② domain-model §10 门禁引用已改引用 baseline `development_gate` 全 10 项，无"仅接口契约+测试计划通过即开放编码"误述；③ 关闭时 domain-model 版本号三处（标题/整改说明段/页脚）一致为 1.1.3；④ 关闭时 baseline `domain_model.status` = approved（锚点 f64b6de，用户明确批准）；⑤ 关闭时 SRS based_on 已同步至 1.1.3、TASK-SRS-001 spec_sync=clean（impact=none）；⑥ TASK-UI-001 / ui-wireframe.md 顶部标记"基线无效/不得评审"。
-- 未解决风险（关闭时点记录）：SRS 仍 status=review，待用户独立评审批准。**关闭后新发现（2026-08-08 复评）**：v1.1.3 存在 P0 算法锁定缺陷（正文 5 处仍指向 Argon2id），已由 **TASK-DM-002 / domain_model v1.1.4** 取代；下游 SRS 的 based_on 与 impact review 状态相应由 TASK-SRS-001 重新处理（spec_sync 回退 dirty）。此为**后继版本问题**，不推翻本任务在 1.1.3 时点的关闭有效性。
+- 未解决风险（关闭时点记录）：SRS 仍 status=review，待用户独立评审批准。**关闭后新发现（2026-08-08 复评）**：v1.1.3 **在批准当时（`f64b6de` 快照）即已存在** P0 算法锁定缺陷——正文 5 处仍指向 Argon2id，本任务当时未能识别，故其"密码算法裁定边界正确"的评审判断**不完整**；该缺陷不是 1.1.3 之后才产生的。修正已由 **TASK-DM-002 / domain_model v1.1.4** 承载；下游 SRS 的 based_on 与 impact review 状态相应由 TASK-SRS-001 重新处理（spec_sync 回退 dirty）。**本任务的关闭状态与 `f64b6de` 批准事实按"不重写历史"原则保留有效，但其评审结论质量存在上述已记录缺陷。**
 - 是否偏离 TASK：否（本任务即用户指令第 3 步的"独立领域模型修正任务"，追认 8794aea 越界改动属授权范围）
 - 规范影响结论：none（领域模型升版 3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）
 - spec_sync：clean（**关闭时点，针对 v1.1.3**：domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由 TASK-SRS-001 执行且结论=none）。**注**：v1.1.4 引入的新一轮下游同步不属本任务范围，由 TASK-DM-002 / TASK-SRS-001 承担。
@@ -96,6 +97,8 @@
 > **关闭条件（修订，消除循环）**：本任务关闭前提仅为——domain_model 1.1.3 经用户明确批准 + 批准锚点（verified_commit）与交付证据补全。**SRS 的 based_on 同步与 impact review 由下游 TASK-SRS-001 独立负责，不构成本任务关闭条件。**
 >
 > **版本取代声明（2026-08-08 复评后追记，不改变本任务关闭状态）**：v1.1.3 于 `f64b6de` 获得的批准是**真实发生且有效**的历史事实。其后复评发现 P0 算法锁定缺陷，按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，而由**新任务 TASK-DM-002 升版 domain_model v1.1.4** 承载。本任务保持已关闭，`f64b6de` 保留为旧版 1.1.3 的真实批准锚点。
+>
+> **历史结论限定（2026-08-08 用户复核追记）**：`f64b6de` 批准时的 v1.1.3 快照**仍含 5 处 Argon2id 实现指向**。本任务当时给出的"密码算法裁定边界正确、不预选算法"结论，仅在**边界声明文字**层面成立，未覆盖正文实现指向，**事后被证明不完整**。**算法彻底中性化属于 v1.1.4 / TASK-DM-002 的成果，不属于 v1.1.3**；本文件任何位置都不得反写为"v1.1.3 已完成算法中性化"。
 
 1. **测试通过**：纯文档/升版任务，无代码/测试；一致性 Grep 校验通过（活动规范正文无 `purge_before` 残留字段 / §10 门禁引用 development_gate 全 10 项 / 版本号三处一致 / 无"仅接口契约+测试计划通过即开放编码"误述）。
 2. **规范影响已处理**：规范影响结论 = none（3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）。
@@ -104,7 +107,7 @@
 
 其他治理账目收正确认：
 - 越界来源：8794aea 在 TASK-SRS-001 内改 domain-model.md（超出该任务允许路径）；本任务（TASK-DM-001）为独立追认载体，已获用户授权。
-- 3 类修改评审结论（首次）：① 密码算法裁定边界——`password_hash` 待《安全设计》ADR 裁定，不预选算法，边界正确；② 门禁引用——§10 改引 baseline `development_gate` 全 10 项，与 baseline 一致；③ 字段清理——§9 `purge_before→purge_after` 改名痕迹已清除。
+- 3 类修改评审结论（首次，**结论①事后被限定**）：① 密码算法裁定边界——当时结论为"`password_hash` 待《安全设计》ADR 裁定，不预选算法，边界正确"；**该结论不完整**：v1.1.3 正文（`f64b6de` 快照）仍有 5 处 Argon2id 实现指向，中性化实际由 v1.1.4/TASK-DM-002 完成；② 门禁引用——§10 改引 baseline `development_gate` 全 10 项，与 baseline 一致（结论有效）；③ 字段清理——§9 `purge_before→purge_after` 改名痕迹已清除（结论有效）。
 - 下游 SRS 同步：TASK-SRS-001 已于首轮将 `baseline.srs.based_on.domain_model` 由 1.1.2 同步至 1.1.3 并重做 impact review（结论=none，spec_sync 转 clean）。
 
 状态：**已关闭（Closed，2026-08-08）** — 对应 domain_model v1.1.3，批准锚点 `f64b6de`。后续发现的 P0 算法锁定缺陷由 **TASK-DM-002（domain_model v1.1.4）** 取代处理，本任务不重开。
@@ -112,7 +115,7 @@
 ## 阶段性证据
 - 越界追认：8794aea 在 TASK-SRS-001 内修改 domain-model.md（§1/§6.1 密码裁定边界、§10 门禁引用、§9 purge 字段清理），已确认改动内容正确，于本任务下升版 v1.1.3 追认。
 - 3 类修改评审结论：
-  1. 密码算法裁定边界（§1 存储策略 + §6.1）：`password_hash` 仅规定存储密码哈希（不存明文），具体哈希算法待《安全设计》ADR 裁定，领域模型不预选 Argon2id/BCrypt；PRD §8.7(BCrypt) 冲突以安全设计为准；本阶段不预选——边界符合"ADR 未出前不锁死算法"原则，无越权。
+  1. 密码算法裁定边界（§1 存储策略 + §6.1）：当时评审记录为"`password_hash` 仅规定存储密码哈希（不存明文），具体哈希算法待《安全设计》ADR 裁定，领域模型不预选 Argon2id/BCrypt"。**【2026-08-08 复核限定】该结论仅在边界声明文字层面成立**：`f64b6de` 快照的 v1.1.3 正文中，§1 存储策略、§2.3 类图、§4 ER 图、§6.1 字段表及顶部整改记录**共 5 处仍写有 Argon2id 实现指向**，与"不预选算法"自相矛盾。**彻底中性化由 v1.1.4 / TASK-DM-002 完成，不得计入 v1.1.3 成果。**
   2. 门禁引用（§10）：改引用 baseline `development_gate` 全 10 项，纠正"仅接口契约+测试计划通过即开放编码"误述——与 baseline 门禁一致。
   3. 字段清理（§9）：`purge_before→purge_after` 改名痕迹已清除，术语统一。
 

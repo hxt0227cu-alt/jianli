@@ -5,7 +5,7 @@
 > 当前版本与评审状态见 `docs/baseline.yml`。编码准入由 baseline `development_gate` 决定。
 > **状态机枚举以需求文档 §8.10 为唯一规范源**，本文仅引用，不另立状态名。
 > **v1.1.2 整改（第六轮 P0-6~P0-8 + 实现边界）**：`CompanyBookingException` 补 `revoked_at`/`revoked_by` 与并发消费锁（`FOR UPDATE` + `uq_appointment_exception`）；`DeliveryAttempt` 幽灵实体全文改为 `NotificationDelivery` 尝试记录并补唯一约束；`RecommendedQuestionCache` 改为 `page_key/questions_json/generated_at/invalidated_at` + `UNIQUE(page_key) WHERE invalidated_at IS NULL`（取消全局版本字段）；`AvailabilityOverride` 补 NOT NULL 约束与 `CHECK`、明确为 owner 意图真相源；并发抢占补三格连续性服务端校验；逻辑模型与物理 Schema 分离说明；配套 PRD v2.3.3、用例规约 v1.7.2；**v1.1.3 整改（TASK-DM-001 独立修正，2026-08-07；已于 `f64b6de` 正式批准，内容以该 commit 快照为准）**：密码哈希算法裁定边界表述（`password_hash` 当前按 Argon2id 设计、最终算法待《安全设计》ADR 裁定，PRD §8.7 BCrypt 冲突以安全设计为准）；编码准入门禁改引用 baseline `development_gate` 全 10 项（纠正「仅接口契约+测试计划通过即开放编码」误述）；遗留 `purge_before→purge_after` 改名痕迹清除。**该版本批准后经复评发现 P0 缺陷——正文 5 处仍将实现指向 Argon2id，与「领域模型不预选算法」自相矛盾，故已由 v1.1.4 取代；1.1.3 的批准事实与锚点 `f64b6de` 保留为历史记录，不予否认。**
-> **v1.1.4 整改（TASK-DM-002 独立修正，2026-08-08）**：**密码哈希算法彻底中性化**——领域模型**仅规定 `password_hash` 存储密码哈希（不存明文），不预选任何具体哈希算法**；算法裁定权归《安全设计》ADR。落点 4 处：§1 存储策略、§2.3 类图 `User`、§4 ER 图 `USER`、§6.1 字段表（原 Argon2id 实现指向全部清除）。同时新增**冲突升级条款**：若《安全设计》ADR 的裁定与 PRD §8.7 记载的 BCrypt 不一致，**必须触发规范影响评审 / 变更请求（Change Request）**，由评审决定更新 PRD 或采纳 ADR，**不得跳过评审直接实现**。本版不改领域实体 / 属性 / 关系 / 状态机 / 不变量 / 并发约束；对 SRS 存在**文字同步级**影响（SRS §6.3 现称「领域模型 §6.1 记为 Argon2id」已过期），须由 TASK-SRS-001 在 v1.1.4 获批后执行 impact review（结论不得记为 none）。
+> **v1.1.4 整改（TASK-DM-002 独立修正，2026-08-08）**：**密码哈希算法彻底中性化**——领域模型**仅规定 `password_hash` 存储密码哈希（不存明文），不预选任何具体哈希算法**；算法裁定权归《安全设计》ADR。落点 4 处：§1 存储策略、§2.3 类图 `User`、§4 ER 图 `USER`、§6.1 字段表（原 Argon2id 实现指向全部清除）。同时新增**冲突升级条款**：若《安全设计》ADR **拟选算法**与 PRD §8.7 记载的 BCrypt 不一致，**必须先通过变更请求（Change Request）更新并批准所有受影响的规范（至少含 PRD §8.7 与 SRS 相关条款），规范同步完成并获批准前不得按该 ADR 实现**；不得允许 ADR 与规范长期冲突并存。本版不改领域实体 / 属性 / 关系 / 状态机 / 不变量 / 并发约束；对 SRS 存在**文字同步级**影响（SRS §6.3 现称「领域模型 §6.1 记为 Argon2id」已过期），须由 TASK-SRS-001 在 v1.1.4 获批后执行 impact review（结论不得记为 none）。
 
 ---
 
@@ -18,7 +18,7 @@
   - 公司名以 **HMAC-SHA256(normalized_name, site_key)** 生成 `fingerprint` 去重，**不暴露原文**；
   - `start_at/end_at` 业务元数据，**明文存但受访问控制**；
   - `password_hash` **仅规定存储密码哈希（不存明文）**，本模型**不预选具体哈希算法**，算法裁定权归《安全设计》ADR；各类 token 仅存哈希；
-    - **冲突升级条款**：若《安全设计》ADR 的算法裁定与 **PRD §8.7 记载的 BCrypt 不一致**，必须触发**规范影响评审 / 变更请求（Change Request）**，由评审决定更新 PRD 或采纳 ADR，**不得跳过评审直接按 ADR 实现**。
+    - **冲突升级条款**：若《安全设计》ADR **拟选择的算法与 PRD §8.7 记载的 BCrypt 不一致**，必须**先通过变更请求（Change Request）更新并批准所有受影响的规范**（至少含 PRD §8.7 及 SRS 相关条款）；**在规范同步完成并获批准之前，不得按该 ADR 实现**。ADR 本身不得作为实现依据凌驾于未同步的规范之上，也不得让规范之间长期保持冲突并存状态。
   - 审计日志写入前对会议号/电话等**脱敏**。
 
 ### 1.1 建模粒度（第五轮复评）
@@ -424,7 +424,7 @@ erDiagram
 |------|------|------|------|
 | id | UUID | PK | |
 | email | string | UK, 全局唯一 | 单身份单角色；注册验证邮箱；确认函收件人=此邮箱（R26） |
-| password_hash | string | NOT NULL | 仅存密码哈希、不存明文；**算法待《安全设计》ADR 裁定，本模型不预选**。若 ADR 裁定与 PRD §8.7（BCrypt）不一致 → 触发规范影响/变更评审，不得直接实现（见 §1 冲突升级条款） |
+| password_hash | string | NOT NULL | 仅存密码哈希、不存明文；**算法待《安全设计》ADR 裁定，本模型不预选**。若 ADR 拟选算法与 PRD §8.7（BCrypt）不一致 → **须先经 Change Request 更新并批准受影响规范（PRD/SRS），规范同步完成前不得按该 ADR 实现**（见 §1 冲突升级条款） |
 | role | enum | NOT NULL | interviewer / owner_admin |
 | verified | bool | NOT NULL | 邮箱验证通过 |
 | deletion_requested_at | timestamptz | NULL | 注销请求时间 |

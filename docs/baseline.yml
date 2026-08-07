@@ -16,7 +16,7 @@ artifacts:
   domain_model:     { version: "1.1.4", status: approved } # v1.1.4 经用户 2026-08-08 明确批准（「我批准领域模型 v1.1.4 的内容」）；承载密码算法中性化 + Security ADR/PRD §8.7 冲突升级条款，任务 TASK-DM-002。批准锚点为本次 status 推进提交（独立锚点，**不得复用 f64b6de**——那是旧版 v1.1.3 的锚点，其批准为真实历史事实、仍有效，但内容已被 v1.1.4 取代）。状态推进由用户具名指令授权，WorkBuddy 不得自改为 approved
   srs:
     version: "1.0"
-    status: review                                                 # SRS v1.0 待用户独立评审批准。前置条件已全部完成（2026-08-08）：领域模型 v1.1.4 已批准（锚点 f537296）+ SRS impact review 已由 TASK-SRS-001 执行完毕、spec_sync=clean。**当前唯一阻塞 = 用户独立评审**；review 不计入 precedence 裁决，WorkBuddy 不得自改为 approved
+    status: approved                                               # SRS v1.0 经用户 2026-08-08 独立评审批准（「我独立评审通过并批准 SRS v1.0」）；独立批准锚点见本 status 推进提交（approval_commit，单一用途，不得复用旧误批准锚点 173cf9b6）。based_on 已与 prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4 对齐、TASK-SRS-001 spec_sync=clean（均不变）；SRS 现为行为唯一源（precedence 高于 PRD/用例规约），用例规约冻结为历史输入
     based_on: { prd: "2.3.3", use_cases: "1.7.2", domain_model: "1.1.4" }  # SRS 生成所依据上游已批准版本锚点；上游任一变化→SRS 需 impact review。【2026-08-08 已同步】domain_model 1.1.3→1.1.4 的 impact review 由 TASK-SRS-001 执行完毕，结论=「需文字同步、不改变用户可观察行为」（非 none）：SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正，正文上游版本引用同步至 1.1.4；based_on 与 artifacts 现一致，机器门禁不再报 needs impact check
   ui_wireframe:     { version: "0.0",   status: pending }   # 阶段 1 待产出
   architecture:     { version: "0.0",   status: pending }   # 阶段 2 待产出

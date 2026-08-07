@@ -7,7 +7,7 @@
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.2 / AI 治理 1.0.1（取自 `docs/baseline.yml`；版本如下，评审状态以 baseline.yml 为准）
-- 基线 commit：d7510254a9e900fab06ebc5216cd2dd68bd2eef2（tag: gov-sync-001-verified；治理完全收口的最终 commit，含关闭结论与审计锚点修正；SRS v1.0 基于此 commit 生成）
+- 基线 commit：d7510254a9e900fab06ebc5216cd2dd68bd2eef2（治理完全收口的最终 commit；SRS v1.0 基于此 commit 生成。`gov-sync-001-verified` 为 TASK-GOV-SYNC-001 的 verified snapshot 标签、当前指向 `adc7c8d3…`，不表示 SRS baseline，二者不得混用）
 
 ## 精确规范引用（AI 只读取这些章节）
 - PRD v2.3.3 精确规范引用：§1 项目背景 / §2 需求目标：全部 R1–R26（含 R14a、R14b）/ §3 业务场景 / §4 功能需求 / §5 非功能需求 / §6 验收标准 / §8.2 / §8.3 / §8.4 / §8.6 / §8.7 / §8.9 / §8.10 / §8.11 / §8.12 / §8.13；明确不读取 §8.1 / §8.5 / §8.8 / §8.14
@@ -39,6 +39,7 @@
 - tasks/TASK-TEMPLATE.md            # 适用范围 + 任务类型 + 基线 commit 指引（对齐 repository_not_initialized；P1 模板调整，已完成）
 - docs/requirements/SRS.md          # 新建 SRS v1.0（本任务主交付物）
 - tasks/TASK-SRS-001.md             # 本任务单自身回填交付证据
+- docs/requirements/SRS-大纲-吸收映射.md   # 【已记录偏离·临时工件】本轮误建，不在原允许路径（原仅 docs/requirements/SRS.md 为主交付物）；仅临时授权删除——其大纲与映射已吸收进 SRS.md，确认后删除，不形成第二份需求工件（详见「是否偏离 TASK」）
 
 ## 禁止修改路径
 - PRD 业务需求 R1–R26（含 R14a、R14b）语义
@@ -91,18 +92,19 @@
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
 - commit / PR：<任务完成后回填；仓库未初始化 Git 时为 repository_not_initialized>
-- 修改文件清单：<任务完成后回填>
-- 测试命令及结果：<任务完成后粘贴实际命令和输出>
-- lint / typecheck：<任务完成后回填；文档任务为不适用>
-- DB 迁移验证：<任务完成后回填；本任务无迁移>
-- 验收证据：<任务完成后回填；SRS v1.0 文件 + Grep 校验输出 + 用户/独立评审通过记录>
-- 变更预算实际值：<任务完成后回填>
-- 未解决风险：<任务完成后回填>
-- 是否偏离 TASK：<任务完成后回填>
+- 修改文件清单：tasks/TASK-SRS-001.md（基线锚点去错误 tag 注释 + 偏离记录）、docs/requirements/SRS.md（新建 v1.0 正文）、docs/baseline.yml（srs→1.0/review）、docs/requirements/SRS-大纲-吸收映射.md（吸收后删除·已记录偏离）
+- 测试命令及结果：全文一致性 Grep 校验（见「验收证据」）；非执行测试
+- lint / typecheck：不适用（文档任务）
+- DB 迁移验证：不适用（本任务无迁移）
+- 验收证据：① R1–R26 覆盖检查（全部映射到 SRS 节）；② UC-01–23 覆盖检查；③ SRS 内部交叉引用检查；④ 与领域模型 v1.1.2 不变量冲突检查（无新增/冲突）；⑤ deferred/非目标越界检查（未新增功能/未扩 MVP）；Grep 校验无 `review` 硬编码残留。待用户/独立评审通过后方可 approved
+- 变更预算实际值：max_files 8（含本任务单），实际 ≈ 4 文件改动 + 1 删除
+- 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
+- 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
 
 ## 阶段性证据
 - 治理微补丁（上轮）全仓 Grep：通过（无 `待复评` / `accepted_adr` / `security_design` / 旧 v2.3 准入结论 / 硬编码 `review` / `approved` 重复 残留）
 - TASK 启动前补丁（本轮）：范围扩至 R1–R26、领域模型章节号修正、AGENTS 加入允许路径、SRS 状态流转写入、交付证据清空为回填占位 → <任务完成后回填验证>
+- SRS 启动机械收口（本轮）：P0-1 已修正——基线 commit 保留真实 SHA `d7510254…`，删除其错误 `(tag: gov-sync-001-verified)` 注释（`gov-sync-001-verified` 为治理任务标签、指向 `adc7c8d3…`，不表示 SRS baseline）；P0-2 已记录偏离——误建 `SRS-大纲-吸收映射.md` 超出原允许路径，仅临时授权删除，其大纲/映射已吸收进 SRS.md 并删除该临时文件；六项结构问题按用户结论直接执行，未再询问
 
 ## 关联
 - Change Request：无

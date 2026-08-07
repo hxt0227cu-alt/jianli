@@ -73,7 +73,7 @@
 - **必须立即停止并报告（不得自行决定）**：出现任何未在「允许修改路径」列明的变化，包括新增/修改数据库表、字段、索引；新增/修改公开 API；改变加密/鉴权/权限策略；修改 SRS 业务内容；实现任务范围外功能（含 deferred 延后项）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填>
+- commit / PR：30afe97b562f73e9166b93761416b43633c567ed（UI 线框 v1.0 初稿 + TASK-UI-001 创建）
 - 修改文件清单：<回填，与「允许修改路径」对照>
 - 测试命令及结果：全仓一致性 Grep 校验（语义色 / 页面-用例映射）→ <回填>
 - lint / typecheck：不适用（设计任务）
@@ -84,8 +84,13 @@
 - 是否偏离 TASK：<否 / 偏离项>
 - 规范影响结论：none（纯设计，不改业务行为；SRS 已 approved 为上游依据）
 - spec_sync：clean（SRS 已 approved 且 based_on 未变，UI 线框为下游设计、不反向改 SRS）
-- verified_commit：<回填真实 commit sha>
+- verified_commit：30afe97b562f73e9166b93761416b43633c567ed（UI 线框 v1.0 初稿提交；任务未关闭，待评审批准后更新为批准锚点）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
+
+## 阶段性证据
+- UI 线框 v1.0 初稿已完成（commit `30afe97b`），覆盖 U1–U12（用户页面）+ A1–A8（admin 后台），与 SRS §3.1–§3.9 功能域一一映射；语义色（绿=available / 黄=前端临时态不落库 / 红=booked/owner_locked/unavailable）与 SRS §6.2 状态模型一致。
+- 关键交互流（预约原子创建、改期原子事务、owner 强制取消）已按 §3.5/§3.6/§3.7 绘制。
+- baseline `ui_wireframe` 仍 `pending`；本任务未关闭，待用户/独立评审批准 v1.0 后将 `ui_wireframe.status` 置 `approved` 并补全关闭证据。
 
 ## 关联
 - Change Request：无

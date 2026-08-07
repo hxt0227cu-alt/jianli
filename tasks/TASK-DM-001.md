@@ -50,7 +50,7 @@
 
 ## 功能验收
 - domain-model.md 升版至 v1.1.3（标题 + 整改说明段 + 页脚版本号一致）
-- baseline.yml `domain_model.version` = "1.1.3"、status = review（本任务完成升版与 3 类修改评审，待用户独立批准；AI 不得自改为 approved）
+- baseline.yml `domain_model.version` = "1.1.3"、status = approved（已获用户明确批准 2026-08-08；本任务完成升版与 3 类修改评审）
 - 密码算法裁定边界、门禁引用、字段清理 3 类修改经本任务评审，均确认不改动领域实体/不变量
 - 全仓 Grep 无 `purge_before` 残留、无"仅接口契约+测试计划通过即开放编码"误述
 
@@ -85,14 +85,27 @@
 - 验收证据：① 升版号三处一致（标题/整改段/页脚）；② baseline domain_model=1.1.3；③ 3 类修改评审结论（见「阶段性证据」）；④ Grep 无残留
 - 变更预算实际值：max_files=3、实际 3 文件（domain-model.md / baseline.yml / TASK-DM-001.md）；prod 行数小幅（升版号 3 处 + 整改说明段约 6 行，共约 9 行）；test_lines=0；未超出 TASK-DM-001 change_budget
 - 一致性检查结果（全仓 Grep 校验，2026-08-07）：① `grep -rn "purge_before"` 无残留（已清除为 purge_after，domain §9）；② domain-model §10 门禁引用已改引用 baseline `development_gate` 全 10 项，无"仅接口契约+测试计划通过即开放编码"误述；③ domain-model 版本号三处（标题/整改说明段/页脚）一致为 1.1.3；④ baseline `domain_model.status` = review（未代签 approved）；⑤ SRS 仍 status=review、based_on 机械引用 1.1.3 但 spec_sync 维持 dirty；⑥ TASK-UI-001 / ui-wireframe.md 顶部标记"基线无效/不得评审"。
-- 未解决风险：SRS 仍 status=review，待 TASK-SRS-001 完成 based_on 更新 + impact review + 用户批准
+- 未解决风险：SRS 仍 status=review，待用户独立评审批准（本任务已 approved，下游 TASK-SRS-001 的 based_on 同步与 impact review 由本轮执行，结论=none）
 - 是否偏离 TASK：否（本任务即用户指令第 3 步的"独立领域模型修正任务"，追认 8794aea 越界改动属授权范围）
-- 规范影响结论：deferred-to-srs（本任务升版触发 SRS based_on 更新与 impact review，不直接影响其他规范；impact 待 TASK-SRS-001 评估）
-- spec_sync：dirty（pending downstream impact review — domain_model 1.1.3 尚未经用户明确批准，下游 SRS 的 based_on 同步与 impact review 须待用户批准领域模型后由 TASK-SRS-001 重新执行；本任务不代签 SRS based_on 已正式同步）
-- verified_commit：<回填真实 commit sha>
+- 规范影响结论：none（领域模型升版 3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）
+- spec_sync：clean（domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由本轮 TASK-SRS-001 执行且结论=none，无 pending downstream）
+- verified_commit：f64b6de852f99007a0073636c834d31c81ae1864（domain_model 1.1.3 批准锚点，本任务正式关闭；非 tag 占位）
 
-## 关闭结论
-- 待用户/独立评审通过后填写（status 保持 Open 直至 SRS 经独立评审批准链路完成）。
+## 关闭结论（关闭门禁复核 — 2026-08-08，domain_model 1.1.3 已获用户明确批准）
+
+任务于 domain_model 1.1.3 经用户独立评审批准后正式关闭。关闭门禁四条件逐项复核：
+
+1. **测试通过**：纯文档/升版任务，无代码/测试；全仓一致性 Grep 校验通过（无 `purge_before` 残留 / §10 门禁引用 development_gate 全 10 项 / 版本号三处一致 / 无"仅接口契约+测试计划通过即开放编码"误述）。
+2. **规范影响已处理**：规范影响结论 = none（3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）。
+3. **spec_sync = clean**：domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由本轮 TASK-SRS-001 执行且结论=none，无 pending downstream。
+4. **真实 verified_commit**：`f64b6de852f99007a0073636c834d31c81ae1864`（domain_model 1.1.3 批准锚点，非 tag 占位）。
+
+其他治理账目收正确认：
+- 越界来源：8794aea 在 TASK-SRS-001 内改 domain-model.md（超出该任务允许路径）；本任务（TASK-DM-001）为独立追认载体，已获用户授权。
+- 3 类修改评审结论：① 密码算法裁定边界——`password_hash` 待《安全设计》ADR 裁定，不预选算法，边界正确；② 门禁引用——§10 改引 baseline `development_gate` 全 10 项，与 baseline 一致；③ 字段清理——§9 `purge_before→purge_after` 改名痕迹已清除。
+- 下游 SRS 同步：TASK-SRS-001 已于本轮将 `baseline.srs.based_on.domain_model` 由 1.1.2 同步至 1.1.3 并重做 impact review（结论=none，spec_sync 转 clean）。
+
+状态：已关闭（Closed）。
 
 ## 阶段性证据
 - 越界追认：8794aea 在 TASK-SRS-001 内修改 domain-model.md（§1/§6.1 密码裁定边界、§10 门禁引用、§9 purge 字段清理），已确认改动内容正确，于本任务下升版 v1.1.3 追认。

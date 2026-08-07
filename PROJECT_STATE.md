@@ -39,6 +39,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 ## 最后 verified commit（审计锚点）
 
-Git 已初始化；审计锚点 = 标签 `gov-sync-001-verified`（即治理收尾最终 commit，含 TASK-GOV-SYNC-001 关闭证据 + 全部治理文件 + 本锚点更新；该标签解析到的 commit hash 见 `git rev-parse gov-sync-001-verified`）。
+Git 已初始化；审计锚点 = verified commit `adc7c8d3df42f0ecfb6dd846317ce6de04760cc5`（tag: gov-sync-001-verified；即治理收尾最终 commit，含 TASK-GOV-SYNC-001 关闭证据 + 全部治理文件 + 本锚点更新；机器锚点首选真实 SHA，tag 仅作人类别名；解析见 `git rev-parse gov-sync-001-verified`）。
 本标签为 Review/Audit Mode（`AGENTS.md §9`）checkout 的快照——复盘时 AI 先 `git checkout gov-sync-001-verified`，再看其对应 approved specs，而非"读当前目录猜实现"。
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

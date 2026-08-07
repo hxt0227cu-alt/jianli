@@ -91,7 +91,7 @@
   - 把密钥 / 授权码写入版本库或任何文档。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：gov-sync-001-verified
+- commit / PR：adc7c8d3df42f0ecfb6dd846317ce6de04760cc5（tag: gov-sync-001-verified）
 - 修改文件清单：baseline.yml / TASK-TEMPLATE.md / AGENTS.md / PROJECT_STATE.md / TASK-SRS-001.md / .gitignore / tasks/TASK-GOV-SYNC-001.md（本任务单自身，重新打开回填修复）（仓库操作：git init + 治理收尾最终 commit，打标签 gov-sync-001-verified）
 - 测试命令及结果：不适用（纯文档/治理）；全仓 Grep 校验通过（无残留 "PRD §4 非功能"、无新增状态副本漂移）
 - lint / typecheck：不适用
@@ -102,7 +102,24 @@
 - 是否偏离 TASK：是——新增 AGENTS「交互输出语言」SSOT 与 §5 输出语言确认，超出原授权 AGENTS §9 内容范围；经本次独立复核接受为治理补充，不涉及产品行为。另：P0-1/P0-2 收尾修复（允许路径含自身、max_files 7、交付证据实际 7、verified_commit 真实 SHA）属本 TASK 重开范围，不计入偏离。
 - 规范影响结论：none（纯治理变更，不改业务行为）
 - spec_sync：clean
-- verified_commit：gov-sync-001-verified（治理收尾最终 commit 标签；非 baseline commit b2b6ac8）
+- verified_commit：adc7c8d3df42f0ecfb6dd846317ce6de04760cc5（tag: gov-sync-001-verified；治理收尾最终 commit；非 baseline commit b2b6ac8）
+
+## 关闭结论（关闭门禁复核 — 2026-08-07）
+
+任务于治理收尾回合正式关闭。关闭门禁四条件逐项复核：
+
+1. **测试通过**：纯文档/治理变更，无代码/测试；全仓 Grep 校验通过（无残留 "PRD §4 非功能"、无新增状态副本漂移）。
+2. **规范影响已处理**：规范影响结论 = none（纯治理变更，不改业务行为）；baseline.yml 中 srs 等 stage-1..4 仍为 pending，未越权推进。
+3. **spec_sync = clean**：仅固化既有治理模型于四个文件，无规范间冲突。
+4. **真实 verified_commit**：`adc7c8d3df42f0ecfb6dd846317ce6de04760cc5`（tag: gov-sync-001-verified），非 tag 占位、非 baseline commit b2b6ac8。
+
+其他治理账目收正确认：
+- 基线 commit = `repository_not_initialized`（任务启动真实历史，未被完成态覆盖）。
+- verified_commit = 真实 SHA（C-commit clerical 回填；V-commit 因自引用悖论曾暂填 tag 名，已纠正）。
+- 偏离记录真实：是否偏离 TASK = 是（AGENTS「交互输出语言」SSOT + §5 确认超出原授权 §9，经独立复核接受为治理补充，不删规则不伪造）。
+- TASK-SRS-001 基线 commit 本轮未改（防自引用），待 SRS 正式开始时以治理收口最终 SHA 回填。
+
+状态：已关闭（Closed）。
 
 ## 阶段性证据
 - 任务创建后由用户确认范围，再执行补丁。

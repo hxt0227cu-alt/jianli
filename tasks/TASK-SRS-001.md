@@ -105,6 +105,7 @@
 - 治理微补丁（上轮）全仓 Grep：通过（无 `待复评` / `accepted_adr` / `security_design` / 旧 v2.3 准入结论 / 硬编码 `review` / `approved` 重复 残留）
 - TASK 启动前补丁（本轮）：范围扩至 R1–R26、领域模型章节号修正、AGENTS 加入允许路径、SRS 状态流转写入、交付证据清空为回填占位 → <任务完成后回填验证>
 - SRS 启动机械收口（本轮）：P0-1 已修正——基线 commit 保留真实 SHA `d7510254…`，删除其错误 `(tag: gov-sync-001-verified)` 注释（`gov-sync-001-verified` 为治理任务标签、指向 `adc7c8d3…`，不表示 SRS baseline）；P0-2 已记录偏离——误建 `SRS-大纲-吸收映射.md` 超出原允许路径，仅临时授权删除，其大纲/映射已吸收进 SRS.md 并删除该临时文件；六项结构问题按用户结论直接执行，未再询问
+- SRS review correction（用户独立评审反馈，本轮）：修复 P0-1 基线 commit 措辞（顶部/页脚「本文件生成 commit」→「SRS 输入基线 commit」，明确 `d7510254` 为启动前基线、正文于 `b7ef847` 生成）；P0-2 同步 `PROJECT_STATE.md` 至 review 态（当前阶段/当前任务/下一步/最后更新）；P0-3 §1.1 与 §10 页脚「行为唯一源」改为「approved 后成为」，并新增 §1.1 状态机所有权迁移（ownership transition）条款、§1.4/§6.2 对齐；P1-1 删除 SRS 内复制的 deferred 六项清单；P1-2 删除违规 `PRD §8.5` 引用（腾讯云→§4 系统集成、成本→§5 非功能需求）；§4.3「中心化通道广播」改为一致性/有序恢复行为约束（机制留 ADR）；§3.8「Outbox 事件表」软化为「可靠持久化的业务事件（Outbox 模式）」。SRS 仍 `status=review`，未 approved，TASK 保持开启；关闭证据（规范影响结论/spec_sync/verified_commit）待独立评审通过后补。
 
 ## 关联
 - Change Request：无

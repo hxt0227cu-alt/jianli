@@ -2,7 +2,7 @@
 
 > **文档状态**：v1.0 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决；经用户或独立评审通过后方可置 `approved`）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 v1.1.2 / AI 治理 1.0.1。
-> **本文件生成 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（治理完全收口最终 commit）。
+> **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）与「禁止 LLM 自动写预约」硬规则（PRD §8.4#14）为 SRS 边界，正文仅可引用、不可扩展。
 
@@ -11,7 +11,8 @@
 ## 1. 引言
 
 ### 1.1 目的与范围
-本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.2）吸收为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.2）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+**状态机所有权迁移（ownership transition）**：review 阶段状态枚举暂以 PRD §8.10 / 领域模型 §5 为输入引用；SRS approved 后，状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）即归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
 
 ### 1.2 定义、首字母缩写、缩略语
 沿用 PRD §8.3 术语表（动态面试表页 / 一家公司一时段 / 飞书多维表格日常视图 / 后台只读应急视图 / 双通道提醒 / 抢占式并发 / 知识库热更新 / 会话历史持久化 / 人格层 L1 / RAG / 内容护栏）。新增：
@@ -28,7 +29,7 @@
 ### 1.4 文档约定
 - 需求编号沿用 PRD（R1–R26，含 R14a/R14b）；用例编号沿用用例规约（UC-01–UC-23）。
 - 决策状态统一为：已确认 / 待确认 / 已废弃 / 延后实施。
-- 状态机枚举（SlotStatus / AppointmentStatus / DeliveryStatus）以 PRD §8.10 为唯一规范源，本文仅引用。
+- 状态机枚举（SlotStatus / AppointmentStatus / DeliveryStatus）以 PRD §8.10 / 领域模型 §5 为输入引用；SRS approved 后归属 SRS behavioral SSOT（所有权迁移见 §1.1）。
 
 ---
 
@@ -50,7 +51,7 @@
 ### 2.3 运行环境约束
 - **浏览器**：Chrome / Edge / Firefox 最新稳定版。
 - **视口**：目标最低视口 **1280×720**；**平板横屏可用**；视口 **<1024px** 显示「建议使用桌面浏览器」阻断提示（不提供移动端页面，不做移动端竖屏适配）。**不得只写"仅桌面端"而漏掉"平板横屏可用"**（忠实吸收 PRD §4.1 / §5 已批准要求）。
-- **部署**：云端部署（腾讯云，PRD §8.5 已确认），本机不搭服务；大模型推理经托管 LLM API。
+- **部署**：云端部署（腾讯云，PRD §4 系统集成已确认），本机不搭服务；大模型推理经托管 LLM API。
 - **时区**：中国标准时间（UTC+8）；时段以 `start_at`/`end_at` 时间戳存储。
 
 ### 2.4 设计与实现约束
@@ -61,7 +62,7 @@
 
 ### 2.5 MVP 边界与非目标（引用 `docs/baseline.yml`，不复制维护第二份清单）
 - **MVP 硬规则**（引用 `baseline.yml` `mvp_hard_rules`，不重复罗列全文）：大模型只负责问答不自动写预约；密码登录（验证码仅注册验证/找回）；敏感字段逐列 AES-256、公司名 HMAC 指纹去重；并发抢占经 Slot 行锁 + 部分唯一索引不预占；通知通道独立重试不相互兜底；推荐问题异步生成缓存非实时；owner 取消经锁定已约时段触发原子取消、后台不提供直接删除预约入口。
-- **延后项**：以 `docs/baseline.yml` `deferred` 为唯一规范源（如 wechat_assistant / hunyuan_fallback / l2_lora / agent_auto_booking / realtime_question_gen / complex_agent_infra）。本 SRS 不复制该清单、不维护第二份状态源。
+- **延后项**：仅引用 `docs/baseline.yml` `deferred` 为唯一规范源；本 SRS 不复制维护该清单、不维护第二份状态源。
 - **非目标（与 SRS 直接相关）**：不新增产品需求；不扩 MVP 范围；不提前做架构选型 / ADR / OpenAPI·SSE 契约 / 物理 Schema / 编码。
 
 ### 2.6 假设与依赖（PRD §8.2，统一标"外部依赖 / 待确认"，不阻塞设计，阻塞对应集成验收/上线）
@@ -151,7 +152,7 @@
 - **飞书完整视图（R14，UC-11）**：系统 DB 为唯一真相源，预约变更实时/近实时同步至飞书多维表格（全公司明文：公司/平台/会议号/HR联系方式/备注/时段/状态）；同步失败邮件告警候选人+飞书任务重试（R21/UC-11 3a）。
 - **双通道提醒（R13，UC-12，MVP）**：新预约/修改(改时间)/取消事件实时推送候选人**飞书+邮箱**；面试前 **10 分钟**临近提醒（R18/UC-14）；微信助理为延后项。
 - **后台只读应急视图（R14a，UC-23）**：飞书不可用时，admin 在网站后台**只读**查看完整预约（全公司明文）、通知投递状态、飞书同步状态/故障记录；**不可改/删预约**。
-- **通知可靠性语义（PRD §4.6，见 §4.3）**：业务事务 + Outbox 事件表 + 异步消费者；每事件唯一幂等 ID；≤3 次指数退避重试；不重复产生业务后果；预约成功不依赖第三方通知成功。
+- **通知可靠性语义（PRD §4.6，见 §4.3）**：业务事务 + 可靠持久化的业务事件（Outbox 模式）+ 异步消费者；每事件唯一幂等 ID；≤3 次指数退避重试；不重复产生业务后果；预约成功不依赖第三方通知成功。
 - **失败矩阵（PRD §4.6）**：飞书失败邮箱成功→重试飞书；邮箱失败飞书成功→重试邮件+飞书告警；均失败→后台高优先级告警持续重试（二者不互为兜底）；飞书同步失败→邮件告警+飞书任务重试；确认函失败→不回滚预约+告警+可手动重发。
 - **验收判定**：双通道幂等不重复、单通道失败不影响其余、失败独立重试+告警（PRD §6）；飞书视图日常可见、同步失败告警；应急视图只读。
 
@@ -183,7 +184,7 @@
 - **SSE 推送行为（PRD §4.5 实时刷新，忠实吸收）**：
   - 事件带**版本号 / 序列号**，接收端按序应用；
   - 断线后接收端**重新拉取全量快照**恢复；丢失事件经全量刷新恢复；
-  - 多实例部署时事件经中心化通道广播；
+  - 多实例部署时，事件传播必须保证一致性与有序恢复（具体机制如 Redis Pub/Sub / 中心化通道由架构 ADR 决定，本文不预定义实现）；
   - 推送内容 ≤2s 到达客户端。
   - **不在此设计 SSE 事件载荷字段/URL**（留给接口契约）。
 - **通知可靠性行为（PRD §4.6，引用领域模型 NotificationEvent/NotificationDelivery）**：
@@ -227,7 +228,7 @@
 - 兼容：**桌面端 Chrome/Edge/Firefox 最新稳定版；最低视口 1280×720；平板横屏可用；<1024px 阻断提示；不做移动端竖屏适配**（忠实吸收，不漏"平板横屏可用"）。
 - 视觉/终端：纯中文、简洁清爽；页面 2 动效互动；仅桌面端。
 - 会话：登录用户问答会话跨登录保留（R23），未登录不持久化。
-- 成本：**腾讯云部署（PRD §8.5 已确认）**；短期（面试期 1–2 月）含域名 ≈ ¥180–220、不含域名 ≈ ¥130–170（PRD §8.5）。**SRS 仅记录上述已确认约束，不展开服务器规格、网络拓扑、Redis、部署方案——留待架构/ADR。**
+- 成本：**腾讯云部署（PRD §4 系统集成已确认）**；短期（面试期 1–2 月）含域名 ≈ ¥180–220、不含域名 ≈ ¥130–170（PRD §5 非功能需求·成本估算）。**SRS 仅记录上述已确认约束，不展开服务器规格、网络拓扑、Redis、部署方案——留待架构/ADR。**
 
 ---
 
@@ -240,11 +241,12 @@
 - 问答与知识库：`Conversation` / `Message` / `KnowledgeDocument` / `KnowledgeIndexVersion` / `RecommendedQuestionCache`
 - 字段、关系、索引、并发约束一律见领域模型文档，本文不重复维护。
 
-### 6.2 状态模型（引用 PRD §8.10 / 领域模型 §5，唯一规范源）
+### 6.2 状态模型（review 阶段引用 PRD §8.10 / 领域模型 §5；SRS approved 后本文为状态行为唯一规范源）
 - **SlotStatus**：`available` / `booked` / `owner_locked` / `unavailable`（黄格不属此枚举，为前端临时态）。
 - **AppointmentStatus**：`active` / `cancelled` / `completed`（提交即 active；改期 active→active 原子；无 pending/draft）。
 - **DeliveryStatus**：`queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter`（通道无关；手动重发=新建尝试记录）。
 - **NotificationEvent 生命周期**：`pending→processing→processed`；改期/取消置旧提醒 `cancelled`；类型仅表达业务事实（appointment_created/details_updated/rescheduled/cancelled/reminder_due）。
+- （所有权说明：SRS approved 后，上述状态枚举与转换规则以本文为唯一规范源；PRD §8.10 仅作业务意图历史参考，不再作为实现阶段状态机的直接 Owner——与 §1.1 所有权迁移一致。）
 
 ### 6.3 加密 / 留存 / 删除（引用 PRD §8.7 / 领域模型 §8–§9）
 - 加密：敏感字段逐列 AES-256（密钥 Secret Manager，轮换≤90 天）；公司名 HMAC 指纹去重；`start_at/end_at` 明文受访问控制；密码 Argon2id；token 仅存哈希。
@@ -381,8 +383,8 @@
 | UC-22 | 公司去重例外解除 | 3.7 | R12 |
 | UC-23 | 后台只读应急视图 | 3.8 | R14a |
 
-> 测试用例 ID（TC-xxx）与逐条验收证据由《测试计划》补全（PRD §6.1）。本文为 SRS 行为唯一源；approved 后用例规约冻结为历史输入或 SRS 附录。
+> 测试用例 ID（TC-xxx）与逐条验收证据由《测试计划》补全（PRD §6.1）。本文经 approved 后成为 SRS 行为唯一源；approved 后用例规约冻结为历史输入或 SRS 附录。
 
 ---
 
-> **文档结束** · SRS v1.0 · status=review · 生成 commit `d7510254a9e900fab06ebc5216cd2dd68bd2eef2` · 经独立评审通过后方可置 approved（由用户或独立评审操作 `docs/baseline.yml`）。
+> **文档结束** · SRS v1.0 · status=review · 输入基线 commit `d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；正文于后续 commit `b7ef847` 生成） · 经独立评审通过后方可置 approved（由用户或独立评审操作 `docs/baseline.yml`）。

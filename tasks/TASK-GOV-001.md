@@ -47,7 +47,8 @@
 
 ## 变更预算（change_budget）
 
-- max_files：**5**（`.gitignore` + `tasks/TASK-DM-002.md` + `PROJECT_STATE.md` + `tasks/TASK-GOV-001.md` + 索引取消跟踪操作；索引操作不计入文件数但须记录）
+- max_files：**5**（原始预算声明；实际为 **12 个 Git 路径**，已超出预算，偏差见下 + TASK-GOV-002 追认）。
+- 计数口径错误（TASK-GOV-002 追认）：原任务单将 `git rm --cached -r .workbuddy/` 产生的 **8 个 memory 文件取消跟踪** 合并记为「1 项索引操作」，未按**文件路径**逐条计数；正确应为 8 路径 + 4 文件 = **12 个 Git 路径**。
 - expected_prod_lines：小幅（.gitignore 1 行 + TASK-DM-002 锚点字段 + PROJECT_STATE 1 处 + 本任务单）
 - expected_test_lines：0
 
@@ -61,17 +62,28 @@
 - verified_commit：**`f56a47803137fe1c17c268492abd2f8404e18330`** —— 本治理修正提交（含 `.gitignore` + TASK-DM-002 锚点校正 + PROJECT_STATE 同步 + 本任务单 + 索引取消跟踪 `.workbuddy/`）。
 - 取消跟踪操作：`git rm --cached -r .workbuddy/` → 8 个 memory 文件移出索引，工作树原文件保留。
 - `.gitignore` 变更：`+ .workbuddy/`（原 `.workbuddy/archive/` 被 `.workbuddy/` 覆盖，无需单列）。
-- 修改文件清单（实际 4 个被改文件 + 1 项索引操作）：
-  1. `.gitignore`
-  2. `tasks/TASK-DM-002.md`
-  3. `PROJECT_STATE.md`
-  4. `tasks/TASK-GOV-001.md`
+- 修改文件清单（**实际 12 个 Git 路径**，按文件路径逐条计数，不按操作类别合并）：
+  - 取消跟踪（8 个 `.workbuddy/memory/*` 文件，路径各自独立，不得合并为 1 项索引操作）：
+    1. `.workbuddy/memory/2026-07-31.md`
+    2. `.workbuddy/memory/2026-08-03.md`
+    3. `.workbuddy/memory/2026-08-04.md`
+    4. `.workbuddy/memory/2026-08-05.md`
+    5. `.workbuddy/memory/2026-08-06.md`
+    6. `.workbuddy/memory/2026-08-07.md`
+    7. `.workbuddy/memory/2026-08-08.md`
+    8. `.workbuddy/memory/MEMORY.md`
+  - 修改/创建（4 个文件）：
+    9. `.gitignore`
+    10. `tasks/TASK-DM-002.md`
+    11. `PROJECT_STATE.md`
+    12. `tasks/TASK-GOV-001.md`
 - 测试命令及结果：无（治理操作）；交付后 `git status` 校验 `.workbuddy/` 不再出现于索引、工作树文件保留。
-- 变更预算实际值：max_files=5，实际改 4 文件 + 索引操作 1 项，未超预算。
+- 变更预算实际值：**max_files=5，实际 12 个 Git 路径，已超出预算（偏差 +7）**。偏差原因 = 任务单按「操作类别」而非「文件路径」计数（8 个 memory 路径被合并记为 1 项索引操作）。此偏差由 TASK-GOV-002 追认并向前收口，不重写 `f56a478` 历史。
 - 未解决风险：无（范围内已闭环）。
-- 是否偏离 TASK：**否**（全部改动在「允许修改路径」5 项内）。
+- 是否偏离 TASK：**变更预算偏离（change_budget 硬停偏差，已发生）**——实际改动 12 个 Git 路径，超出本任务声明的 `max_files=5`；所有 12 个路径均在「允许修改路径」5 项授权**意图范围**内（8 个 memory 文件由索引取消跟踪授权覆盖，4 个文件为显式列出），故**授权范围未越界**，但**预算计数偏差属已发生的 change_budget 硬停偏差**：原任务单在未标记超预算的情况下关闭。向前收口方式 = 由 TASK-GOV-002 如实追记本偏差并校正计数口径，历史不重写。
 - 规范影响结论：**none**（不改变任何规范内容）。
 - 账目记录（必读）：`f864937` 系 TASK-DM-002 关闭后**范围外提交**，非项目治理证据，已通过 `git rm --cached -r .workbuddy/` + `.gitignore` 忽略规则收口；`f864937` 历史**未重写、未删除**。
+- 计数口径校正（TASK-GOV-002 追认）：本任务原始「变更预算实际值=未超预算 / 是否偏离 TASK=否」结论**有误**——实际 12 个 Git 路径超出 `max_files=5`，属已发生的 change_budget 硬停偏差；偏差仅限预算计数（授权范围未越界），由 TASK-GOV-002 向前收口，不重写 `f56a478`。
 
 ## 关闭条件（对齐 `tasks/TASK-TEMPLATE.md` 四条件）
 

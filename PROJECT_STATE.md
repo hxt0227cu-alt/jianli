@@ -12,7 +12,7 @@
 分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。
 
 - **领域模型 v1.1.4 / status=approved**（经用户 2026-08-08 明确批准「我批准领域模型 v1.1.4 的内容」，独立批准锚点 `f537296`，不复用 `f64b6de`）。v1.1.3 已于 `f64b6de` **正式批准（历史事实保留，不予否认）**，但其后发现 P0 算法锁定缺陷；按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，改由 **TASK-DM-002 升版 v1.1.4** 承载（密码算法中性化 + Security ADR 与 PRD §8.7 BCrypt 冲突须走规范影响/变更评审的条款）。TASK-DM-002 已关闭。
-- **SRS v1.0 / status=approved**（用户 2026-08-08 独立评审批准，独立批准锚点 `26ae844`，不复用旧误批准锚点 `173cf9b6`），`spec_sync=clean`。`baseline.srs.based_on` = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4（上游均已 approved 且对齐）；TASK-SRS-001 已完成 impact review（based_on→1.1.4 + 修正 SRS §6.3 过期 Argon2id 描述；**结论 = 需文字同步、不改变用户可观察行为，非 none**）并已于本回合关闭。**SRS 现为行为唯一源**（precedence 高于 PRD/用例规约），用例规约冻结为历史输入。
+- **SRS v1.0 / status=approved**（用户 2026-08-08 独立评审批准，独立批准锚点 `26ae844`，不复用旧误批准锚点 `173cf9b6`），`spec_sync=clean`。`baseline.srs.based_on` = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4（上游均已 approved 且对齐）；TASK-SRS-001 已完成 impact review（based_on→1.1.4 + 修正 SRS §6.3 过期 Argon2id 描述；**结论 = 需文字同步、不改变用户可观察行为，非 none**）并已于本回合关闭。**SRS 现为行为唯一源**（precedence 高于 PRD/用例规约），用例规约冻结为历史输入；**v1.1 缺陷修正修订（TASK-SRS-002）review 中**：补充退信(Bounce) 行为，v1.0 approved 快照冻结于 `26ae844` 不变，v1.1 待用户批准。
 - **UI 线框（TASK-UI-001 / ui-wireframe.md）**：UI 线框影响评审已完成（TASK-UI-IMPACT-001，结论=基本可沿用 + 1 处轻微内容缺口）；基线锚点已更新为 SRS `26ae844` / 领域模型 1.1.4（解除"基线无效"）；内容缺口由 TASK-UI-002 承载；`baseline.ui_wireframe.status` 仍 `pending`，待用户评审实际线框。
 
 ---
@@ -26,7 +26,8 @@
 - **TASK-SRS-001**：**已关闭（Closed，2026-08-08）**——SRS v1.0 生成 + impact review（domain_model 1.1.3→1.1.4 文字同步）+ 本次 SRS 批准收口。`approval_commit=26ae844`（SRS 批准单一用途锚点），`verified_commit=06798a2`（SRS 关闭快照）。`spec_sync=clean`；SRS 现已 approved。
 - **TASK-UI-001**：冻结待评审（基线已恢复有效，内容缺口待 TASK-UI-002 修正）；`baseline.ui_wireframe.status` 仍 pending，未经用户评审不得置 approved。
 - **TASK-UI-IMPACT-001**：**已关闭（Closed，2026-08-08）**——UI 线框影响评审，结论=基本可沿用（SRS `26ae844` + 领域模型 1.1.4 与现有线框对齐；仅 A6 通知失败中心 `DeliveryStatus` 枚举轻微缺口）→ 内容缺口由 **TASK-UI-002** 承载；未批准 ui_wireframe、未改 baseline 状态、未推进架构。
-- **TASK-UI-002**：**开启**——UI 线框内容修正（A6/A7 通知失败中心失败处理态 failed/retry_scheduled/dead_letter 补全），依据 SRS §6.2 / §4.3 / 领域模型 §5；`baseline.ui_wireframe.status` 保持 pending，待用户评审实际线框后授权。**退信(bounce) 为 UI 批准前阻塞项**：须先经 SRS Change Request 裁定是否恢复 PRD/UC-21 退信展示/筛选/重发，裁定完成前不得批准 ui_wireframe。
+- **TASK-UI-002**：**开启**——UI 线框内容修正（A6/A7 通知失败中心失败处理态 failed/retry_scheduled/dead_letter 补全），依据 SRS §6.2 / §4.3 / 领域模型 §5；`baseline.ui_wireframe.status` 保持 pending，待用户评审实际线框后授权。**退信(bounce) 为 UI 批准前阻塞项**：已由 TASK-SRS-002 以 SRS v1.1 缺陷修正处理（review 草案完成），待用户批准 SRS v1.1 后解除阻塞并同步执行，裁定完成前不得批准 ui_wireframe。
+- **TASK-SRS-002**：**开启（review 草案）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1，review）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；baseline.srs 进入 v1.1 review；**不代签批准**，待用户评审批准 v1.1 后由 TASK-UI-002 同步退信项 → 批准 ui_wireframe。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---

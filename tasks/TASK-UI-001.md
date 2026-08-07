@@ -1,5 +1,7 @@
 # TASK-UI-001 产出 UI 线框 v1.0（阶段 1 设计工件）
 
+> ⚠️ **基线无效 / 不得评审**：本任务基于误批准的 SRS（baseline srs.status=approved，锚点 173cf9b6）启动，已被用户回退至 review。SRS 经独立修正（TASK-DM-001 升版 + TASK-SRS-001 impact review）+ 用户批准、并重新做 impact review 后，再决定是否沿用本线框。当前冻结，不得继续提交设计、不得进入架构/API/测试/编码阶段。
+
 > 复制本模板为 `tasks/TASK-UI-001.md`，作为 AI **仓库变更**的唯一范围约束。无任务单不得写入仓库，包括文档、设计、测试和代码变更。
 
 ## 任务类型

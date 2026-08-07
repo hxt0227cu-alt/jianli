@@ -15,8 +15,8 @@ artifacts:
   use_cases:        { version: "1.7.2", status: approved }  # 第六轮复评 + 收尾补丁通过（P0-1~P0-3/P0-7 + UC-23 + 治理微补丁）
   domain_model:     { version: "1.1.2", status: approved }  # 第六轮复评通过（P0-6~P0-8 + 实现边界）
   srs:
-    version: "0.0"
-    status: pending                                                # 阶段 1 待产出（三件套复评通过后才可启动）
+    version: "1.0"
+    status: review                                                 # SRS v1.0 已生成，待独立评审；review 不计入 precedence 裁决，WorkBuddy 不得自改为 approved
     based_on: { prd: "2.3.3", use_cases: "1.7.2", domain_model: "1.1.2" }  # SRS 生成所依据上游已批准版本锚点；上游任一变化→SRS 需 impact review
   ui_wireframe:     { version: "0.0",   status: pending }   # 阶段 1 待产出
   architecture:     { version: "0.0",   status: pending }   # 阶段 2 待产出

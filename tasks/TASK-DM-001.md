@@ -50,7 +50,7 @@
 
 ## 功能验收
 - domain-model.md 升版至 v1.1.3（标题 + 整改说明段 + 页脚版本号一致）
-- baseline.yml `domain_model.version` = "1.1.3"、status = approved
+- baseline.yml `domain_model.version` = "1.1.3"、status = review（本任务完成升版与 3 类修改评审，待用户独立批准；AI 不得自改为 approved）
 - 密码算法裁定边界、门禁引用、字段清理 3 类修改经本任务评审，均确认不改动领域实体/不变量
 - 全仓 Grep 无 `purge_before` 残留、无"仅接口契约+测试计划通过即开放编码"误述
 
@@ -77,17 +77,18 @@
 - **必须立即停止并报告**：出现任何未在「允许修改路径」列明的变化（含修改 PRD/SRS/UI、新增依赖、改动实体不变量等）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填>
-- 修改文件清单：<回填>
-- 测试命令及结果：全仓一致性 Grep 校验（无 `purge_before` 残留 / 无门禁误述）；非执行测试
+- commit / PR：b8eba4db35d1c4b02d16a5f6d431406cb7d6ef6b（b8eba4d，TASK-DM-001 升版与评审提交；领域模型 1.1.3 当前 status=review，待用户批准）
+- 修改文件清单：docs/design/domain-model.md（升版号 v1.1.3 标题/整改说明段/页脚 + 追认 8794aea 的 4 处修改评审留痕）、docs/baseline.yml（domain_model.version 1.1.2→1.1.3）、tasks/TASK-DM-001.md（本任务单）
+- 测试命令及结果：全仓一致性 Grep 校验（结论见下「一致性检查结果」）；非执行测试
 - lint / typecheck：不适用
 - DB 迁移验证：不适用
 - 验收证据：① 升版号三处一致（标题/整改段/页脚）；② baseline domain_model=1.1.3；③ 3 类修改评审结论（见「阶段性证据」）；④ Grep 无残留
-- 变更预算实际值：<回填>
+- 变更预算实际值：max_files=3、实际 3 文件（domain-model.md / baseline.yml / TASK-DM-001.md）；prod 行数小幅（升版号 3 处 + 整改说明段约 6 行，共约 9 行）；test_lines=0；未超出 TASK-DM-001 change_budget
+- 一致性检查结果（全仓 Grep 校验，2026-08-07）：① `grep -rn "purge_before"` 无残留（已清除为 purge_after，domain §9）；② domain-model §10 门禁引用已改引用 baseline `development_gate` 全 10 项，无"仅接口契约+测试计划通过即开放编码"误述；③ domain-model 版本号三处（标题/整改说明段/页脚）一致为 1.1.3；④ baseline `domain_model.status` = review（未代签 approved）；⑤ SRS 仍 status=review、based_on 机械引用 1.1.3 但 spec_sync 维持 dirty；⑥ TASK-UI-001 / ui-wireframe.md 顶部标记"基线无效/不得评审"。
 - 未解决风险：SRS 仍 status=review，待 TASK-SRS-001 完成 based_on 更新 + impact review + 用户批准
 - 是否偏离 TASK：否（本任务即用户指令第 3 步的"独立领域模型修正任务"，追认 8794aea 越界改动属授权范围）
 - 规范影响结论：deferred-to-srs（本任务升版触发 SRS based_on 更新与 impact review，不直接影响其他规范；impact 待 TASK-SRS-001 评估）
-- spec_sync：clean（本任务仅升版 domain-model，不直接修改 SRS；SRS 的 based_on 同步与 impact review 由 TASK-SRS-001 在其开启态下处理）
+- spec_sync：dirty（pending downstream impact review — domain_model 1.1.3 尚未经用户明确批准，下游 SRS 的 based_on 同步与 impact review 须待用户批准领域模型后由 TASK-SRS-001 重新执行；本任务不代签 SRS based_on 已正式同步）
 - verified_commit：<回填真实 commit sha>
 
 ## 关闭结论

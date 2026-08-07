@@ -11,7 +11,7 @@
 ## 1. 引言
 
 ### 1.1 目的与范围
-本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.2）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.3）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
 **状态机所有权迁移（ownership transition）**：review 阶段状态枚举暂以 PRD §8.10 / 领域模型 §5 为输入引用；SRS approved 后，状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）即归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
 
 ### 1.2 定义、首字母缩写、缩略语

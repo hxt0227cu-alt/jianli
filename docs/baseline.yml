@@ -13,7 +13,7 @@
 artifacts:
   prd:              { version: "2.3.3", status: approved }  # 第六轮复评通过（P0-1~P0-3/P0-7）
   use_cases:        { version: "1.7.2", status: approved }  # 第六轮复评 + 收尾补丁通过（P0-1~P0-3/P0-7 + UC-23 + 治理微补丁）
-  domain_model:     { version: "1.1.3", status: approved }  # v1.1.3 经 TASK-DM-001 独立修正（密码算法裁定边界/门禁引用/字段清理评审）
+  domain_model:     { version: "1.1.3", status: review }   # v1.1.3 经 TASK-DM-001 独立修正（密码算法裁定边界/门禁引用/字段清理评审）；待用户独立评审批准，AI 不得自改为 approved
   srs:
     version: "1.0"
     status: review                                                 # SRS v1.0 已生成，待独立评审（须先完成领域模型独立修正 TASK-DM-001 + SRS impact review 后由用户批准）；review 不计入 precedence 裁决，WorkBuddy 不得自改为 approved

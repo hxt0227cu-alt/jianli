@@ -100,6 +100,25 @@
 - 变更预算实际值：max_files 8（含本任务单），实际 ≈ 4 文件改动 + 1 删除
 - 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
 - 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
+- 规范影响结论：none（纯文档/治理收口，不改业务行为；SRS 由 review→approved 是状态推进，不影响其他规范）
+- spec_sync：clean（SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.2，上游版本未变且均为 approved，无 impact check 需求）
+- verified_commit：173cf9b6ffdf75acc4802398644ba67fb06f6cf6（SRS v1.0 正式 approved 锚点；含 8794aea 小范围收口正文 + 97e44d4 TASK 证据回填）
+
+## 关闭结论（关闭门禁复核 — 2026-08-07）
+
+任务于 SRS 独立评审通过后正式关闭（用户授权 2026-08-07 将 srs.status 置 approved）。关闭门禁四条件逐项复核：
+
+1. **测试通过**：纯文档/治理变更，无代码/测试；全仓一致性 Grep 校验通过（无 `review` 硬编码残留 / 无 `待复评` / 无违规 `PRD §8.5` 引用 / 无 `purge_before` 残留）。
+2. **规范影响已处理**：规范影响结论 = none（纯文档收口，不改业务行为）；SRS 由 review→approved 是状态推进，不影响其他规范。
+3. **spec_sync = clean**：SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.2，上游版本未变且均为 approved；R1–R26 / UC-01–23 双向追踪完整，无 impact check 需求。
+4. **真实 verified_commit**：`173cf9b6ffdf75acc4802398644ba67fb06f6cf6`（SRS v1.0 正式 approved 锚点，非 tag 占位）。
+
+其他治理账目收正确认：
+- 基线 commit = `d7510254…`（SRS 启动前基线，未被完成态覆盖）。
+- SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ 173cf9b6（approved 锚点）。
+- TASK-SRS-001 关闭后，用例规约冻结为历史输入（SRS 行为唯一源生效）。
+
+状态：已关闭（Closed）。
 
 ## 阶段性证据
 - 治理微补丁（上轮）全仓 Grep：通过（无 `待复评` / `accepted_adr` / `security_design` / 旧 v2.3 准入结论 / 硬编码 `review` / `approved` 重复 残留）

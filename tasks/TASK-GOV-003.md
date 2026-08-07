@@ -37,7 +37,7 @@ SRS v1.0 已批准并关闭（approval_commit=`26ae844`、verified_commit=`06798
 - 出现任何未在「允许修改路径」列明的变化（含改 baseline / SRS / 领域模型 / UI 正文）→ 立即停止并报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填，关闭提交 sha>
+- commit / PR：`ab2cf1d174eb74ef7353707db58fb78f07720891`（TASK-GOV-003 关闭提交 / 本任务 verified_commit）
 - 修改文件清单（**3 个，按文件路径逐条计数，不合并**）：
   1. `tasks/TASK-SRS-001.md` — 3 处文字校正（均限交付证据当前态，不改历史阶段记录）：
      a. 交付证据 commit/PR 链：补入 `26ae844`（SRS 批准锚点 / approval_commit）、`06798a2`（TASK-SRS-001 关闭快照 / verified_commit）；"SRS 状态仍 = review，未 approved"→"SRS 现已 approved（26ae844）/ Closed（06798a2），本任务已关闭"。
@@ -51,15 +51,15 @@ SRS v1.0 已批准并关闭（approval_commit=`26ae844`、verified_commit=`06798
 - 是否偏离 TASK：否（全部改动在授权 3 项内）。
 - 规范影响结论：none（纯文字校正，不改规范正文/行为）。
 - spec_sync：clean（不涉及规范版本变化）。
-- verified_commit：<回填，关闭提交 sha>
+- verified_commit：`ab2cf1d174eb74ef7353707db58fb78f07720891`（TASK-GOV-003 关闭提交；含 TASK-SRS-001 文字校正 + PROJECT_STATE 第 25 行校正 + 本任务单）
 
 ## 关闭结论
 任务于治理文字收口完成后关闭。关闭门禁四条件复核：
 1. **测试通过**：纯文字；Grep 复核无残留"SRS 仍 review"当前态表述（历史阶段记录保留 review 为预期）。
 2. **规范影响已处理**：none（不改规范正文/行为）。
 3. **spec_sync = clean**：无规范版本变化。
-4. **真实 verified_commit**：<回填，关闭提交 sha>。
-状态：Closed。
+4. **真实 verified_commit**：`ab2cf1d174eb74ef7353707db58fb78f07720891`（TASK-GOV-003 关闭提交）。
+状态：Closed（2026-08-08）。
 
 ## 关联
 - 上游任务：TASK-SRS-001（SRS v1.0，已关闭，approval_commit=26ae844 / verified_commit=06798a2）

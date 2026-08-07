@@ -4,7 +4,7 @@
 > 用途：冻结数据库边界与领域实体关系，作为《接口契约》《测试计划》与架构设计的前置输入。
 > 当前版本与评审状态见 `docs/baseline.yml`。编码准入由 baseline `development_gate` 决定。
 > **状态机枚举以需求文档 §8.10 为唯一规范源**，本文仅引用，不另立状态名。
-> **v1.1.2 整改（第六轮 P0-6~P0-8 + 实现边界）**：`CompanyBookingException` 补 `revoked_at`/`revoked_by` 与并发消费锁（`FOR UPDATE` + `uq_appointment_exception`）；`DeliveryAttempt` 幽灵实体全文改为 `NotificationDelivery` 尝试记录并补唯一约束；`RecommendedQuestionCache` 改为 `page_key/questions_json/generated_at/invalidated_at` + `UNIQUE(page_key) WHERE invalidated_at IS NULL`（取消全局版本字段）；`AvailabilityOverride` 补 NOT NULL 约束与 `CHECK`、明确为 owner 意图真相源；并发抢占补三格连续性服务端校验；逻辑模型与物理 Schema 分离说明；配套 PRD v2.3.3、用例规约 v1.7.2；**v1.1.3 整改（TASK-DM-001 独立修正，2026-08-07）**：密码哈希算法裁定边界明确（`password_hash` 当前按 Argon2id 设计、最终算法待《安全设计》ADR 裁定，PRD §8.7 BCrypt 冲突以安全设计为准，本阶段不预选）；编码准入门禁改引用 baseline `development_gate` 全 10 项（纠正「仅接口契约+测试计划通过即开放编码」误述）；遗留 `purge_before→purge_after` 改名痕迹清除。上述经独立任务评审，不改领域实体/不变量；SRS 须同步 based_on 至 1.1.3 并做 impact review。
+> **v1.1.2 整改（第六轮 P0-6~P0-8 + 实现边界）**：`CompanyBookingException` 补 `revoked_at`/`revoked_by` 与并发消费锁（`FOR UPDATE` + `uq_appointment_exception`）；`DeliveryAttempt` 幽灵实体全文改为 `NotificationDelivery` 尝试记录并补唯一约束；`RecommendedQuestionCache` 改为 `page_key/questions_json/generated_at/invalidated_at` + `UNIQUE(page_key) WHERE invalidated_at IS NULL`（取消全局版本字段）；`AvailabilityOverride` 补 NOT NULL 约束与 `CHECK`、明确为 owner 意图真相源；并发抢占补三格连续性服务端校验；逻辑模型与物理 Schema 分离说明；配套 PRD v2.3.3、用例规约 v1.7.2；**v1.1.3 整改（TASK-DM-001 独立修正，2026-08-07）**：密码哈希算法裁定边界明确（`password_hash` 仅规定存储密码哈希、不存明文，具体哈希算法待《安全设计》ADR 裁定，领域模型不预选 Argon2id/BCrypt）；编码准入门禁改引用 baseline `development_gate` 全 10 项（纠正「仅接口契约+测试计划通过即开放编码」误述）；遗留 `purge_before→purge_after` 改名痕迹清除。上述经独立任务评审，不改领域实体/不变量；SRS 须同步 based_on 至 1.1.3 并做 impact review。
 
 ---
 
@@ -16,7 +16,7 @@
   - 敏感字段**逐列 AES-256-GCM 密文（ciphertext）**，密钥经 KMS；
   - 公司名以 **HMAC-SHA256(normalized_name, site_key)** 生成 `fingerprint` 去重，**不暴露原文**；
   - `start_at/end_at` 业务元数据，**明文存但受访问控制**；
-  - `password_hash` 当前按 Argon2id 设计，但**最终算法待《安全设计》ADR 裁定**（PRD §8.7 记为 BCrypt，二者冲突以安全设计为准）；各类 token 仅存哈希；
+  - `password_hash` 存储密码哈希（不存明文），具体哈希算法待《安全设计》ADR 裁定；各类 token 仅存哈希；
   - 审计日志写入前对会议号/电话等**脱敏**。
 
 ### 1.1 建模粒度（第五轮复评）
@@ -92,7 +92,7 @@ classDiagram
     class User {
         +id UUID PK
         +email string UK "全局唯一→单身份单角色"
-        +password_hash string "Argon2id"
+        +password_hash string "algorithm pending Security ADR"
         +role enum[interviewer, owner_admin]
         +verified bool
         +deletion_requested_at timestamptz NULL
@@ -317,7 +317,7 @@ erDiagram
     USER {
         uuid id PK
         string email UK "全局唯一"
-        string password_hash "Argon2id"
+        string password_hash "algorithm pending Security ADR"
         enum role "interviewer/owner_admin"
         bool verified
         timestamptz deletion_requested_at NULL
@@ -422,7 +422,7 @@ erDiagram
 |------|------|------|------|
 | id | UUID | PK | |
 | email | string | UK, 全局唯一 | 单身份单角色；注册验证邮箱；确认函收件人=此邮箱（R26） |
-| password_hash | string | NOT NULL | 待《安全设计》ADR 裁定（当前按 Argon2id 设计；PRD §8.7 记为 BCrypt，冲突待安全设计确认） |
+| password_hash | string | NOT NULL | 算法待《安全设计》ADR 裁定（不预选 Argon2id/BCrypt；PRD §8.7 记为 BCrypt 与安全设计裁定冲突，以安全设计为准） |
 | role | enum | NOT NULL | interviewer / owner_admin |
 | verified | bool | NOT NULL | 邮箱验证通过 |
 | deletion_requested_at | timestamptz | NULL | 注销请求时间 |

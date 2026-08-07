@@ -36,14 +36,22 @@
 - 不修改 SRS 正文（含 §6.3 过期描述）——归下游 TASK-SRS-001 的 impact review
 - 不更新 `baseline.srs.based_on.domain_model`（须保留 1.1.3 以使机器门禁正确报 needs impact check）
 - 不做 UI 线框 / 架构 / OpenAPI / 测试计划 / 编码
-- **不得代签 `domain_model.status: approved`**
+- **不得代签 `domain_model.status: approved`**（AI 不得自行判定批准）
+
+### 状态推进授权（2026-08-08 第三轮，实际发生的授权记录）
+
+> 本条**不是**对上述"不得代签"的松绑，而是记录一次**已发生的用户显式批准**及其执行边界。
+
+- **授权事实**：用户于 2026-08-08 明确表述「**我批准领域模型 v1.1.4 的内容**」，并在同一指令第 3 步要求「将 baseline 的 `domain_model.status` 从 review 改为 approved，生成独立的 v1.1.4 批准锚点，不得复用 `f64b6de`」。
+- **执行边界**：AI 仅作为**记录执行方**将该已发生的批准落到 baseline，**批准判定权仍在用户**。授权范围严格限于 `domain_model` 条目的 status 字段，**不延伸至 `srs.status`**——SRS 的批准须由用户另行独立作出（本任务与 TASK-SRS-001 均不得代签）。
+- **反滥用口径**：该授权为**当次、具名、指向单一字段**的指令；不得据此推广为"以后 AI 可自行推进状态"，也不得据此把展望性表述（如"完成后可以批准"）当作现时授权。
 
 ## 允许修改路径
 
 > **账目更正（2026-08-08 用户复核）**：初版本任务单只列了下方前 3 条，但 `ac1745a` 实际修改了 6 个文件。遗漏列明的 3 个**治理文件**修改来自**用户 2026-08-08 十步纠偏指令的明确授权**（第 1 步恢复 TASK-DM-001 历史已关闭、第 5 步置 TASK-SRS-001 spec_sync=dirty、第 6 步修正 PROJECT_STATE），并非越权改动；但**初版任务单遗漏列明属任务范围账目偏差**，现如实补入，不得再声称"无偏离"或"实际仅 3 文件"。
 
 - docs/design/domain-model.md   # 升版 v1.1.3→v1.1.4（标题 / 整改记录 / 页脚）+ 算法中性化正文 + 冲突升级条款
-- docs/baseline.yml              # 仅 `domain_model: version "1.1.3"→"1.1.4"、status: review`；**不得改 srs.based_on**
+- docs/baseline.yml              # 仅 `domain_model` 条目：version "1.1.3"→"1.1.4"；status "review"→**"approved"（限用户 2026-08-08 第三轮明确批准后执行，见下「状态推进授权」）**；**不得改 srs.based_on**（归 TASK-SRS-001）
 - tasks/TASK-DM-002.md          # 本任务单自身回填交付证据
 - tasks/TASK-DM-001.md          # 【补列，授权来源=用户指令第 1 步】恢复历史已关闭状态、保留 f64b6de 为 v1.1.3 真实批准锚点、追记版本取代声明与历史结论限定；**不改其 v1.1.3 时点的任务范围与目标**
 - tasks/TASK-SRS-001.md         # 【补列，授权来源=用户指令第 5 步】仅将 `spec_sync` 由 clean 回退 dirty 并登记待办 impact review 口径；**不改其业务范围/验收/目标**
@@ -97,7 +105,8 @@
 ## 强制停止条件（与 `AGENTS.md §2` 一致）
 判定口径：**看变更是否已在本任务单「允许修改路径」列明，而不是看变更类型本身。**
 - **可继续**：变更已在「允许修改路径」列明且为文档升版/评审性质。
-- **必须立即停止并报告**：出现任何未在「允许修改路径」列明的变化，包括但不限于——修改 PRD/SRS/UI 正文、更新 `srs.based_on`、预选密码算法、改动实体或不变量、把 `domain_model.status` 置 approved。
+- **必须立即停止并报告**：出现任何未在「允许修改路径」列明的变化，包括但不限于——修改 PRD/SRS/UI 正文、更新 `srs.based_on`、预选密码算法、改动实体或不变量、**在无用户具名批准指令的情况下**把 `domain_model.status` 置 approved、把 `srs.status` 置 approved（后者任何情况下本任务都不得执行）。
+  - 例外仅一处：`domain_model.status` → approved 已由用户 2026-08-08 第三轮具名批准指令授权（见「状态推进授权」），属**记录已发生的批准**，不属自批准。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
 > 以下为**候选交付证据**（用户批准 v1.1.4 前不得据此关闭任务）。`verified_commit` 留空，待用户批准后由独立批准锚点回填。
@@ -134,13 +143,20 @@
 - spec_sync：dirty（v1.1.4 未获批准；下游 SRS based_on 未同步，impact review 未执行）
 - verified_commit：<回填 — 待用户批准 domain_model v1.1.4 后生成独立批准锚点；不得复用 f64b6de（该锚点属旧版 1.1.3）>
 
-## 关闭条件（明确，无循环）
-本任务关闭前提为以下三项同时满足：
-1. `domain_model` v1.1.4 经**用户明确批准**（由用户修改 `docs/baseline.yml` 的 `domain_model.status` 为 approved）；
-2. 独立批准锚点（新 `verified_commit`，**不得复用 f64b6de**）与上述交付证据补全；
-3. **任务范围账目与实际改动一致**——「允许修改路径」「change_budget.max_files」「修改文件清单」「变更预算实际值」四处均为 6 且互相吻合，账目偏差已书面记录（2026-08-08 用户第二轮复核门禁项）。
+## 关闭条件（明确，无循环；对齐 `tasks/TASK-TEMPLATE.md` 关闭门禁四条件）
+本任务关闭前提为以下四项同时满足：
+1. `domain_model` v1.1.4 经**用户明确批准**（`docs/baseline.yml` 的 `domain_model.status` = approved，授权来源须可追溯到用户指令）；
+2. 独立批准锚点（新 `verified_commit`，**不得复用 f64b6de**——该锚点属旧版 1.1.3）与本任务交付证据补全；
+3. **任务范围账目与实际改动一致**——「允许修改路径」「change_budget.max_files」「修改文件清单」「变更预算实际值」四处均为 6 且互相吻合，账目偏差已书面记录（2026-08-08 用户第二轮复核门禁项）；
+4. **`spec_sync` = clean**（TASK-TEMPLATE 关闭门禁第 ③ 条：**dirty 不得关闭**）。
 
-**SRS 的 `based_on` 同步与 impact review 由下游 TASK-SRS-001 独立负责，不构成本任务关闭条件。**
+### 关于下游 SRS 的边界（2026-08-08 第三轮复核修正，消除此前的错误免责）
+
+> **此前写法「SRS 的 based_on 同步与 impact review 由下游 TASK-SRS-001 独立负责，不构成本任务关闭条件」已作废。** 该写法与 TASK-TEMPLATE 冲突：本任务的规范影响结论为 `downstream_pending`，在下游文字同步完成前 `spec_sync` 必然为 dirty，而 dirty 不得关闭。
+
+- **构成本任务关闭条件**：下游 **SRS impact review 完成**（`baseline.srs.based_on.domain_model` 已同步至 1.1.4、SRS §6.3 过期描述已修正）**且 TASK-SRS-001 的 `spec_sync` = clean**。据此本任务 `spec_sync` 方可由 dirty 转 clean。
+- **不构成本任务关闭条件**：**SRS 自身获得 `status: approved`**。SRS 的批准是独立评审事项（批准权在用户），与本任务的上游规范同步无关；若将其列为关闭条件，将形成"领域模型任务被 SRS 批准挟持"的错误耦合。
+- **执行分工不变**：impact review 的**执行**归 TASK-SRS-001（本任务不得改 SRS 正文、不得改 `srs.based_on`）；但其**完成**是本任务 `spec_sync` 转 clean 的前置事实。
 
 ## 阶段性证据
 - 缺陷定位（P0，用户 2026-08-08 评审）：v1.1.3 正文 5 处仍锁定 Argon2id —— 顶部整改记录、§1 存储策略、§2.3 类图 `password_hash string "Argon2id"`、§4 ER 图 `string password_hash "Argon2id"`、§6.1 字段表"当前按 Argon2id 设计"。

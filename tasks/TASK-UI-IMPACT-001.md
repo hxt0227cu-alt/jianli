@@ -55,7 +55,7 @@
   - 范围限定：仅 A6/A7 状态列文案与列定义；不新增页面、不改语义色、不改限频阈值、不扩需求。
 
 ## 交付证据
-- commit / PR：<回填，关闭提交 sha>
+- commit / PR：`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交 / 本任务 verified_commit）
 - 修改文件清单（按路径逐条计数，不合并）：
   1. tasks/TASK-UI-IMPACT-001.md — 本任务单（影响矩阵 + 结论 + MP-1）
   2. tasks/TASK-UI-001.md — 基线锚点引用更新（173cf9b6→26ae844、1.1.2→1.1.4）+ "基线无效"告警再定性
@@ -67,10 +67,10 @@
 - 是否偏离 TASK：否（全部在授权 5 项内）
 - 规范影响结论：none（纯评审，不改规范）
 - spec_sync：clean（UI 为下游设计，不反向改 SRS/领域模型）
-- verified_commit：<回填，关闭提交 sha>
+- verified_commit：`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交；含影响矩阵 + TASK-UI-001/ui-wireframe.md 锚点更新 + TASK-UI-002 新建 + PROJECT_STATE 同步）
 
 ## 关闭结论
-任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=<回填>。状态：Closed。
+任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交）。状态：Closed（2026-08-08）。
 
 ## 关联
 - 上游：TASK-SRS-001（SRS v1.0，已关闭）/ TASK-DM-002（领域模型 1.1.4，已关闭）

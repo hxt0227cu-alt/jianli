@@ -87,14 +87,21 @@
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
 > 以下为**候选交付证据**（用户批准 v1.1.4 前不得据此关闭任务）。`verified_commit` 留空，待用户批准后由独立批准锚点回填。
 
-- commit / PR：<回填 — 本轮升版提交 SHA>
+- commit / PR：`ac1745a`（本轮升版与治理修正提交：domain-model v1.1.4 + baseline 同步 + TASK-DM-001 恢复历史已关闭 + TASK-DM-002 新建 + TASK-SRS-001 spec_sync→dirty + PROJECT_STATE 同步）；证据回填提交见「一致性检查结果」后续 commit
 - 修改文件清单：docs/design/domain-model.md（v1.1.3→v1.1.4 标题/整改记录/页脚 + 算法中性化 4 处正文 + §1 冲突升级条款）、docs/baseline.yml（domain_model 1.1.3→1.1.4、status=review）、tasks/TASK-DM-002.md（本任务单）
 - 测试命令及结果：一致性 Grep 校验（结论见下「一致性检查结果」）；非执行测试
 - lint / typecheck：不适用
 - DB 迁移验证：不适用
 - 验收证据：① 版本号三处一致为 1.1.4；② baseline domain_model=1.1.4/review；③ 规范正文无具体算法实现指向；④ §1 含冲突升级条款；⑤ srs.based_on.domain_model 仍 1.1.3（门禁报 needs impact check）；⑥ v1.1.3 批准锚点 f64b6de 保留于整改记录
 - 变更预算实际值：max_files=3，实际 3 文件；prod 行数小幅（版本号 3 处 + 整改记录段 + 冲突升级条款）；test_lines=0；未超预算
-- 一致性检查结果（Grep 校验，2026-08-08）：<回填>
+- 一致性检查结果（Grep 校验，2026-08-08，commit `ac1745a`）：
+  1. **版本号三处一致**：`grep -n "v1\.1\.4" docs/design/domain-model.md` → 标题（L1）、整改记录（L8，另 L7 为 1.1.3 历史记录）、页脚（L629）均为 v1.1.4。
+  2. **规范正文算法指向清零**：`grep -n "Argon2id" docs/design/domain-model.md` → 仅命中 L7（v1.1.3 历史整改记录，如实描述旧版内容与其缺陷）与 L8（v1.1.4 整改记录中的否定性表述"原 Argon2id 实现指向全部清除"）。§1 存储策略 / §2.3 类图 `User` / §4 ER 图 `USER` / §6.1 字段表**均无算法实现指向**（类图与 ER 图注释为 `algorithm pending Security ADR`）。
+  3. **baseline 状态**：`docs/baseline.yml` L16 `domain_model: { version: "1.1.4", status: review }`（**未代签 approved**）。
+  4. **下游门禁有意滞后**：`docs/baseline.yml` L20 `srs.based_on.domain_model: "1.1.3"` 保留 → `based_on(1.1.3) ≠ current(1.1.4)`，机器门禁应报 **needs impact check**；注释已写明该滞后为有意设置。
+  5. **冲突升级条款存在**：domain-model §1 存储策略 `password_hash` 条目下含"若《安全设计》ADR 的算法裁定与 PRD §8.7 记载的 BCrypt 不一致，必须触发规范影响评审 / 变更请求（Change Request）……不得跳过评审直接按 ADR 实现"；§6.1 字段表交叉引用该条款。
+  6. **历史批准未被否认**：domain-model L7 与 `tasks/TASK-DM-001.md`（关闭结论 / verified_commit / 关联）均保留 `f64b6de` 为 v1.1.3 的真实批准锚点，并注明"已由 v1.1.4 取代、本任务不重开"。
+  7. **UI 冻结未变**：`docs/design/ui-wireframe.md` 与 `tasks/TASK-UI-001.md` 顶部"基线无效 / 不得评审"标记未改动。
 - 未解决风险：`domain_model` 1.1.4 处于 review，**待用户独立评审批准**；下游 SRS 的 based_on 仍指向 1.1.3，需 TASK-SRS-001 在 1.1.4 批准后执行 impact review（结论不得记为 none，至少为"需文字同步、不改变用户可观察行为"）
 - 是否偏离 TASK：否
 - 规范影响结论：**downstream_pending** — 对 SRS 有**文字同步级**影响（SRS §6.3 现称"领域模型 §6.1 记为 Argon2id"，1.1.4 后该描述过期），**不改变用户可观察行为**；处理归 TASK-SRS-001

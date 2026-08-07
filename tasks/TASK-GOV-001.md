@@ -57,7 +57,8 @@
 
 ## 交付证据（任务关闭前必须填写）
 
-- commit / PR：治理修正本身见本任务关闭提交（sha 回填于「verified_commit」）；`94bedb5`（TASK-DM-002 关闭快照，仅引用，本任务不改动）作锚点校正依据。
+- commit / PR：治理修正本身见本任务关闭提交（sha 见下「verified_commit」）；`94bedb5`（TASK-DM-002 关闭快照，仅引用，本任务不改动）作锚点校正依据。
+- verified_commit：**`f56a47803137fe1c17c268492abd2f8404e18330`** —— 本治理修正提交（含 `.gitignore` + TASK-DM-002 锚点校正 + PROJECT_STATE 同步 + 本任务单 + 索引取消跟踪 `.workbuddy/`）。
 - 取消跟踪操作：`git rm --cached -r .workbuddy/` → 8 个 memory 文件移出索引，工作树原文件保留。
 - `.gitignore` 变更：`+ .workbuddy/`（原 `.workbuddy/archive/` 被 `.workbuddy/` 覆盖，无需单列）。
 - 修改文件清单（实际 4 个被改文件 + 1 项索引操作）：

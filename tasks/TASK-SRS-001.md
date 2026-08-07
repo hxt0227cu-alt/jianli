@@ -91,7 +91,7 @@
   - 改动 Agent / AI Infra 参考文件。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<任务完成后回填；仓库未初始化 Git 时为 repository_not_initialized>
+- commit / PR：ed926ca（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ b7ef847（SRS v1.0 正文 + baseline srs→1.0/review）/ 9b3102c（删除临时草案 SRS-大纲-吸收映射.md）；SRS 状态=review，未 approved
 - 修改文件清单：tasks/TASK-SRS-001.md（基线锚点去错误 tag 注释 + 偏离记录）、docs/requirements/SRS.md（新建 v1.0 正文）、docs/baseline.yml（srs→1.0/review）、docs/requirements/SRS-大纲-吸收映射.md（吸收后删除·已记录偏离）
 - 测试命令及结果：全文一致性 Grep 校验（见「验收证据」）；非执行测试
 - lint / typecheck：不适用（文档任务）

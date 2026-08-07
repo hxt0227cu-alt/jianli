@@ -212,7 +212,7 @@
 - 面试官/候选 admin 鉴权；敏感字段 AES-256 加密存储、网站端不解密（本人/飞书/后台应急视图除外）；SMTP/飞书凭证存 Secret Manager 不进前端/日志；记住我令牌哈希+失效机制（PRD §5 / §8.7）。
 
 ### 5.3 隐私
-- 红格对他人不可见任何可识别信息（仅"已预约"）；完整数据仅经飞书日常视图与后台只读应急视图可见；站点提供隐私说明（§8.6）；敏感操作入审计日志并脱敏（PRD §5 / §8.7）。
+- 红格对他人不可见任何可识别信息（仅"已预约"）；完整数据仅经飞书日常视图与后台只读应急视图可见；站点提供隐私说明（PRD §8.6）；敏感操作入审计日志并脱敏（PRD §5 / §8.7）。
 
 ### 5.4 可用性
 - 上线前：故障注入/健康检查/自动重启/降级（SSE 断线→重拉快照；飞书/邮件失败→失败通道独立重试告警，不切换其他通道）测试通过。
@@ -222,7 +222,7 @@
 - 数据库每日自动备份（加密）；RPO ≤ 24h，RTO ≤ 4h；至少每月一次恢复演练（PRD §5）。
 
 ### 5.6 限频防刷（阈值已确认，上线后按监控调整）
-- 注册（同邮箱 60s/1 次、每邮箱每小时≤3、同 IP 每小时≤5）；邮箱验证码（10 分钟有效、错误≤5）；登录（同账号 15 分钟失败 5 次锁 15 分钟、同 IP 每分钟≤10）；预约提交（同账号每小时≤10）；问答 API（同账号每分钟≤20、同 IP 每分钟≤30）；单次对话上下文≤20 轮；SSE 连接（同账号≤2 并发）（PRD §5 阈值表）。
+- 注册（同邮箱 60s/1 次、每邮箱每小时≤3、同 IP 每小时≤5）；邮箱验证码（10 分钟有效、错误≤5）；登录（同账号 15 分钟失败 5 次锁 15 分钟、同 IP 每分钟≤10）；预约提交（同账号每小时≤10）；**手动重发（确认函/提醒，UC-21）：同账号每 10 分钟≤5 次、每小时≤20，超出返回限频提示（阈值待评审确认，先按此验收）**；问答 API（同账号每分钟≤20、同 IP 每分钟≤30）；单次对话上下文≤20 轮；SSE 连接（同账号≤2 并发）（PRD §5 阈值表；重发频限补全见本行）。
 
 ### 5.7 兼容 / 视觉 / 会话 / 成本（PRD 已确认约束，不展开实现）
 - 兼容：**桌面端 Chrome/Edge/Firefox 最新稳定版；最低视口 1280×720；平板横屏可用；<1024px 阻断提示；不做移动端竖屏适配**（忠实吸收，不漏"平板横屏可用"）。
@@ -245,11 +245,11 @@
 - **SlotStatus**：`available` / `booked` / `owner_locked` / `unavailable`（黄格不属此枚举，为前端临时态）。
 - **AppointmentStatus**：`active` / `cancelled` / `completed`（提交即 active；改期 active→active 原子；无 pending/draft）。
 - **DeliveryStatus**：`queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter`（通道无关；手动重发=新建尝试记录）。
-- **NotificationEvent 生命周期**：`pending→processing→processed`；改期/取消置旧提醒 `cancelled`；类型仅表达业务事实（appointment_created/details_updated/rescheduled/cancelled/reminder_due）。
+- **NotificationEvent 生命周期**：`pending→processing→processed`（终态）；异常 `failed`（进入 `NotificationDelivery` 重试/死信，不重复产生业务后果）；改期/取消置旧提醒 `cancelled`；类型仅表达业务事实（appointment_created/details_updated/rescheduled/cancelled/reminder_due）。
 - （所有权说明：SRS approved 后，上述状态枚举与转换规则以本文为唯一规范源；PRD §8.10 仅作业务意图历史参考，不再作为实现阶段状态机的直接 Owner——与 §1.1 所有权迁移一致。）
 
 ### 6.3 加密 / 留存 / 删除（引用 PRD §8.7 / 领域模型 §8–§9）
-- 加密：敏感字段逐列 AES-256（密钥 Secret Manager，轮换≤90 天）；公司名 HMAC 指纹去重；`start_at/end_at` 明文受访问控制；密码 Argon2id；token 仅存哈希。
+- 加密：敏感字段逐列 AES-256（密钥 Secret Manager，轮换≤90 天）；公司名 HMAC 指纹去重；`start_at/end_at` 明文受访问控制；密码哈希算法由《安全设计》ADR 明确（当前 PRD §8.7 记为 BCrypt、领域模型 §6.1 记为 Argon2id，二者冲突待安全设计裁定，SRS 不预选算法）；token 仅存哈希。
 - 留存/清理：预约取消 30d / 完成 90d 后硬删；对话 180d；账号注销 30d 后硬删；知识库删除立即禁检索、旧索引继续服务至切换。
 - 日志脱敏：会议号/电话等写入前脱敏；敏感操作入审计。
 

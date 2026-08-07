@@ -16,7 +16,7 @@
   - 敏感字段**逐列 AES-256-GCM 密文（ciphertext）**，密钥经 KMS；
   - 公司名以 **HMAC-SHA256(normalized_name, site_key)** 生成 `fingerprint` 去重，**不暴露原文**；
   - `start_at/end_at` 业务元数据，**明文存但受访问控制**；
-  - `password_hash` 用 Argon2id；各类 token 仅存哈希；
+  - `password_hash` 当前按 Argon2id 设计，但**最终算法待《安全设计》ADR 裁定**（PRD §8.7 记为 BCrypt，二者冲突以安全设计为准）；各类 token 仅存哈希；
   - 审计日志写入前对会议号/电话等**脱敏**。
 
 ### 1.1 建模粒度（第五轮复评）
@@ -422,7 +422,7 @@ erDiagram
 |------|------|------|------|
 | id | UUID | PK | |
 | email | string | UK, 全局唯一 | 单身份单角色；注册验证邮箱；确认函收件人=此邮箱（R26） |
-| password_hash | string | NOT NULL | Argon2id |
+| password_hash | string | NOT NULL | 待《安全设计》ADR 裁定（当前按 Argon2id 设计；PRD §8.7 记为 BCrypt，冲突待安全设计确认） |
 | role | enum | NOT NULL | interviewer / owner_admin |
 | verified | bool | NOT NULL | 邮箱验证通过 |
 | deletion_requested_at | timestamptz | NULL | 注销请求时间 |
@@ -608,7 +608,7 @@ CREATE UNIQUE INDEX uq_appointment_exception
 |------|------|--------|------|----------|
 | Appointment（取消） | `cancelled_at` 置位 | 30 天 | `cancelled_at` / `purge_after` | 到期硬删（留 AuditLog 摘要） |
 | Appointment（完成） | `completed_at` 置位 | 90 天 | `completed_at` / `purge_after` | 到期硬删 |
-| Conversation | 创建 | 180 天 | `purge_before`→`purge_after` | 到期硬删（含 Message） |
+| Conversation | 创建 | 180 天 | `purge_after` | 到期硬删（含 Message） |
 | User（注销） | `deletion_requested_at` | 30 天 | `deleted_at` / `purge_after` | 软删后到期彻底删除账号及关联 PII |
 | KnowledgeDocument（删除） | `retrieval_disabled_at` 置位 | 立即禁检索；索引 `rolled_back` | `retrieval_disabled_at` / `active_index_version_id` | 旧索引继续服务至新索引就绪，删除即禁检索 |
 
@@ -620,7 +620,7 @@ CREATE UNIQUE INDEX uq_appointment_exception
 
 - **《接口契约》**：基于本模型定义 `POST /appointments`、`POST /appointments/{id}/reschedule`、`DELETE /appointments/{id}`、`GET /slots`、`GET /conversations`、`POST /auth/...` 等 REST + SSE（`slot.updated` / `appointment.created` / `appointment.cancelled`）+ 飞书/邮件外部对接边界。
 - **《测试计划》**：覆盖并发抢格（Slot 行锁 + `SLOT_TAKEN`）、隐私（红格脱敏/DB 加密/飞书明文同步）、通知（失败/重试/幂等、邮件 `bounced` vs 飞书 `response_code` 分存 `channel_metadata`）、去重例外（`CompanyBookingException` 一次性放行 + `uq_active_user` 不绕过 + 审计）、提醒撤销（改期/取消置 `cancelled`）、知识库热更新（去重/立即禁检索/索引切换）、留存清理、AI（RAG 正确/越界拒答/人格一致）。
-- 完成上述两件并通过评审后，开放**编码准入**。
+- 编码准入由 `docs/baseline.yml` 的 `development_gate` 决定（须 `prd` / `use_cases` / `domain_model` / `srs` / `ui_wireframe` / `architecture` / `security` / `openapi` / `test_plan` / `ai_governance` 全部 `approved`），仅《接口契约》与《测试计划》通过不足开放功能编码。
 
 ---
 

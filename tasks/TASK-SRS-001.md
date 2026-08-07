@@ -91,7 +91,7 @@
   - 改动 Agent / AI Infra 参考文件。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：`ed926ca`（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ `b7ef847`（SRS v1.0 正文 + baseline srs→1.0/review）/ `9b3102c`（删除临时草案 SRS-大纲-吸收映射.md）/ `bdba9f4`（review correction）/ `8794aea`（小范围收口，含已记录的 domain-model.md 越界）/ `97e44d4`（证据回填）/ **`d166992`（2026-08-08 SRS impact review：based_on→1.1.4 + §6.3 改写 + 四处版本引用同步 + spec_sync→clean）**；SRS 状态仍 = review，**未 approved**
+- commit / PR：`ed926ca`（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ `b7ef847`（SRS v1.0 正文 + baseline srs→1.0/review）/ `9b3102c`（删除临时草案 SRS-大纲-吸收映射.md）/ `bdba9f4`（review correction）/ `8794aea`（小范围收口，含已记录的 domain-model.md 越界）/ `97e44d4`（证据回填）/ **`d166992`（2026-08-08 SRS impact review：based_on→1.1.4 + §6.3 改写 + 四处版本引用同步 + spec_sync→clean）**；**`26ae844`（SRS v1.0 批准锚点 / approval_commit）**；**`06798a2`（TASK-SRS-001 关闭快照 / verified_commit）**；SRS 现已 approved（26ae844）/ Closed（06798a2），本任务已关闭。
 - 修改文件清单（**累计去重 6 个**，按 `git show --stat` 逐提交核对）：
   1. `tasks/TASK-SRS-001.md` — 本任务单（锚点注释修正 / 偏离记录 / 证据回填 / spec_sync 流转 / impact review 记录）
   2. `docs/requirements/SRS.md` — v1.0 正文新建 + review correction + 小范围收口 + **本轮 impact review 文字同步（§6.3 + 四处版本引用）**
@@ -102,7 +102,7 @@
 - 测试命令及结果：全文一致性 Grep 校验（见「验收证据」）；非执行测试
 - lint / typecheck：不适用（文档任务）
 - DB 迁移验证：不适用（本任务无迁移）
-- 验收证据：① R1–R26 覆盖检查（全部映射到 SRS 节）；② UC-01–23 覆盖检查；③ SRS 内部交叉引用检查；④ 与领域模型 v1.1.2 不变量冲突检查（无新增/冲突）；⑤ deferred/非目标越界检查（未新增功能/未扩 MVP）；Grep 校验无 `review` 硬编码残留。待用户/独立评审通过后方可 approved
+- 验收证据：① R1–R26 覆盖检查（全部映射到 SRS 节）；② UC-01–23 覆盖检查；③ SRS 内部交叉引用检查；④ 与领域模型 v1.1.2 不变量冲突检查（无新增/冲突）；⑤ deferred/非目标越界检查（未新增功能/未扩 MVP）；Grep 校验无 `review` 硬编码残留。
 - 变更预算实际值：`max_files` = 8（含本任务单）；**实际累计去重 6 个文件**（5 处改动 + 1 处删除，清单见上），**未超预算**。本轮 impact review 未引入新文件——所触 3 个文件（`docs/baseline.yml` / `docs/requirements/SRS.md` / `tasks/TASK-SRS-001.md`）均已在既有清单内且在「允许修改路径」内。
   - 账目说明：此前记为"≈ 4 文件改动 + 1 删除"为**估算且偏低**，遗漏 `PROJECT_STATE.md`（`bdba9f4`）与越界的 `docs/design/domain-model.md`（`8794aea`）。现按 `git show --stat` 逐提交核实改为 6，避免重演 TASK-DM-002 的账目偏差。
 - 未解决风险：无（范围内已闭环）。SRS 现已 approved，参与 baseline precedence 裁决（srs 高于 PRD/用例规约，行为唯一源生效）；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线（范围外开放项，不阻塞本任务关闭）；UI 线框冻结、架构/安全/OpenAPI/测试计划 pending 为下游阶段，非本任务范围。
@@ -110,7 +110,7 @@
 - 规范影响结论（两类，须分开读，不得互相顶替）：
   1. **本任务自身改动 → 对其他规范的影响**：`none`。本任务产出为 SRS 正文与治理收口，不改业务行为、不新增实体/接口/状态迁移；SRS 由 review→approved 属状态推进，不影响 PRD / 领域模型 / OpenAPI / 安全设计。
   2. **上游 domain_model 1.1.3→1.1.4 → 对本任务工件（SRS）的影响**：**`需文字同步、不改变用户可观察行为`（明确不是 none）**。SRS §6.3 原括注"领域模型 §6.1 记为 Argon2id"在 v1.1.4 后已成事实性错误，必须改写；另有四处上游版本引用需同步。已于 2026-08-08 impact review 中处理完毕（详见「阶段性证据」末条）。按 `AGENTS.md §9.4` 分类，属"不改变用户可观察行为"，**不触发 Change Request**。
-- spec_sync：**clean**（2026-08-08：上游 `domain_model` v1.1.4 已获用户明确批准（独立锚点 `f537296`），本任务据此执行 SRS impact review 并完成全部文字同步——`baseline.srs.based_on.domain_model` 1.1.3→**1.1.4**；SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正；SRS 顶部 based_on / §1.1 / §1.3 / §6 标题四处上游版本引用同步至 1.1.4。`based_on` 与 `artifacts` 现一致，机器门禁不再报 needs impact check。**影响结论记为「需文字同步、不改变用户可观察行为」，未记为 none**——详见「阶段性证据」末条。SRS 自身仍 `status=review`，spec_sync=clean 只表示上游同步已完成，**不表示 SRS 已获批准**。）
+- spec_sync：**clean**（2026-08-08：上游 `domain_model` v1.1.4 已获用户明确批准（独立锚点 `f537296`），本任务据此执行 SRS impact review 并完成全部文字同步——`baseline.srs.based_on.domain_model` 1.1.3→**1.1.4**；SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正；SRS 顶部 based_on / §1.1 / §1.3 / §6 标题四处上游版本引用同步至 1.1.4。`based_on` 与 `artifacts` 现一致，机器门禁不再报 needs impact check。**影响结论记为「需文字同步、不改变用户可观察行为」，未记为 none**——详见「阶段性证据」末条。SRS 已于 26ae844 获批；spec_sync=clean 与批准状态均已闭环。）
 - approval_commit：`26ae8440c89ed680341ee1c6cecb036b27b224ec`（本回合单一用途提交，仅推进 baseline `srs.status` review→approved；**不得复用旧误批准锚点 173cf9b6ffdf75acc4802398644ba67fb06f6cf6**）
 - verified_commit：`06798a2815d60a50caebe3ce6582553531be8dea`（`06798a2`，SRS 关闭快照：含 SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照；与 approval_commit `26ae844` 分离，避免自引用）
 

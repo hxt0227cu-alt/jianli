@@ -73,7 +73,7 @@
 - expected_test_lines：0
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填>
+- commit / PR：80e5bf3a014b33713f1d9bb78f1bbb9acbf0f535（TASK-GOV-005 快照 / 本任务 verified_commit=G1）
 - 修改文件清单（按路径逐条计数）：
   1. tasks/TASK-GOV-004.md — 第 89 行 verified_commit 校正 + 锚点语义注记
   2. tasks/TASK-UI-002.md — §4.2→§4.3、MP-1 口径、删除拦截态与 N≤200、退信阻塞项
@@ -88,10 +88,13 @@
 - 是否偏离 TASK：否（全部在授权 4 项内）
 - 规范影响结论：none（纯治理/文档校正，不改规范）
 - spec_sync：clean
-- verified_commit：<回填，= G1 快照提交 SHA；G2 为纯证据回填/关闭提交，不得循环指向自身>
+- verified_commit：80e5bf3a014b33713f1d9bb78f1bbb9acbf0f535（TASK-GOV-005 快照 / G1；G2 为纯证据回填/关闭提交，不得循环指向自身）
 
 ## 关闭门禁（四条件全满足方可关闭）
 ① 测试通过（Grep 复核无残留错误表述）；② 规范影响 none；③ spec_sync=clean；④ verified_commit 已记录真实 sha（= G1 快照，非关闭提交）。任一不满足→不得关闭。
+
+## 关闭结论
+任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核 TASK-UI-002 无残留 §4.2 手动重发依据 / 无"UI 不拦截任何状态" / 无"N≤200"；TASK-GOV-004 第 89 行 verified_commit=5666982）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=80e5bf3a014b33713f1d9bb78f1bbb9acbf0f535（= G1 快照，非关闭提交）。状态：Closed。
 
 ## 关联
 - 上游：TASK-GOV-004（被校正锚点）/ TASK-UI-002（被收口）

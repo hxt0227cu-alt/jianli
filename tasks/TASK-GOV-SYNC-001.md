@@ -7,7 +7,7 @@
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.2 / AI 治理 1.0.1（取自 `docs/baseline.yml`；版本如下，评审状态以 baseline.yml 为准）
-- 基线 commit：repository_not_initialized（仓库尚未初始化 Git；本任务将初始化 Git 并做首个 commit，回填真实 hash）
+- 基线 commit：gov-sync-001-verified（治理收尾最终快照标签；本任务初始化 Git 并已在最终 commit 包含全部治理文件 + 关闭证据）
 
 ## 精确规范引用（AI 只读取这些章节）
 - baseline.yml：artifacts / precedence / development_gate（仅读取，本次扩展 artifacts 的 based_on 约定）
@@ -36,6 +36,7 @@
 - PROJECT_STATE.md             # 澄清「最后通过测试的 commit」= 最后 verified commit（审计锚点）；repository_not_initialized 直到 Git 初始化
 - tasks/TASK-SRS-001.md        # 第 65 行性能验收「PRD §4」→「PRD §5 非功能需求」（修复用户指出的具体错位）
 - （仓库操作）初始化 Git 并做首个 baseline commit，仅纳入已批准治理/文档/设计工件；附 .gitignore 排除 .env / 密钥 / node_modules；提交前校验无密钥内容进入版本库
+- tasks/TASK-GOV-SYNC-001.md   # 本任务单自身：重新打开后回填修复 P0-1/P0-2（允许路径含自身、max_files 6→7、交付证据实际 7、verified_commit 指向最终标签），不改既定治理设计
 
 ## 禁止修改路径
 - PRD 业务需求 R1–R26 语义
@@ -63,7 +64,7 @@
 - 不适用（纯治理文档）；不涉及运行时性能
 
 ## 变更预算（change_budget）
-- max_files：6（含本任务单；含新增 .gitignore）
+- max_files：7（含本任务单本身；含新增 .gitignore）
 - expected_prod_lines：治理补丁为主，小幅增改
 - expected_test_lines：0
 
@@ -89,18 +90,18 @@
   - 把密钥 / 授权码写入版本库或任何文档。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：b2b6ac8
-- 修改文件清单：baseline.yml / TASK-TEMPLATE.md / AGENTS.md / PROJECT_STATE.md / TASK-SRS-001.md / .gitignore（仓库操作：git init + 首个 baseline commit b2b6ac8）
+- commit / PR：gov-sync-001-verified
+- 修改文件清单：baseline.yml / TASK-TEMPLATE.md / AGENTS.md / PROJECT_STATE.md / TASK-SRS-001.md / .gitignore / tasks/TASK-GOV-SYNC-001.md（本任务单自身，重新打开回填修复）（仓库操作：git init + 治理收尾最终 commit，打标签 gov-sync-001-verified）
 - 测试命令及结果：不适用（纯文档/治理）；全仓 Grep 校验通过（无残留 "PRD §4 非功能"、无新增状态副本漂移）
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：Grep 输出 + `git log` 首个 commit b2b6ac8 + AGENTS §9 / 规范影响评估章节已落地
-- 变更预算实际值：max_files 6 / 实际 6（baseline.yml, TASK-TEMPLATE.md, AGENTS.md, PROJECT_STATE.md, TASK-SRS-001.md, .gitignore）；prod 0 / test 0
+- 验收证据：Grep 输出 + `git log` 最终 commit + 标签 gov-sync-001-verified + AGENTS §9 / 规范影响评估章节已落地 + 交互输出语言规则（SSOT）已落地
+- 变更预算实际值：max_files 7 / 实际 7（baseline.yml, TASK-TEMPLATE.md, AGENTS.md, PROJECT_STATE.md, TASK-SRS-001.md, .gitignore, tasks/TASK-GOV-SYNC-001.md）；prod 0 / test 0
 - 未解决风险：无
-- 是否偏离 TASK：否
+- 是否偏离 TASK：否（本次重新打开仅修复 P0-1/P0-2 收尾语义，不改既定治理设计）
 - 规范影响结论：none（纯治理变更，不改业务行为）
 - spec_sync：clean
-- verified_commit：b2b6ac8
+- verified_commit：gov-sync-001-verified（治理收尾最终 commit 标签；非 baseline commit b2b6ac8）
 
 ## 阶段性证据
 - 任务创建后由用户确认范围，再执行补丁。

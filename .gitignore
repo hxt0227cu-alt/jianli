@@ -1,0 +1,26 @@
+# 密钥 / 运行时配置（绝不入库）
+.env
+.env.*
+*.local
+secrets.*.yml
+credentials*
+
+# 依赖 / 构建产物
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+
+# 编辑器 / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 本地记忆归档（非项目交付）
+.workbuddy/archive/
+
+# 外来 skill 工件（非本项目交付）
+.career-os/

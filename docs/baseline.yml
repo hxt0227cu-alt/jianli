@@ -1,0 +1,94 @@
+# baseline.yml — 分析设计基线（唯一机器可读规范源）
+#
+# 本文件是仓库基线的**唯一规范源**：版本、评审状态、规范优先级、延后项、
+# MVP 硬规则、活跃/非活跃上下文、编码准入门禁都只在此处维护。
+# AGENTS.md / PROJECT_STATE.md 不得复制以下内容，只能引用本文件。
+# AI 会话开始必须读取：AGENTS.md → 本文件 → PROJECT_STATE.md（恒定必读）；
+# 仅当本次会话要**改动仓库**时，再追加当前 tasks/TASK-XXX.md（无 TASK 不得写入仓库）。
+
+# ── 工件版本与评审状态（version + status 成对维护，不记状态即视为未评审）──
+# based_on 约定（TASK-GOV-SYNC-001 固化）：每个下游工件记录其生成所依据的"直接上游已批准版本"锚点；
+# 上游版本变化（current != based_on）→ 该下游工件需做 impact review（不自动判废、不自动重写；错别字级改动可能无需改下游）。
+# 机器门禁：对比 based_on 与当前 artifacts 版本，不一致即报"needs impact check"。
+artifacts:
+  prd:              { version: "2.3.3", status: approved }  # 第六轮复评通过（P0-1~P0-3/P0-7）
+  use_cases:        { version: "1.7.2", status: approved }  # 第六轮复评 + 收尾补丁通过（P0-1~P0-3/P0-7 + UC-23 + 治理微补丁）
+  domain_model:     { version: "1.1.2", status: approved }  # 第六轮复评通过（P0-6~P0-8 + 实现边界）
+  srs:
+    version: "0.0"
+    status: pending                                                # 阶段 1 待产出（三件套复评通过后才可启动）
+    based_on: { prd: "2.3.3", use_cases: "1.7.2", domain_model: "1.1.2" }  # SRS 生成所依据上游已批准版本锚点；上游任一变化→SRS 需 impact review
+  ui_wireframe:     { version: "0.0",   status: pending }   # 阶段 1 待产出
+  architecture:     { version: "0.0",   status: pending }   # 阶段 2 待产出
+  security:         { version: "0.0",   status: pending }   # 阶段 2 待产出
+  openapi:          { version: "0.0",   status: pending }   # 阶段 3 待产出
+  test_plan:        { version: "0.0",   status: pending }   # 阶段 4 待产出（编码准入条件）
+  ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
+
+# ── 规范优先级（冲突裁决，高者胜）──
+# 说明：设计阶段产物一旦 accepted/approved，其对实现的约束力高于分析阶段产物。
+# 注：只有 status=approved 的工件参与 precedence 裁决；pending / review 工件不覆盖已批准工件。
+precedence:
+  - approved_change_request   # 经评审通过的变更请求（Change Request）
+  - srs                        # 软件需求规格（吸收用例规约后成为行为唯一源）
+  - architecture              # 架构 / ADR（仅 accepted ADR 对实现产生约束；proposed ADR 不产生约束）
+  - security                  # 安全设计（威胁模型/加密与密钥/访问控制），对实现具强约束
+  - domain_model              # 领域模型（数据边界与业务不变式的唯一规范源）
+  - openapi                    # 接口契约
+  - use_cases                 # 用例规约
+  - prd                        # 需求文档（需求阶段优先级高，设计/编码后弱于上列）
+
+# ── 延后项（禁止在 MVP 验收中创建空壳 / 字段 / 接口）──
+deferred:
+  - wechat_assistant        # 微信 WorkBuddy 助理
+  - hunyuan_fallback        # 混元 Fallback（冗余）
+  - l2_lora                  # L2 微调（仅语料收集计划，语料当前均为 0）
+  - agent_auto_booking      # 对话内 Agent 自动预约（PRD 决策#14 明文禁止）
+  - realtime_question_gen   # 实时动态生成推荐问题（先用异步缓存+固定兜底）
+  - complex_agent_infra     # LangGraph/MCP/Mem0/微服务（非规范性参考，见 docs/references/）
+
+# ── MVP 硬规则（AI 不得违反，违反即停止并报告）──
+mvp_hard_rules:
+  - "大模型只负责问答，不自动写预约；预约只经确定性 UI + 后端接口"
+  - "密码登录；验证码仅用于注册验证与密码找回（不用于登录）"
+  - "敏感字段逐列 AES-256 加密；公司名 HMAC 指纹去重"
+  - "并发抢占经 Slot 行锁 + 部分唯一索引，不预占"
+  - "通知通道独立重试，不相互兜底"
+  - "推荐问题 = 异步生成+缓存+兜底，非实时生成"
+  - "owner 取消经锁定已预约时段触发原子取消，后台不提供直接删除预约入口"
+
+# ── 必读上下文（分层：always 恒读；when_modifying_repo 仅在改动仓库时追加）──
+# 理由：纯咨询/评审/解释类会话不存在 TASK 文件，强制要求会导致 AI 报错或伪造任务号。
+mandatory_context_always:
+  - AGENTS.md               # 协作契约与停止条件
+  - docs/baseline.yml       # 本文件：版本 / 状态 / 优先级 / 门禁
+  - PROJECT_STATE.md        # 当前阶段与进展快照
+
+mandatory_context_when_modifying_repo:
+  - current_task            # tasks/TASK-XXX.md（任务范围唯一约束；无 TASK 则不得写入仓库）
+
+# ── 参考池（可被任务精确引用的规范文件，不默认全量加载）──
+reference_pool:
+  - docs/requirements/PRD.md
+  - docs/requirements/use-cases.md
+  - docs/design/domain-model.md
+  - tasks/TASK-TEMPLATE.md
+
+# ── 非活跃上下文（物理文件存在，AI 默认不读）──
+inactive_context:
+  - docs/experiments/deferred/l2-persona-training.md  # 非 MVP，编码 AI 不得读
+  - docs/references/agent-engineering-frameworks.md   # 非规范性参考，仅 ADR 输入，不得生成任务
+
+# ── 编码准入门禁：以下全部 status=approved 方可开放功能编码 ──
+development_gate:
+  required_passing:
+    - prd
+    - use_cases
+    - domain_model
+    - srs
+    - ui_wireframe
+    - architecture
+    - security
+    - openapi
+    - test_plan
+    - ai_governance

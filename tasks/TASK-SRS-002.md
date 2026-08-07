@@ -104,18 +104,22 @@
 - 必须停止：新增与 PRD/UC/域模型冲突的退信行为或新 DeliveryStatus 枚举；或误改 domain_model/ui-wireframe/TASK-UI-002。
 
 ## 交付证据
-- commit / PR：<回填 G1>
-- 修改文件清单：<回填>
+- commit / PR：1c21d7dcae4c3c1c413697d251a4c7e7f136696a（TASK-SRS-002 SRS v1.1 review 草案锚点 / 本任务 verified_commit=G1）
+- 修改文件清单（按路径逐条计数）：
+  1. docs/requirements/SRS.md — v1.0→v1.1 缺陷修订（退信行为 §3.8/§3.9/§4.3/§6.2/§9/§10 + 修订说明）
+  2. docs/baseline.yml — srs.version 1.0→1.1、status approved→review
+  3. tasks/TASK-SRS-002.md — 本任务单（新建）
+  4. PROJECT_STATE.md — TASK-SRS-002 条目 + srs review 状态同步
 - 测试命令及结果：<命令> → <pass/fail>
 - lint / typecheck：无（纯文档）
 - DB 迁移验证：无
-- 验收证据：<SRS v1.1 diff / 节对照>
-- 变更预算实际值：<max_files 实际>
+- 验收证据：SRS v1.1 与 PRD §4.6/R26、UC-21 逐条对照（退信记录/展示筛选/告警/手动重发/不回滚预约均覆盖）；domain_model v1.1.4 §5 channel_metadata 已含 bounce 字段，无冲突
+- 变更预算实际值：max_files=4，实际 4 文件，未超预算
 - 未解决风险：下游 UI 同步待 SRS 批准后执行（非本任务范围）
 - 是否偏离 TASK：否
 - 规范影响结论：behavior_change=true（补遗漏行为），domain_model none，下游待批准后同步
 - spec_sync：dirty（openapi/security/test_plan 待产出时吸收；无现有工件破坏）
-- verified_commit：<回填 G1>（SRS review 草案锚点）
+- verified_commit：1c21d7dcae4c3c1c413697d251a4c7e7f136696a（TASK-SRS-002 SRS v1.1 review 草案锚点 / G1；G2 为纯证据回填，不得循环指向自身）
 
 ## 关闭门禁
 - 本任务**不等同于批准 SRS**。SRS 批准由用户独立操作 `docs/baseline.yml`（status→approved）。

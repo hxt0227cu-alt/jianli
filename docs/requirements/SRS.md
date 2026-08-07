@@ -392,4 +392,4 @@
 
 > **v1.1 修订说明（缺陷修正，2026-08-08）**：SRS v1.0（approved @ `26ae844`）声称吸收 PRD/用例规约，但遗漏了退信(Bounce) 用户可观察行为——PRD §4.6 / R26 与 UC-21 已明确要求记录退信、后台展示/筛选、告警、手动重发且不回滚预约。本 v1.1 仅补充该遗漏（§3.8 / §3.9 / §4.3 / §6.2 / §9 / §10），不新增产品功能、不修改 v1.0 已批准快照、不改 domain_model（退信字段已在 v1.1.4 §5 `channel_metadata`）。v1.1 待用户独立评审批准后方可置 `approved`。
 
-> **文档结束** · SRS v1.1 · status=review · 输入基线 commit `d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；正文于后续 commit `b7ef847` 生成；v1.1 修订于后续 commit `<回填 G1>`） · 经独立评审通过后方可置 approved（由用户或独立评审操作 `docs/baseline.yml`）。
+> **文档结束** · SRS v1.1 · status=review · 输入基线 commit `d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；正文于后续 commit `b7ef847` 生成；v1.1 修订于后续 commit `1c21d7dcae4c3c1c413697d251a4c7e7f136696a`） · 经独立评审通过后方可置 approved（由用户或独立评审操作 `docs/baseline.yml`）。

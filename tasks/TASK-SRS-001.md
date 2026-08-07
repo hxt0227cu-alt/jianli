@@ -91,7 +91,7 @@
   - 改动 Agent / AI Infra 参考文件。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：ed926ca（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ b7ef847（SRS v1.0 正文 + baseline srs→1.0/review）/ 9b3102c（删除临时草案 SRS-大纲-吸收映射.md）；SRS 状态=review，未 approved
+- commit / PR：`ed926ca`（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ `b7ef847`（SRS v1.0 正文 + baseline srs→1.0/review）/ `9b3102c`（删除临时草案 SRS-大纲-吸收映射.md）/ `bdba9f4`（review correction）/ `8794aea`（小范围收口，含已记录的 domain-model.md 越界）/ `97e44d4`（证据回填）/ **`d166992`（2026-08-08 SRS impact review：based_on→1.1.4 + §6.3 改写 + 四处版本引用同步 + spec_sync→clean）**；SRS 状态仍 = review，**未 approved**
 - 修改文件清单（**累计去重 6 个**，按 `git show --stat` 逐提交核对）：
   1. `tasks/TASK-SRS-001.md` — 本任务单（锚点注释修正 / 偏离记录 / 证据回填 / spec_sync 流转 / impact review 记录）
   2. `docs/requirements/SRS.md` — v1.0 正文新建 + review correction + 小范围收口 + **本轮 impact review 文字同步（§6.3 + 四处版本引用）**

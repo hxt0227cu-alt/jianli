@@ -3,6 +3,8 @@
 > 本任务单为 AI **仓库变更**的唯一范围约束。无任务单不得写入仓库，包括文档、设计、测试和代码变更。
 > 本任务源于 2026-08-08 用户评审：领域模型 **v1.1.3 已在 `f64b6de` 获得正式批准**，其后 `236d302` 又修改了该版本的规范正文（5 处密码算法指向中性化）。**同一版本号不得对应批准前后两份不同内容**，也不得以"避免 SRS based_on 连锁变更"为由复用 1.1.3。故新开本独立任务，将该修正正式承载为 **v1.1.4**，1.1.3 保留为历史已批准版本（批准锚点 `f64b6de` 有效，其内容以该 commit 快照为准）。
 
+> **任务状态：Closed（2026-08-08 关闭）**。关闭依据见文末「关闭结论」。用户 2026-08-08 已明确批准 v1.1.4（独立锚点 `f537296`）；下游 SRS impact review 已完成（TASK-SRS-001 `d166992`，`spec_sync=clean`）。本任务**不代签 SRS 批准**——SRS 仍 `status=review`，批准权在用户。
+
 ## 任务类型
 - documentation
 
@@ -115,7 +117,10 @@
   1. `ac1745a` — 主修正：domain-model v1.1.3→v1.1.4 升版与算法中性化 + baseline 同步 + TASK-DM-001 恢复历史已关闭 + TASK-DM-002 新建 + TASK-SRS-001 spec_sync→dirty + PROJECT_STATE 同步（**实际改动 6 文件**）
   2. `e31ad11` — 候选交付证据首次回填（本任务单 7 项一致性 Grep 结论）
   3. `8135257` — 用户第二轮复核修正：允许路径补列 3 个治理文件、change_budget 3→6、账目偏差书面记录、冲突升级条款收紧、TASK-DM-001 历史结论限定（改动文件：domain-model.md / TASK-DM-002.md / TASK-DM-001.md，均在修订后允许路径内）
-  4. 其后的**纯证据回填提交**（仅改本任务单、不触规范正文，如 `deb3692`）不逐条枚举，以 `git log --oneline -- tasks/TASK-DM-002.md` 为准，避免自引用无限回填。
+  4. `82d0ab2` — 用户第三轮复核修正（第 1–2 步）：关闭条件对齐 TASK-TEMPLATE 补入 `spec_sync=clean`、作废"下游不构成关闭条件"的错误免责、新增「状态推进授权」节、PROJECT_STATE 门禁顺序纠正（改动文件：TASK-DM-002.md / PROJECT_STATE.md，均在允许路径内）
+  5. **`f537296` — domain_model v1.1.4 独立批准锚点**（用户第三轮第 3 步；单一用途提交，仅 `docs/baseline.yml` 的 `domain_model.status` review→approved）。**本任务的 `verified_commit` 即此提交。**
+  6. 其后的**纯证据回填提交**（仅改本任务单、不触规范正文，如 `deb3692`）不逐条枚举，以 `git log --oneline -- tasks/TASK-DM-002.md` 为准，避免自引用无限回填。
+  - **下游关联提交（不计入本任务改动，仅作关闭依据引用）**：`d166992` — TASK-SRS-001 执行 SRS impact review（`srs.based_on.domain_model`→1.1.4 + SRS §6.3 修正 + 其 `spec_sync`→clean）。本任务未参与该提交的任何文件改动。
 - 修改文件清单（**实际 6 个，与 `ac1745a --stat` 一致**）：
   1. docs/design/domain-model.md — v1.1.3→v1.1.4 标题/整改记录/页脚 + 算法中性化 4 处正文 + §1 冲突升级条款
   2. docs/baseline.yml — `domain_model` 1.1.3→1.1.4、status=review
@@ -137,11 +142,11 @@
   5. **冲突升级条款存在且已收紧**（2026-08-08 复核修正）：domain-model §1 存储策略 `password_hash` 条目下含"若《安全设计》ADR **拟选择的算法**与 PRD §8.7 记载的 BCrypt 不一致，必须**先通过变更请求（Change Request）更新并批准所有受影响的规范**（至少含 PRD §8.7 及 SRS 相关条款）；**在规范同步完成并获批准之前，不得按该 ADR 实现**"；顶部 v1.1.4 整改记录（L8）与 §6.1 字段表同步该口径。原"由评审决定更新 PRD 或采纳 ADR"表述**已删除**（该写法允许规范继续冲突并存）。
   6. **历史批准未被否认，且历史结论已如实限定**：domain-model L7 与 `tasks/TASK-DM-001.md`（关闭结论 / verified_commit / 关联）均保留 `f64b6de` 为 v1.1.3 的真实批准锚点，注明"已由 v1.1.4 取代、本任务不重开"；**并追记历史结论限定**——`f64b6de` 快照的 v1.1.3 仍含 5 处 Argon2id 实现指向，当时"不预选算法"的评审判断**不完整**，算法彻底中性化属 **v1.1.4 / TASK-DM-002**，未反写为 v1.1.3 已完成（追记落点：TASK-DM-001 目标①、功能验收、未解决风险、关闭结论、阶段性证据评审结论①）。
   7. **UI 冻结未变**：`docs/design/ui-wireframe.md` 与 `tasks/TASK-UI-001.md` 顶部"基线无效 / 不得评审"标记未改动。
-- 未解决风险：`domain_model` 1.1.4 处于 review，**待用户独立评审批准**；下游 SRS 的 based_on 仍指向 1.1.3，需 TASK-SRS-001 在 1.1.4 批准后执行 impact review（结论不得记为 none，至少为"需文字同步、不改变用户可观察行为"）
+- 未解决风险（关闭时点）：**本任务范围内无未解决项**（v1.1.4 已批准、下游已同步、账目已对齐）。范围外的开放项如实记录，**不构成本任务关闭阻塞**：① **SRS v1.0 仍 `status=review`**，待用户独立评审批准（批准权在用户，AI 不代签）；② **密码哈希算法尚未裁定**——领域模型 v1.1.4 有意不预选，裁定归《安全设计》ADR；若 ADR 拟选算法与 PRD §8.7（BCrypt）不一致，**须先经 Change Request 更新并批准受影响规范，规范同步完成前不得实现**（该条款已写入 domain-model §1/§6.1 与 SRS §6.3）；③ UI 线框继续冻结、基线无效。
 - 是否偏离 TASK：**是（账目层面偏离，已如实登记并修正）** —— `ac1745a` 修改的 6 个文件中，3 个治理文件（TASK-DM-001.md / TASK-SRS-001.md / PROJECT_STATE.md）未在初版任务单「允许修改路径」与 `change_budget` 中列明。**性质**：实现层面有用户十步纠偏指令的明确授权，非越权改动；**但任务单登记不实，属任务范围账目偏差**。**处置**：本轮已补列允许路径、`max_files` 3→6、实际值改 6 并书面记录偏差成因。**不得再声称"无偏离"。**
 - 规范影响结论：**downstream_pending** — 对 SRS 有**文字同步级**影响（SRS §6.3 现称"领域模型 §6.1 记为 Argon2id"，1.1.4 后该描述过期），**不改变用户可观察行为**；处理归 TASK-SRS-001
-- spec_sync：dirty（v1.1.4 未获批准；下游 SRS based_on 未同步，impact review 未执行）
-- verified_commit：<回填 — 待用户批准 domain_model v1.1.4 后生成独立批准锚点；不得复用 f64b6de（该锚点属旧版 1.1.3）>
+- spec_sync：**clean**（2026-08-08：① `domain_model` v1.1.4 已获用户明确批准，独立锚点 `f537296`；② 下游 SRS impact review 已由 **TASK-SRS-001** 执行完毕（`d166992`）——`baseline.srs.based_on.domain_model` 已同步至 **1.1.4**、SRS §6.3 过期的 Argon2id 描述已修正、TASK-SRS-001 `spec_sync` = clean。`based_on` 与 `artifacts` 一致，机器门禁不再报 needs impact check，无 pending downstream。**注**：SRS 自身仍 `status=review`，但按本任务关闭条件，SRS 的批准**不构成**本任务关闭前提。）
+- verified_commit：**`f537296776730ae1a0d2e619e5dff3b843661476`** —— domain_model **v1.1.4 的独立批准锚点**（单一用途提交，仅推进 `artifacts.domain_model.status` review→approved；其树含完整 v1.1.4 正文，可直接作为审计模式 checkout 快照）。**未复用 `f64b6de`**（那是旧版 v1.1.3 的锚点，其批准为真实历史事实、仍有效，但内容已被 v1.1.4 取代）。
 
 ## 关闭条件（明确，无循环；对齐 `tasks/TASK-TEMPLATE.md` 关闭门禁四条件）
 本任务关闭前提为以下四项同时满足：
@@ -170,3 +175,14 @@
 - 下游影响：TASK-SRS-001（v1.1.4 批准后执行 SRS impact review：更新 `srs.based_on.domain_model`→1.1.4 + 修正 SRS §6.3 过期描述）
 - 冻结任务：TASK-UI-001 / ui-wireframe.md（继续冻结，基线无效、不得评审）
 - 测试任务：无（文档）
+
+## 关闭结论（2026-08-08，关闭门禁四条件逐项复核）
+
+- **任务状态：Closed（2026-08-08 关闭）**。关闭依据 = 用户 2026-08-08 第三轮具名批准「我批准领域模型 v1.1.4 的内容」+ 下游 TASK-SRS-001 已完成 SRS impact review 且 `spec_sync=clean`。
+- 关闭门禁四条件（对齐 `tasks/TASK-TEMPLATE.md`）逐项复核：
+  1. **测试通过**：纯文档/规范升版，无执行测试；交付前一致性 Grep 校验通过（见「一致性检查结果」）——版本号三处一致 v1.1.4 / 规范正文无算法实现指向 / 冲突升级条款存在且已收紧 / 历史批准锚点 `f64b6de` 保留 / UI 冻结未变 / `srs.based_on` 已同步 1.1.4。
+  2. **规范影响已处理**：规范影响结论 = `downstream_pending`（对 SRS 文字同步级影响，不改变用户可观察行为）→ 已由下游 **TASK-SRS-001** 在 `d166992` 完成 impact review（`based_on`→1.1.4 + SRS §6.3 修正 + 结论"需文字同步、不改变用户可观察行为"），其 `spec_sync=clean`。本任务上游同步闭环，无遗留 pending downstream。
+  3. **spec_sync = clean**：基于下游 `d166992` 完成且 `baseline.srs.based_on.domain_model`=1.1.4 与 artifacts 一致，本任务 `spec_sync` 已转 clean（见「交付证据 → spec_sync」），机器门禁不再报 needs impact check。
+  4. **真实 verified_commit**：`f537296776730ae1a0d2e619e5dff3b843661476`（domain_model v1.1.4 独立批准锚点，单一用途提交，仅推进 `artifacts.domain_model.status` review→approved；**未复用 `f64b6de`**）。
+- **不代签 SRS**：本任务关闭**不构成** SRS 批准——SRS 仍 `status=review`，批准权在用户，由 TASK-SRS-001 在用户独立评审后另行关闭（见「关于下游 SRS 的边界」）。
+- **下游开发准入**：domain_model v1.1.4 已 approved，但 `development_gate` 仍待 srs / ui_wireframe / architecture / security / openapi / test_plan 等 approved 后方可开放编码；UI 线框继续冻结。

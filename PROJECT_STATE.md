@@ -3,7 +3,7 @@
 > 本文件**只记录任务态**：当前阶段 / 当前任务 / 本周阻塞 / 下一步 / 最后通过测试的 commit。
 > **不重复维护任何版本号、评审状态、优先级或延后项**——那些只存在于 `docs/baseline.yml`（唯一规范源）。
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
-> 最后更新：2026-08-08（domain_model 升版 **v1.1.4 / review**，由新任务 **TASK-DM-002** 承载密码算法中性化；TASK-DM-001 保持历史已关闭、`f64b6de` 为旧版 1.1.3 真实批准锚点；SRS 仍 review 且 **spec_sync=dirty，待上游 1.1.4 获批后做 impact review**；UI 线框继续冻结、不得评审）
+> 最后更新：2026-08-08（domain_model 升版 **v1.1.4 / approved**，由新任务 **TASK-DM-002** 已关闭（曾承载密码算法中性化）；TASK-DM-001 保持历史已关闭、`f64b6de` 为旧版 1.1.3 真实批准锚点；SRS 仍 review 且 **spec_sync=clean**（TASK-SRS-001 已完成 impact review）；UI 线框继续冻结、不得评审）
 
 ---
 
@@ -11,8 +11,8 @@
 
 分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。
 
-- **领域模型 v1.1.4 / status=review**（不计入 precedence 裁决）。v1.1.3 已于 `f64b6de` **正式批准（历史事实保留，不予否认）**，但其后发现 P0 算法锁定缺陷；按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，改由新任务 **TASK-DM-002 升版 v1.1.4** 承载（密码算法中性化 + Security ADR 与 PRD §8.7 BCrypt 冲突须走规范影响/变更评审的条款）。**待用户独立评审批准，AI 不代签 approved。**
-- **SRS v1.0 / status=review**（未 approved，不计入 precedence 裁决），`spec_sync=dirty`。`baseline.srs.based_on.domain_model` **有意保留 1.1.3**，使机器门禁正确显示"上游已变更、需 impact review"。待 1.1.4 获批后由 TASK-SRS-001 执行 impact review（更新 based_on→1.1.4 + 修正 SRS §6.3 中"领域模型 §6.1 记为 Argon2id"的过期描述；**结论不得记为 none**，记为"需文字同步、不改变用户可观察行为"），完成后方可转 clean。
+- **领域模型 v1.1.4 / status=approved**（经用户 2026-08-08 明确批准「我批准领域模型 v1.1.4 的内容」，独立批准锚点 `f537296`，不复用 `f64b6de`）。v1.1.3 已于 `f64b6de` **正式批准（历史事实保留，不予否认）**，但其后发现 P0 算法锁定缺陷；按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，改由 **TASK-DM-002 升版 v1.1.4** 承载（密码算法中性化 + Security ADR 与 PRD §8.7 BCrypt 冲突须走规范影响/变更评审的条款）。TASK-DM-002 已关闭。
+- **SRS v1.0 / status=review**（未 approved，不计入 precedence 裁决），`spec_sync=clean`。`baseline.srs.based_on.domain_model` 已更新至 **1.1.4**；TASK-SRS-001 已执行 impact review（更新 based_on→1.1.4 + 修正 SRS §6.3 中"领域模型 §6.1 记为 Argon2id"的过期描述；**结论 = 需文字同步、不改变用户可观察行为，非 none**），spec_sync 已由 dirty 转 clean。SRS 自身仍 review，批准权在用户，AI 不代签。
 - **UI 线框（TASK-UI-001 / ui-wireframe.md）继续冻结**：基线无效、不得评审。
 
 ---
@@ -20,11 +20,10 @@
 ## 当前任务
 
 - **TASK-DM-001**：历史**已关闭**（对应 domain_model v1.1.3，批准锚点 `f64b6de`）。不重开；其成果由 v1.1.4 取代。
-- **TASK-DM-002**：**已开启**——领域模型 v1.1.3→v1.1.4 密码算法中性化修正。**关闭门禁按 `tasks/TASK-TEMPLATE.md` 四条件执行，其中 `spec_sync=dirty` 不得关闭。**
-  - **正确顺序（2026-08-08 第三轮修正，此前记载有误）**：① 用户批准 v1.1.4 → 生成**独立批准锚点**（不得复用 `f64b6de`）；② **先**由 TASK-SRS-001 执行 SRS impact review 并将其 `spec_sync` 转 clean；③ **然后**本任务 `spec_sync` 方可由 dirty 转 clean，补齐 `verified_commit`/验证结果/关闭结论后**才关闭**。
-  - **作废写法**：「批准领域模型后先关闭 TASK-DM-002、再做 SRS impact review」——该顺序会在 `spec_sync=dirty` 时关闭任务，违反 TASK-TEMPLATE 关闭门禁第 ③ 条。
-  - **不构成本任务关闭条件**：SRS 自身获得 `approved`（那是独立评审事项，批准权在用户）。
-- **TASK-SRS-001**：开启中，`spec_sync=dirty`，等待上游 v1.1.4 获批后执行 SRS impact review；SRS 批准权在用户，AI 不代签。
+- **TASK-DM-002**：**已关闭（Closed，2026-08-08）**——领域模型 v1.1.3→v1.1.4 密码算法中性化修正。关闭门禁按 `tasks/TASK-TEMPLATE.md` 四条件执行（`spec_sync=dirty` 不得关闭，现已满足并关闭）。
+  - **执行顺序（2026-08-08 第三轮修正并已执行完毕）**：① 用户批准 v1.1.4 → 生成**独立批准锚点** `f537296`（不得复用 `f64b6de`）；② **先**由 TASK-SRS-001 执行 SRS impact review 并将其 `spec_sync` 转 clean（`d166992`）；③ **然后**本任务 `spec_sync` 由 dirty 转 clean，补齐 `verified_commit`/验证结果/关闭结论后**关闭**（本任务关闭提交）。
+  - **不构成本任务关闭条件（已验证）**：SRS 自身获得 `approved`——SRS 仍 review，但本任务已关闭，证明二者解耦。
+- **TASK-SRS-001**：开启中，`spec_sync=clean`（已执行 impact review：`d166992`），等待用户独立评审批准 SRS（baseline `srs.status: review→approved`）；SRS 批准权在用户，AI 不代签；批准后方可关闭本任务。
 - **TASK-UI-001**：冻结，不得评审、不得推进。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
@@ -43,12 +42,12 @@
 SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同 → 测试计划 → 开发准入评审 → 功能编码
 ```
 
-> 注：当前门禁顺序为（**2026-08-08 第三轮修正**，此前 ②③ 顺序颠倒）——
-> ① 用户批准 **domain_model v1.1.4** → baseline `domain_model.status: review→approved`，生成**独立批准锚点**（**不得复用 `f64b6de`**）；
-> ② **TASK-SRS-001 执行 SRS impact review**（`srs.based_on.domain_model`→1.1.4 + 修正 SRS §6.3 过期的 Argon2id 描述；结论 = "需文字同步、不改变用户可观察行为"，**不得记为 none**）→ TASK-SRS-001 `spec_sync` 转 clean；
-> ③ **随后** TASK-DM-002 `spec_sync` 由 dirty 转 clean，补齐 `verified_commit`/验证结果/关闭结论 → **关闭 TASK-DM-002**（TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
-> ④ 用户独立评审批准 **SRS**（AI 不代签）→ 关闭 TASK-SRS-001、用例规约冻结为历史输入或 SRS 附录；
-> ⑤ UI 线框重新 impact review 决定是否沿用 → 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
+> 注：当前门禁顺序（**2026-08-08 第三轮修正，①②③ 已完成，现处 ④**）——
+> ① ✅ 用户批准 **domain_model v1.1.4** → baseline `domain_model.status: review→approved`，独立批准锚点 `f537296`（**不复用 `f64b6de`**）；
+> ② ✅ **TASK-SRS-001 执行 SRS impact review**（`srs.based_on.domain_model`→1.1.4 + 修正 SRS §6.3 过期的 Argon2id 描述；结论 = "需文字同步、不改变用户可观察行为"，**非 none**）→ TASK-SRS-001 `spec_sync` 转 clean；
+> ③ ✅ **TASK-DM-002 `spec_sync` 转 clean + 关闭**（verified_commit=`f537296`，对齐 TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
+> ④ ⏳ 用户独立评审批准 **SRS**（AI 不代签）→ 关闭 TASK-SRS-001、用例规约冻结为历史输入或 SRS 附录；
+> ⑤ ⏳ UI 线框重新 impact review 决定是否沿用 → 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
 > `development_gate` 全 10 项 approved 前不得进入编码。
 
 ---

@@ -49,28 +49,29 @@
 
 - 基线锚点陈旧属**治理问题（非内容）**：TASK-UI-001 原引 SRS `173cf9b6` + 领域模型 1.1.2；现应更新为 SRS `26ae844` + 领域模型 1.1.4（解除"基线无效"所需的候选修正）。
 - 因存在内容影响（#2/#7），依 **step 9**：列出精确修改点并新建 **TASK-UI-002** 承载；**不在本影响评审中顺手改线框内容、不扩需求**。
+- **退信(bounce) 不在本影响评审 MP-1 范围内**：领域模型将 `bounced_at`/`bounce_reason` 置于 `channel_metadata`，已批准 SRS 未明确失败中心的退信展示/筛选/重发行为。已单独登记为待裁定项（见 TASK-UI-002「待裁定项」）；若需保留 UC-21 退信能力，须先走 SRS 修正 + 影响评审，不得在本任务/UI 任务直接补需求。
 
 ## 精确修改点（step 9，交由 TASK-UI-002）
-- **MP-1（A6 通知失败中心状态枚举补全）**：SRS §6.2 / 领域模型 §5 规定 `DeliveryStatus` = queued/sending/succeeded/failed/retry_scheduled/dead_letter。当前线框 A6 仅以"状态(failed)"单列呈现。修正：状态列应区分 `failed`（可重试）与 `dead_letter`（终态死信，需人工介入、区别于普通 failed），并可呈现 `retry_scheduled`（重试中）；手动重发仅对 failed/dead_letter 创建新尝试记录（与 SRS §6.2 / 领域模型 §5 一致）。A7 只读应急视图"通知失败列"同理应涵盖 dead_letter 标红。
+- **MP-1（A6 通知失败中心状态枚举补全）**：SRS §6.2 / 领域模型 §5 规定 `DeliveryStatus` = queued/sending/succeeded/failed/retry_scheduled/dead_letter。当前线框 A6 仅以"状态(failed)"单列呈现。修正：状态列应区分 `failed`（可重试）与 `dead_letter`（终态死信，需人工介入、区别于普通 failed），并可呈现 `retry_scheduled`（重试中）。手动重发行为以 SRS §6.2 / §4.2 为准：点击创建新 NotificationDelivery 尝试记录（SRS 未限定可操作状态，UI 不得自新增状态限制）。A7 只读应急视图"通知失败列"同理应涵盖 dead_letter 标红。
   - 范围限定：仅 A6/A7 状态列文案与列定义；不新增页面、不改语义色、不改限频阈值、不扩需求。
 
 ## 交付证据
-- commit / PR：`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交 / 本任务 verified_commit）
+- commit / PR：<回填，校正后完整验证快照 sha，由 G2 纯证据提交回填>（取代原 a2ea98d/da5fce7 作为 verified_commit；a2ea98d/da5fce7 历史保留不重写）
 - 修改文件清单（按路径逐条计数，不合并）：
   1. tasks/TASK-UI-IMPACT-001.md — 本任务单（影响矩阵 + 结论 + MP-1）
   2. tasks/TASK-UI-001.md — 基线锚点引用更新（173cf9b6→26ae844、1.1.2→1.1.4）+ "基线无效"告警再定性
   3. docs/design/ui-wireframe.md — 第 3 行基线锚点注释更新（不改内容）
   4. tasks/TASK-UI-002.md — 新建 UI 修正任务（承载 MP-1）
   5. PROJECT_STATE.md — 任务态同步（TASK-UI-IMPACT-001 已关闭 / TASK-UI-002 已开启；不改 status）
-- 变更预算实际值：实际 5 文件，未超预算
+- 变更预算实际值：**未预设 change_budget（任务启动时未声明 max_files），无法判定是否超预算**；实际改动 5 路径，但无预算基准，故不得宣称"未超预算"（详见 TASK-GOV-004 校正）
 - 未解决风险：无（范围内已闭环）；`baseline.ui_wireframe.status` 仍 pending，待用户评审实际线框
-- 是否偏离 TASK：否（全部在授权 5 项内）
+- 是否偏离 TASK：范围层面否（全部改动在授权 5 项路径内）；change_budget 层面无法判定（未预设预算，见上）
 - 规范影响结论：none（纯评审，不改规范）
 - spec_sync：clean（UI 为下游设计，不反向改 SRS/领域模型）
-- verified_commit：`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交；含影响矩阵 + TASK-UI-001/ui-wireframe.md 锚点更新 + TASK-UI-002 新建 + PROJECT_STATE 同步）
+- verified_commit：<回填，校正后完整验证快照 sha（G1）>（原 a2ea98d/da5fce7 因 verified_commit 占位/自指缺陷已被取代；提交保留于 Git 历史不重写）
 
 ## 关闭结论
-任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=`a2ea98d8a61839c5b272b67be3e6afa4297ea48f`（TASK-UI-IMPACT-001 关闭提交）。状态：Closed（2026-08-08）。
+任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=<回填，校正后完整验证快照 sha（G1）>（取代 a2ea98d/da5fce7）。状态：Closed（2026-08-08；校正于 TASK-GOV-004）。
 
 ## 关联
 - 上游：TASK-SRS-001（SRS v1.0，已关闭）/ TASK-DM-002（领域模型 1.1.4，已关闭）

@@ -69,7 +69,7 @@
 - expected_test_lines：0
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 关闭提交 / 本任务 verified_commit）
+- commit / PR：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 被验证的交付物快照 / 本任务 verified_commit；f2cfb88 为纯证据回填/关闭提交）
 - 修改文件清单（按路径逐条计数）：
   1. tasks/TASK-GOV-004.md — 本任务单（新建）
   2. tasks/TASK-UI-IMPACT-001.md — change_budget 账目校正 + verified_commit 占位 + 退信待裁定注记
@@ -83,13 +83,13 @@
 - 是否偏离 TASK：否（全部在授权 3 项内）
 - 规范影响结论：none（纯治理/文档校正，不改规范）
 - spec_sync：clean
-- verified_commit：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 关闭快照，含 TASK-UI-IMPACT-001 校正 + TASK-UI-002 补全 + 本任务单）
+- verified_commit：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 被验证的交付物快照 / G1）
 
 ## 关闭结论
 任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核无残留错误表述）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=56669828de6a7dc9ba9a4a93a273c221efee76a4（被验证的交付物快照）。状态：Closed。
 
 ## 锚点语义（防混淆，校正于 TASK-GOV-005）
-- `56669828de6a7dc9ba9a4a93a273c221efee76a4`（5666982）= **被验证的交付物快照**（G1）：含 TASK-UI-IMPACT-001 校正 + TASK-UI-002 补全 + 本任务单全部 closing 证据；**不是关闭提交**。
+- `56669828de6a7dc9ba9a4a93a273c221efee76a4`（5666982）= **被验证的交付物快照**（G1）；**不是关闭提交**（f2cfb88 才是纯证据回填/关闭提交），不含"全部 closing 证据"表述。
 - `f2cfb88…`（f2cfb88）= **纯证据回填 / 任务关闭提交**（G2）：仅将 verified_commit 回填为 5666982，不承载新交付物。
 - 不得为闭合重新生成指向自身的循环锚点；5666982 与 f2cfb88 各司其职、保留历史。
 

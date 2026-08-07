@@ -105,7 +105,8 @@
 - commit / PR（**完整证据链，3 次提交**）：
   1. `ac1745a` — 主修正：domain-model v1.1.3→v1.1.4 升版与算法中性化 + baseline 同步 + TASK-DM-001 恢复历史已关闭 + TASK-DM-002 新建 + TASK-SRS-001 spec_sync→dirty + PROJECT_STATE 同步（**实际改动 6 文件**）
   2. `e31ad11` — 候选交付证据首次回填（本任务单 7 项一致性 Grep 结论）
-  3. `<回填 — 本轮账目与条款修正提交>` — 用户第二轮复核修正：允许路径补列 3 个治理文件、change_budget 3→6、账目偏差书面记录、冲突升级条款收紧、TASK-DM-001 历史结论限定
+  3. `8135257` — 用户第二轮复核修正：允许路径补列 3 个治理文件、change_budget 3→6、账目偏差书面记录、冲突升级条款收紧、TASK-DM-001 历史结论限定（改动文件：domain-model.md / TASK-DM-002.md / TASK-DM-001.md，均在修订后允许路径内）
+  4. `<本条目自身的证据回填提交>` — 仅回填上条 SHA 至本任务单，无规范正文改动
 - 修改文件清单（**实际 6 个，与 `ac1745a --stat` 一致**）：
   1. docs/design/domain-model.md — v1.1.3→v1.1.4 标题/整改记录/页脚 + 算法中性化 4 处正文 + §1 冲突升级条款
   2. docs/baseline.yml — `domain_model` 1.1.3→1.1.4、status=review

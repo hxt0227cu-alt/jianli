@@ -3,19 +3,19 @@
 > 本文件**只记录任务态**：当前阶段 / 当前任务 / 本周阻塞 / 下一步 / 最后通过测试的 commit。
 > **不重复维护任何版本号、评审状态、优先级或延后项**——那些只存在于 `docs/baseline.yml`（唯一规范源）。
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
-> 最后更新：2026-08-07（SRS v1.0 经独立评审 approved；当前进入 UI 线框阶段；ui_wireframe=pending）
+> 最后更新：2026-08-07（误批准回退：SRS v1.0 恢复 status=review；启动领域模型独立修正 TASK-DM-001；UI 线框标记基线无效、不得评审）
 
 ---
 
 ## 当前阶段
 
-分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。SRS v1.0 已 **approved（行为唯一源，参与 baseline precedence 裁决）**；用例规约已冻结为历史输入。当前进入 **UI 线框阶段（ui_wireframe=pending）**。
+分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。SRS v1.0 **经误批准已回退至 status=review（未 approved，不计入 baseline precedence 裁决）**；需先完成领域模型独立修正任务（TASK-DM-001，升版 + 评审密码算法裁定边界/门禁引用/字段清理）并做 SRS impact review，再由用户独立评审批准 SRS。
 
 ---
 
 ## 当前任务
 
-- 当前动作：产出 UI 线框（tasks/TASK-UI-001.md）；SRS 已 approved，TASK-SRS-001 已关闭。
+- 当前动作：① 重开 TASK-SRS-001（review 态、spec_sync=dirty）；② 新建并执行领域模型独立修正任务 TASK-DM-001（升版 + 评审）；③ SRS based_on 更新至新 domain_model 版本 + impact review；④ 完成后再由用户批准 SRS。UI 线框（TASK-UI-001）标记为基线无效、不得评审。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---
@@ -33,7 +33,7 @@
 SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同 → 测试计划 → 开发准入评审 → 功能编码
 ```
 
-> 注：SRS v1.0 已 approved（行为唯一源）；需求—用例—SRS 追踪检查已完成（R1–R26 / UC-01–23 双向覆盖），用例规约已冻结为历史输入；后续按 SRS 行为约束推进 UI 线框 → 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划。
+> 注：SRS v1.0 当前 status=review（未 approved，不计入 baseline precedence 裁决）；需经领域模型独立修正 + SRS impact review + 用户独立评审 approved 后，用例规约冻结为历史输入或 SRS 附录，再进入 UI 线框 → 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划。
 
 ---
 

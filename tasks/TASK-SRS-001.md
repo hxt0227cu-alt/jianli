@@ -101,10 +101,10 @@
 - 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
 - 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
 - 规范影响结论：none（纯文档/治理收口，不改业务行为；SRS 由 review→approved 是状态推进，不影响其他规范）
-- spec_sync：clean（SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.2，上游版本未变且均为 approved，无 impact check 需求）
-- verified_commit：173cf9b6ffdf75acc4802398644ba67fb06f6cf6（SRS v1.0 正式 approved 锚点；含 8794aea 小范围收口正文 + 97e44d4 TASK 证据回填）
+- spec_sync：dirty（8794aea 修改 docs/design/domain-model.md 超出本 TASK 允许路径——本 TASK「禁止修改路径」含领域模型实体/不变量，且「允许修改路径」未列 domain-model.md；该越界改动已在独立任务 TASK-DM-001 下追认并评审，domain_model 升版至 1.1.3；SRS based_on 须同步至 1.1.3 并重做 impact review）
+- verified_commit：173cf9b6ffdf75acc4802398644ba67fb06f6cf6（**已作废** — 系误批准锚点；SRS 已回退 review，待用户重新独立评审批准后方可生成新 verified_commit）
 
-## 关闭结论（关闭门禁复核 — 2026-08-07）
+## 关闭结论（已作废 — 系误批准，2026-08-07 回退至 review；实际关闭待用户独立评审批准 SRS 后）
 
 任务于 SRS 独立评审通过后正式关闭（用户授权 2026-08-07 将 srs.status 置 approved）。关闭门禁四条件逐项复核：
 
@@ -118,7 +118,7 @@
 - SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ 173cf9b6（approved 锚点）。
 - TASK-SRS-001 关闭后，用例规约冻结为历史输入（SRS 行为唯一源生效）。
 
-状态：已关闭（Closed）。
+状态：已作废（原误批准；实际：已重新打开，status=Open，等待领域模型独立修正 + impact review + 用户批准）
 
 ## 阶段性证据
 - 治理微补丁（上轮）全仓 Grep：通过（无 `待复评` / `accepted_adr` / `security_design` / 旧 v2.3 准入结论 / 硬编码 `review` / `approved` 重复 残留）
@@ -127,6 +127,8 @@
 - SRS review correction（用户独立评审反馈，本轮）：修复 P0-1 基线 commit 措辞（顶部/页脚「本文件生成 commit」→「SRS 输入基线 commit」，明确 `d7510254` 为启动前基线、正文于 `b7ef847` 生成）；P0-2 同步 `PROJECT_STATE.md` 至 review 态（当前阶段/当前任务/下一步/最后更新）；P0-3 §1.1 与 §10 页脚「行为唯一源」改为「approved 后成为」，并新增 §1.1 状态机所有权迁移（ownership transition）条款、§1.4/§6.2 对齐；P1-1 删除 SRS 内复制的 deferred 六项清单；P1-2 删除违规 `PRD §8.5` 引用（腾讯云→§4 系统集成、成本→§5 非功能需求）；§4.3「中心化通道广播」改为一致性/有序恢复行为约束（机制留 ADR）；§3.8「Outbox 事件表」软化为「可靠持久化的业务事件（Outbox 模式）」。SRS 仍 `status=review`，未 approved，TASK 保持开启；关闭证据（规范影响结论/spec_sync/verified_commit）待独立评审通过后补。（review correction commit：`bdba9f4`）
 
 - SRS 小范围收口（用户第二轮独立评审反馈，本轮）：按用户清单做最小范围修正——不扩需求、不重写、不动 baseline 状态（srs 仍 review）。① 密码哈希算法冲突（#1）：SRS §6.3 不再预选算法，改「由《安全设计》ADR 裁定」，标注 PRD §8.7(BCrypt) 与领域模型 §6.1(Argon2id) 冲突待安全设计；领域模型 §1 存储策略 + §6.1 同步加「待安全设计裁定」标注（保留 Argon2id 占位、不改 approved 状态）。② 通知失败态缺失（#2）：SRS §6.2 NotificationEvent 生命周期补 `failed`（进入 Delivery 重试/死信），与领域模型 §5 对齐。③ 手动重发限频不可验收（#3）：SRS §5.6 补可测阈值「同账号每 10 分钟≤5 次、每小时≤20（待评审确认，先按此验收）」。④ 领域模型编码门禁表述错误（#4）：§10 末尾改引用 baseline `development_gate` 全 10 项门禁，纠正「仅接口契约+测试计划通过」误述。⑤ 两处文档缺陷（#5）：SRS §5.3 裸 `§8.6`→`PRD §8.6`；领域模型 §9 `purge_before`→`purge_after` 改名痕迹清除。SRS 仍 `status=review`，未 approved，TASK 保持开启；关闭证据（规范影响结论/spec_sync/verified_commit）待独立评审 approved 后补。（closeout commit：8794aea）
+
+- 误批准回退与修正（2026-08-07，用户纠偏）：上轮误将 srs.status 置 approved 并关闭本 TASK、启动 UI 线框；用户明确当时授权仅为「先完成领域模型独立任务、升版、impact review 后再批准 SRS」，未授权直接批准。现按用户 7 步指令向前修正（不重写 Git 历史）：① baseline srs.status 恢复 review；② 本 TASK 重新打开、spec_sync 改 dirty（记录 8794aea 改 domain-model.md 超出本 TASK 允许路径）；原关闭结论（line 107–121）作废；③ 新建 TASK-DM-001 对 domain-model.md 升版并评审密码算法裁定边界/门禁引用/字段清理；④ SRS based_on 更新至新 domain_model 版本 + impact review；⑤ 删除 SRS §5.6「待评审确认」字样（用户已确认阈值：同账号每 10 分钟≤5、每小时≤20）；⑥ 上述完成后由用户独立评审批准 SRS（AI 不代签）；⑦ TASK-UI-001 与 ui-wireframe.md 标记基线无效、不得评审。
 
 ## 关联
 - Change Request：无

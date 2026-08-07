@@ -7,7 +7,7 @@
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.2 / AI 治理 1.0.1（取自 `docs/baseline.yml`；版本如下，评审状态以 baseline.yml 为准）
-- 基线 commit：gov-sync-001-verified（治理收尾完成后的真实 clean 快照标签；SRS v1.0 基于此 commit 生成）
+- 基线 commit：d7510254a9e900fab06ebc5216cd2dd68bd2eef2（tag: gov-sync-001-verified；治理完全收口的最终 commit，含关闭结论与审计锚点修正；SRS v1.0 基于此 commit 生成）
 
 ## 精确规范引用（AI 只读取这些章节）
 - PRD v2.3.3 精确规范引用：§1 项目背景 / §2 需求目标：全部 R1–R26（含 R14a、R14b）/ §3 业务场景 / §4 功能需求 / §5 非功能需求 / §6 验收标准 / §8.2 / §8.3 / §8.4 / §8.6 / §8.7 / §8.9 / §8.10 / §8.11 / §8.12 / §8.13；明确不读取 §8.1 / §8.5 / §8.8 / §8.14

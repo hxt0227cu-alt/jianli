@@ -1,7 +1,7 @@
 # 软件需求规格（SRS）v1.0 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
 > **文档状态**：v1.0 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决；经用户或独立评审通过后方可置 `approved`）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 v1.1.3 / AI 治理 1.0.1。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.4** / AI 治理 1.0.1。（2026-08-08 impact review 同步：上游领域模型由 v1.1.3 升至 v1.1.4，影响性质为**文字同步级 —— 不改变用户可观察行为**。）
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）与「禁止 LLM 自动写预约」硬规则（PRD §8.4#14）为 SRS 边界，正文仅可引用、不可扩展。
@@ -11,7 +11,7 @@
 ## 1. 引言
 
 ### 1.1 目的与范围
-本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.3）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.4）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
 **状态机所有权迁移（ownership transition）**：review 阶段状态枚举暂以 PRD §8.10 / 领域模型 §5 为输入引用；SRS approved 后，状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）即归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
 
 ### 1.2 定义、首字母缩写、缩略语
@@ -22,7 +22,7 @@
 ### 1.3 参考文档
 - PRD v2.3.3（`docs/requirements/PRD.md`）
 - 用例规约 v1.7.2（`docs/requirements/use-cases.md`）
-- 领域模型 v1.1.3（`docs/design/domain-model.md`）
+- 领域模型 v1.1.4（`docs/design/domain-model.md`）
 - AI 治理约束（`AGENTS.md` §9 事实来源路由与 Review/Audit Mode）
 - 分析设计基线（`docs/baseline.yml`，唯一规范源）
 
@@ -232,7 +232,7 @@
 
 ---
 
-## 6. 数据需求（指向领域模型 v1.1.3 为唯一规范源，不复制字段 Schema）
+## 6. 数据需求（指向领域模型 v1.1.4 为唯一规范源，不复制字段 Schema）
 
 ### 6.1 业务数据类别（仅列实体名，引用 PRD §8.11 / 领域模型 §2）
 - 账号与认证：`User` / `AuthSession` / `InterviewerProfile` / `OwnerContactConfig` / `EmailVerificationToken` / `PasswordResetToken`
@@ -249,7 +249,7 @@
 - （所有权说明：SRS approved 后，上述状态枚举与转换规则以本文为唯一规范源；PRD §8.10 仅作业务意图历史参考，不再作为实现阶段状态机的直接 Owner——与 §1.1 所有权迁移一致。）
 
 ### 6.3 加密 / 留存 / 删除（引用 PRD §8.7 / 领域模型 §8–§9）
-- 加密：敏感字段逐列 AES-256（密钥 Secret Manager，轮换≤90 天）；公司名 HMAC 指纹去重；`start_at/end_at` 明文受访问控制；密码哈希算法由《安全设计》ADR 明确（当前 PRD §8.7 记为 BCrypt、领域模型 §6.1 记为 Argon2id，二者冲突待安全设计裁定，SRS 不预选算法）；token 仅存哈希。
+- 加密：敏感字段逐列 AES-256（密钥 Secret Manager，轮换≤90 天）；公司名 HMAC 指纹去重；`start_at/end_at` 明文受访问控制；密码哈希算法由《安全设计》ADR 裁定，**SRS 不预选算法**——领域模型 v1.1.4 §1/§6.1 仅规定"仅存密码哈希、不存明文"，**不预选任何具体算法**；PRD §8.7 现记为 BCrypt，**若 ADR 拟选算法与之不一致，必须先经变更请求（Change Request）更新并批准所有受影响规范（至少含 PRD §8.7 及本节），在规范同步完成并获批准之前不得按该 ADR 实现**（对齐领域模型 v1.1.4 §1 冲突升级条款）；token 仅存哈希。
 - 留存/清理：预约取消 30d / 完成 90d 后硬删；对话 180d；账号注销 30d 后硬删；知识库删除立即禁检索、旧索引继续服务至切换。
 - 日志脱敏：会议号/电话等写入前脱敏；敏感操作入审计。
 

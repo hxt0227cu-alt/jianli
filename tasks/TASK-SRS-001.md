@@ -92,16 +92,25 @@
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
 - commit / PR：ed926ca（TASK 机械收口：基线锚点去错误 tag 注释 + P0-2 偏离记录）/ b7ef847（SRS v1.0 正文 + baseline srs→1.0/review）/ 9b3102c（删除临时草案 SRS-大纲-吸收映射.md）；SRS 状态=review，未 approved
-- 修改文件清单：tasks/TASK-SRS-001.md（基线锚点去错误 tag 注释 + 偏离记录）、docs/requirements/SRS.md（新建 v1.0 正文）、docs/baseline.yml（srs→1.0/review）、docs/requirements/SRS-大纲-吸收映射.md（吸收后删除·已记录偏离）
+- 修改文件清单（**累计去重 6 个**，按 `git show --stat` 逐提交核对）：
+  1. `tasks/TASK-SRS-001.md` — 本任务单（锚点注释修正 / 偏离记录 / 证据回填 / spec_sync 流转 / impact review 记录）
+  2. `docs/requirements/SRS.md` — v1.0 正文新建 + review correction + 小范围收口 + **本轮 impact review 文字同步（§6.3 + 四处版本引用）**
+  3. `docs/baseline.yml` — `srs`→1.0/review；**本轮 `srs.based_on.domain_model` 1.1.3→1.1.4**
+  4. `PROJECT_STATE.md` — review 态同步（`bdba9f4`）
+  5. `docs/requirements/SRS-大纲-吸收映射.md` — 误建后删除（**已记录偏离**，见「是否偏离 TASK」）
+  6. `docs/design/domain-model.md` — **越界改动（`8794aea`）**，已由 TASK-DM-001 独立追认承载，本任务不再重复主张其成果
 - 测试命令及结果：全文一致性 Grep 校验（见「验收证据」）；非执行测试
 - lint / typecheck：不适用（文档任务）
 - DB 迁移验证：不适用（本任务无迁移）
 - 验收证据：① R1–R26 覆盖检查（全部映射到 SRS 节）；② UC-01–23 覆盖检查；③ SRS 内部交叉引用检查；④ 与领域模型 v1.1.2 不变量冲突检查（无新增/冲突）；⑤ deferred/非目标越界检查（未新增功能/未扩 MVP）；Grep 校验无 `review` 硬编码残留。待用户/独立评审通过后方可 approved
-- 变更预算实际值：max_files 8（含本任务单），实际 ≈ 4 文件改动 + 1 删除
+- 变更预算实际值：`max_files` = 8（含本任务单）；**实际累计去重 6 个文件**（5 处改动 + 1 处删除，清单见上），**未超预算**。本轮 impact review 未引入新文件——所触 3 个文件（`docs/baseline.yml` / `docs/requirements/SRS.md` / `tasks/TASK-SRS-001.md`）均已在既有清单内且在「允许修改路径」内。
+  - 账目说明：此前记为"≈ 4 文件改动 + 1 删除"为**估算且偏低**，遗漏 `PROJECT_STATE.md`（`bdba9f4`）与越界的 `docs/design/domain-model.md`（`8794aea`）。现按 `git show --stat` 逐提交核实改为 6，避免重演 TASK-DM-002 的账目偏差。
 - 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
 - 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
-- 规范影响结论：none（纯文档/治理收口，不改业务行为；SRS 由 review→approved 是状态推进，不影响其他规范）
-- spec_sync：**dirty**（2026-08-08 重新置 dirty：上游 domain_model 已由 TASK-DM-002 升版至 **v1.1.4**，而 `baseline.srs.based_on.domain_model` **有意保留 1.1.3** 以使机器门禁报 needs impact check。待用户批准 v1.1.4 后，本任务须执行 SRS impact review——① 将 based_on.domain_model 更新为 1.1.4；② 修正 SRS §6.3 中「领域模型 §6.1 记为 Argon2id」的过期描述。**该影响不得记为 none**，应记为「需文字同步、不改变用户可观察行为」。完成后 spec_sync 方可转 clean。）
+- 规范影响结论（两类，须分开读，不得互相顶替）：
+  1. **本任务自身改动 → 对其他规范的影响**：`none`。本任务产出为 SRS 正文与治理收口，不改业务行为、不新增实体/接口/状态迁移；SRS 由 review→approved 属状态推进，不影响 PRD / 领域模型 / OpenAPI / 安全设计。
+  2. **上游 domain_model 1.1.3→1.1.4 → 对本任务工件（SRS）的影响**：**`需文字同步、不改变用户可观察行为`（明确不是 none）**。SRS §6.3 原括注"领域模型 §6.1 记为 Argon2id"在 v1.1.4 后已成事实性错误，必须改写；另有四处上游版本引用需同步。已于 2026-08-08 impact review 中处理完毕（详见「阶段性证据」末条）。按 `AGENTS.md §9.4` 分类，属"不改变用户可观察行为"，**不触发 Change Request**。
+- spec_sync：**clean**（2026-08-08：上游 `domain_model` v1.1.4 已获用户明确批准（独立锚点 `f537296`），本任务据此执行 SRS impact review 并完成全部文字同步——`baseline.srs.based_on.domain_model` 1.1.3→**1.1.4**；SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正；SRS 顶部 based_on / §1.1 / §1.3 / §6 标题四处上游版本引用同步至 1.1.4。`based_on` 与 `artifacts` 现一致，机器门禁不再报 needs impact check。**影响结论记为「需文字同步、不改变用户可观察行为」，未记为 none**——详见「阶段性证据」末条。SRS 自身仍 `status=review`，spec_sync=clean 只表示上游同步已完成，**不表示 SRS 已获批准**。）
 - verified_commit：<回填> — 待用户独立评审批准 SRS（baseline srs.status: review→approved）后由后续提交生成；旧 173cf9b6 已作废（误批准锚点）
 
 ## 关闭结论（已作废 — 系误批准，2026-08-07 回退至 review；实际关闭待用户独立评审批准 SRS 后）
@@ -138,7 +147,22 @@
 
 - 领域模型版本取代与 spec_sync 回退 dirty（2026-08-08，用户评审指令第 1/5/9 步）：用户指出 **v1.1.3 已在 `f64b6de` 正式批准，`236d302` 又改了其规范正文**——同一版本号不得对应批准前后两份内容，且**不得以"避免 SRS based_on 连锁变更"为由复用 1.1.3**。故：① TASK-DM-001 恢复为**历史已关闭**（f64b6de 保留为旧版 1.1.3 真实批准锚点，注明已被取代，不否认历史批准）；② 新建 **TASK-DM-002** 承载密码算法中性化并升版 **domain_model v1.1.4**（baseline: 1.1.4 / review）；③ `baseline.srs.based_on.domain_model` **有意保留 1.1.3**，使机器门禁（based_on ≠ current）正确显示上游已变更、需 impact review；④ 本 TASK `spec_sync` 由 clean 回退 **dirty**。**待办（待用户批准 domain_model v1.1.4 后执行）**：SRS impact review —— 将 `based_on.domain_model` 更新为 1.1.4；修正 SRS §6.3「（当前 PRD §8.7 记为 BCrypt、领域模型 §6.1 记为 Argon2id，二者冲突待安全设计裁定）」中已过期的 Argon2id 描述（1.1.4 起领域模型不预选算法，且新增 ADR 与 PRD §8.7 冲突须走规范影响/变更评审的条款）；**影响结论不得记为 none**，记为「需文字同步、不改变用户可观察行为」；完成后 spec_sync 转 clean。SRS 仍 `status=review`，**待用户独立评审批准，AI 不代签**。
 
+- **SRS impact review（领域模型 1.1.3 → 1.1.4，2026-08-08 执行完毕）**：触发条件 = `baseline.srs.based_on.domain_model`(1.1.3) ≠ `artifacts.domain_model`(1.1.4)，机器门禁报 needs impact check。上游 v1.1.4 已于独立批准锚点 `f537296` 获用户明确批准，本任务据此执行。
+
+  **评估范围**：TASK-DM-002 在 v1.1.4 引入的两类修改。
+
+  | 上游修改 | 是否改变用户可观察行为 | 对 SRS 的处理 |
+  |---|---|---|
+  | ① 密码算法中性化（domain §1 存储策略 / §2.3 类图 / §4 ER 图 / §6.1 字段表共 4 处清除 Argon2id 实现指向） | **否** —— 领域模型自 v1.1.3 起即声明"算法待《安全设计》ADR 裁定"，SRS §6.3 亦一贯声明"SRS 不预选算法"。系统对外行为（登录校验、密码找回、token 存储）不因算法未定而改变；算法最终落点仍在《安全设计》ADR。 | **需文字同步**：§6.3 原括注"领域模型 §6.1 记为 Argon2id"在 1.1.4 后已成**事实性错误**（领域模型不再记任何算法），必须删除并改写。 |
+  | ② 新增/收紧冲突升级条款（ADR 拟选算法与 PRD §8.7 BCrypt 不一致 → 须先经 Change Request 更新并批准受影响规范，规范同步完成前不得实现） | **否** —— 属规范变更治理流程约束，不产生新的系统功能、接口、错误码或状态迁移。 | **需文字同步**：§6.3 补入同口径约束，避免 SRS 与领域模型出现流程口径分歧。 |
+
+  **结论：`需文字同步、不改变用户可观察行为`（明确 ≠ none）。** 理由：SRS 正文确有**过期描述**（§6.3 的 Argon2id 归属陈述已与 v1.1.4 不符），记为 none 将等同于宣称"SRS 无需任何改动"，与事实不符；但该同步**不改变任何用户可观察行为**，因此按 `AGENTS.md §9.4` 分类**不触发 Change Request**，也不需重做需求评审。
+
+  **实际改动**：① `docs/baseline.yml` — `srs.based_on.domain_model` 1.1.3→1.1.4（含注释更新）；② `docs/requirements/SRS.md` — §6.3 改写 + 顶部 based_on / §1.1 / §1.3 / §6 标题四处版本引用同步；③ 本任务单 — spec_sync dirty→clean 与本条记录。**未改动**：需求编号、行为约束、错误码、状态机、非功能阈值、追踪矩阵。
+
+  **下游连带**：本 impact review 完成且 spec_sync=clean，构成 **TASK-DM-002** 的关闭前置（其 spec_sync 据此转 clean）。**SRS 自身仍 `status=review`，批准权在用户，AI 不代签；本任务不关闭。**
+
 ## 关联
-- Change Request：无
-- 上游任务：TASK-DM-001（domain_model v1.1.3，已关闭）→ **TASK-DM-002（domain_model v1.1.4，进行中/待批准）**
+- Change Request：无（本轮 impact 为文字同步级，按 `AGENTS.md §9.4` 不触发变更流程）
+- 上游任务：TASK-DM-001（domain_model v1.1.3，已关闭，锚点 `f64b6de`）→ **TASK-DM-002（domain_model v1.1.4，已批准，锚点 `f537296`）**
 - 测试任务：无（文档）

@@ -89,18 +89,18 @@
   - 把密钥 / 授权码写入版本库或任何文档。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<首个 Git commit hash>
-- 修改文件清单：<baseline.yml / TASK-TEMPLATE.md / AGENTS.md / PROJECT_STATE.md / TASK-SRS-001.md / .gitignore>
-- 测试命令及结果：<不适用；Grep 校验输出>
-- lint / typecheck：<不适用>
-- DB 迁移验证：<无>
-- 验收证据：<Grep 输出 + git log 首个 commit + §9/规范影响评估章节截图或文本>
-- 变更预算实际值：<回填>
-- 未解决风险：<或"无">
-- 是否偏离 TASK：<否 / 偏离项及原因>
-- 规范影响结论：<none（纯治理变更，不改业务行为）>
-- spec_sync：<clean>
-- verified_commit：<首个 Git commit hash>
+- commit / PR：b2b6ac8
+- 修改文件清单：baseline.yml / TASK-TEMPLATE.md / AGENTS.md / PROJECT_STATE.md / TASK-SRS-001.md / .gitignore（仓库操作：git init + 首个 baseline commit b2b6ac8）
+- 测试命令及结果：不适用（纯文档/治理）；全仓 Grep 校验通过（无残留 "PRD §4 非功能"、无新增状态副本漂移）
+- lint / typecheck：不适用
+- DB 迁移验证：无
+- 验收证据：Grep 输出 + `git log` 首个 commit b2b6ac8 + AGENTS §9 / 规范影响评估章节已落地
+- 变更预算实际值：max_files 6 / 实际 6（baseline.yml, TASK-TEMPLATE.md, AGENTS.md, PROJECT_STATE.md, TASK-SRS-001.md, .gitignore）；prod 0 / test 0
+- 未解决风险：无
+- 是否偏离 TASK：否
+- 规范影响结论：none（纯治理变更，不改业务行为）
+- spec_sync：clean
+- verified_commit：b2b6ac8
 
 ## 阶段性证据
 - 任务创建后由用户确认范围，再执行补丁。

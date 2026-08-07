@@ -86,7 +86,12 @@
 - verified_commit：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 关闭快照，含 TASK-UI-IMPACT-001 校正 + TASK-UI-002 补全 + 本任务单）
 
 ## 关闭结论
-任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核无残留错误表述）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=<回填>。状态：Closed。
+任务于校正完成后关闭。关闭门禁四条件复核：① 测试通过（Grep 复核无残留错误表述）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=56669828de6a7dc9ba9a4a93a273c221efee76a4（被验证的交付物快照）。状态：Closed。
+
+## 锚点语义（防混淆，校正于 TASK-GOV-005）
+- `56669828de6a7dc9ba9a4a93a273c221efee76a4`（5666982）= **被验证的交付物快照**（G1）：含 TASK-UI-IMPACT-001 校正 + TASK-UI-002 补全 + 本任务单全部 closing 证据；**不是关闭提交**。
+- `f2cfb88…`（f2cfb88）= **纯证据回填 / 任务关闭提交**（G2）：仅将 verified_commit 回填为 5666982，不承载新交付物。
+- 不得为闭合重新生成指向自身的循环锚点；5666982 与 f2cfb88 各司其职、保留历史。
 
 ## 关联
 - 上游：TASK-UI-IMPACT-001（被校正对象）/ TASK-UI-002（被补全对象）

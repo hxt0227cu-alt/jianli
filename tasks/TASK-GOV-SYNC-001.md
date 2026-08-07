@@ -7,7 +7,7 @@
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.2 / AI 治理 1.0.1（取自 `docs/baseline.yml`；版本如下，评审状态以 baseline.yml 为准）
-- 基线 commit：gov-sync-001-verified（治理收尾最终快照标签；本任务初始化 Git 并已在最终 commit 包含全部治理文件 + 关闭证据）
+- 基线 commit：repository_not_initialized（任务启动时的真实历史事实：仓库尚未初始化 Git；任务完成态由 verified_commit 记录，不得被完成态覆盖——否则审计会变成"任务基于自身完成后的快照开始"，时间因果倒置）
 
 ## 精确规范引用（AI 只读取这些章节）
 - baseline.yml：artifacts / precedence / development_gate（仅读取，本次扩展 artifacts 的 based_on 约定）
@@ -36,7 +36,8 @@
 - PROJECT_STATE.md             # 澄清「最后通过测试的 commit」= 最后 verified commit（审计锚点）；repository_not_initialized 直到 Git 初始化
 - tasks/TASK-SRS-001.md        # 第 65 行性能验收「PRD §4」→「PRD §5 非功能需求」（修复用户指出的具体错位）
 - （仓库操作）初始化 Git 并做首个 baseline commit，仅纳入已批准治理/文档/设计工件；附 .gitignore 排除 .env / 密钥 / node_modules；提交前校验无密钥内容进入版本库
-- tasks/TASK-GOV-SYNC-001.md   # 本任务单自身：重新打开后回填修复 P0-1/P0-2（允许路径含自身、max_files 6→7、交付证据实际 7、verified_commit 指向最终标签），不改既定治理设计
+- tasks/TASK-GOV-SYNC-001.md   # 本任务单自身：重新打开后回填修复 P0-1/P0-2（允许路径含自身、max_files 6→7、交付证据实际 7）
+- AGENTS.md（语言规则）# 实际新增「交互输出语言」SSOT 与 §5 输出语言确认，超出原授权 AGENTS §9 内容范围；本回合独立复核接受为治理补充（偏离已如实记录于交付证据，未伪造"未偏离"）
 
 ## 禁止修改路径
 - PRD 业务需求 R1–R26 语义
@@ -95,10 +96,10 @@
 - 测试命令及结果：不适用（纯文档/治理）；全仓 Grep 校验通过（无残留 "PRD §4 非功能"、无新增状态副本漂移）
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：Grep 输出 + `git log` 最终 commit + 标签 gov-sync-001-verified + AGENTS §9 / 规范影响评估章节已落地 + 交互输出语言规则（SSOT）已落地
+- 验收证据：Grep 输出 + `git log` 最终 commit + 标签 gov-sync-001-verified + AGENTS §9 / 规范影响评估章节已落地 + 交互输出语言规则（SSOT）已落地（注：该语言规则超出原授权 §9，属已接受治理偏离，见「是否偏离 TASK」）
 - 变更预算实际值：max_files 7 / 实际 7（baseline.yml, TASK-TEMPLATE.md, AGENTS.md, PROJECT_STATE.md, TASK-SRS-001.md, .gitignore, tasks/TASK-GOV-SYNC-001.md）；prod 0 / test 0
 - 未解决风险：无
-- 是否偏离 TASK：否（本次重新打开仅修复 P0-1/P0-2 收尾语义，不改既定治理设计）
+- 是否偏离 TASK：是——新增 AGENTS「交互输出语言」SSOT 与 §5 输出语言确认，超出原授权 AGENTS §9 内容范围；经本次独立复核接受为治理补充，不涉及产品行为。另：P0-1/P0-2 收尾修复（允许路径含自身、max_files 7、交付证据实际 7、verified_commit 真实 SHA）属本 TASK 重开范围，不计入偏离。
 - 规范影响结论：none（纯治理变更，不改业务行为）
 - spec_sync：clean
 - verified_commit：gov-sync-001-verified（治理收尾最终 commit 标签；非 baseline commit b2b6ac8）

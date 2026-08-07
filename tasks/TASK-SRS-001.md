@@ -107,6 +107,8 @@
 - SRS 启动机械收口（本轮）：P0-1 已修正——基线 commit 保留真实 SHA `d7510254…`，删除其错误 `(tag: gov-sync-001-verified)` 注释（`gov-sync-001-verified` 为治理任务标签、指向 `adc7c8d3…`，不表示 SRS baseline）；P0-2 已记录偏离——误建 `SRS-大纲-吸收映射.md` 超出原允许路径，仅临时授权删除，其大纲/映射已吸收进 SRS.md 并删除该临时文件；六项结构问题按用户结论直接执行，未再询问
 - SRS review correction（用户独立评审反馈，本轮）：修复 P0-1 基线 commit 措辞（顶部/页脚「本文件生成 commit」→「SRS 输入基线 commit」，明确 `d7510254` 为启动前基线、正文于 `b7ef847` 生成）；P0-2 同步 `PROJECT_STATE.md` 至 review 态（当前阶段/当前任务/下一步/最后更新）；P0-3 §1.1 与 §10 页脚「行为唯一源」改为「approved 后成为」，并新增 §1.1 状态机所有权迁移（ownership transition）条款、§1.4/§6.2 对齐；P1-1 删除 SRS 内复制的 deferred 六项清单；P1-2 删除违规 `PRD §8.5` 引用（腾讯云→§4 系统集成、成本→§5 非功能需求）；§4.3「中心化通道广播」改为一致性/有序恢复行为约束（机制留 ADR）；§3.8「Outbox 事件表」软化为「可靠持久化的业务事件（Outbox 模式）」。SRS 仍 `status=review`，未 approved，TASK 保持开启；关闭证据（规范影响结论/spec_sync/verified_commit）待独立评审通过后补。（review correction commit：`bdba9f4`）
 
+- SRS 小范围收口（用户第二轮独立评审反馈，本轮）：按用户清单做最小范围修正——不扩需求、不重写、不动 baseline 状态（srs 仍 review）。① 密码哈希算法冲突（#1）：SRS §6.3 不再预选算法，改「由《安全设计》ADR 裁定」，标注 PRD §8.7(BCrypt) 与领域模型 §6.1(Argon2id) 冲突待安全设计；领域模型 §1 存储策略 + §6.1 同步加「待安全设计裁定」标注（保留 Argon2id 占位、不改 approved 状态）。② 通知失败态缺失（#2）：SRS §6.2 NotificationEvent 生命周期补 `failed`（进入 Delivery 重试/死信），与领域模型 §5 对齐。③ 手动重发限频不可验收（#3）：SRS §5.6 补可测阈值「同账号每 10 分钟≤5 次、每小时≤20（待评审确认，先按此验收）」。④ 领域模型编码门禁表述错误（#4）：§10 末尾改引用 baseline `development_gate` 全 10 项门禁，纠正「仅接口契约+测试计划通过」误述。⑤ 两处文档缺陷（#5）：SRS §5.3 裸 `§8.6`→`PRD §8.6`；领域模型 §9 `purge_before`→`purge_after` 改名痕迹清除。SRS 仍 `status=review`，未 approved，TASK 保持开启；关闭证据（规范影响结论/spec_sync/verified_commit）待独立评审 approved 后补。（closeout commit：8794aea）
+
 ## 关联
 - Change Request：无
 - 测试任务：无（文档）

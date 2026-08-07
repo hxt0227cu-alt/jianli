@@ -56,7 +56,7 @@
   - 范围限定：仅 A6/A7 状态列文案与列定义；不新增页面、不改语义色、不改限频阈值、不扩需求。
 
 ## 交付证据
-- commit / PR：<回填，校正后完整验证快照 sha，由 G2 纯证据提交回填>（取代原 a2ea98d/da5fce7 作为 verified_commit；a2ea98d/da5fce7 历史保留不重写）
+- commit / PR：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 校正后完整验证快照 / 本任务 verified_commit；取代 a2ea98d/da5fce7，历史保留不重写）
 - 修改文件清单（按路径逐条计数，不合并）：
   1. tasks/TASK-UI-IMPACT-001.md — 本任务单（影响矩阵 + 结论 + MP-1）
   2. tasks/TASK-UI-001.md — 基线锚点引用更新（173cf9b6→26ae844、1.1.2→1.1.4）+ "基线无效"告警再定性
@@ -68,10 +68,10 @@
 - 是否偏离 TASK：范围层面否（全部改动在授权 5 项路径内）；change_budget 层面无法判定（未预设预算，见上）
 - 规范影响结论：none（纯评审，不改规范）
 - spec_sync：clean（UI 为下游设计，不反向改 SRS/领域模型）
-- verified_commit：<回填，校正后完整验证快照 sha（G1）>（原 a2ea98d/da5fce7 因 verified_commit 占位/自指缺陷已被取代；提交保留于 Git 历史不重写）
+- verified_commit：56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 校正后完整验证快照；原 a2ea98d/da5fce7 因占位/自指缺陷已被取代，提交保留于 Git 历史不重写）
 
 ## 关闭结论
-任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=<回填，校正后完整验证快照 sha（G1）>（取代 a2ea98d/da5fce7）。状态：Closed（2026-08-08；校正于 TASK-GOV-004）。
+任务于影响评审完成后关闭。关闭门禁四条件复核：① 测试通过（纯评审，Grep 复核锚点引用一致）；② 规范影响 none；③ spec_sync=clean；④ verified_commit=56669828de6a7dc9ba9a4a93a273c221efee76a4（TASK-GOV-004 校正后完整验证快照，取代 a2ea98d/da5fce7）。状态：Closed（2026-08-08；校正于 TASK-GOV-004）。
 
 ## 关联
 - 上游：TASK-SRS-001（SRS v1.0，已关闭）/ TASK-DM-002（领域模型 1.1.4，已关闭）

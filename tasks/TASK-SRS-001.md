@@ -112,7 +112,7 @@
   2. **上游 domain_model 1.1.3→1.1.4 → 对本任务工件（SRS）的影响**：**`需文字同步、不改变用户可观察行为`（明确不是 none）**。SRS §6.3 原括注"领域模型 §6.1 记为 Argon2id"在 v1.1.4 后已成事实性错误，必须改写；另有四处上游版本引用需同步。已于 2026-08-08 impact review 中处理完毕（详见「阶段性证据」末条）。按 `AGENTS.md §9.4` 分类，属"不改变用户可观察行为"，**不触发 Change Request**。
 - spec_sync：**clean**（2026-08-08：上游 `domain_model` v1.1.4 已获用户明确批准（独立锚点 `f537296`），本任务据此执行 SRS impact review 并完成全部文字同步——`baseline.srs.based_on.domain_model` 1.1.3→**1.1.4**；SRS §6.3 过期的「领域模型 §6.1 记为 Argon2id」描述已修正；SRS 顶部 based_on / §1.1 / §1.3 / §6 标题四处上游版本引用同步至 1.1.4。`based_on` 与 `artifacts` 现一致，机器门禁不再报 needs impact check。**影响结论记为「需文字同步、不改变用户可观察行为」，未记为 none**——详见「阶段性证据」末条。SRS 自身仍 `status=review`，spec_sync=clean 只表示上游同步已完成，**不表示 SRS 已获批准**。）
 - approval_commit：`26ae8440c89ed680341ee1c6cecb036b27b224ec`（本回合单一用途提交，仅推进 baseline `srs.status` review→approved；**不得复用旧误批准锚点 173cf9b6ffdf75acc4802398644ba67fb06f6cf6**）
-- verified_commit：<回填 — 关闭快照提交 sha，由 S3 纯证据提交回填>（含 SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照）
+- verified_commit：`06798a2815d60a50caebe3ce6582553531be8dea`（`06798a2`，SRS 关闭快照：含 SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照；与 approval_commit `26ae844` 分离，避免自引用）
 
 ## 关闭结论（SRS v1.0 独立评审批准，2026-08-08 正式关闭）
 
@@ -121,12 +121,12 @@
 1. **测试通过**：纯文档/治理变更，无代码/测试；一致性 Grep 校验通过（无 `review` 硬编码残留 / 无 `待复评` / 无违规 `PRD §8.5` 引用 / 活动规范正文无 `purge_before` 残留字段）。
 2. **规范影响已处理**：规范影响结论 = none（纯文档收口，不改业务行为）；SRS 由 review→approved 是状态推进，不影响其他规范。
 3. **spec_sync = clean**：SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4，上游版本未变且均为 approved（1.1.4 于 `f537296` 批准）；R1–R26 / UC-01–23 双向追踪完整，无 impact check 需求（2026-08-08 impact review：需文字同步、不改变用户可观察行为，已处理且 spec_sync=clean）。
-4. **真实 verified_commit**：`<回填 — 关闭快照提交 sha，由 S3 纯证据提交回填>`（SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照）。
+4. **真实 verified_commit**：`06798a2815d60a50caebe3ce6582553531be8dea`（`06798a2`，SRS 关闭快照：含 SRS approved + spec_sync=clean + 本任务 Closed + PROJECT_STATE 同步的完整验证快照）。
 
 其他治理账目收正确认：
 - 批准锚点（approval_commit）= 单一用途提交 `26ae8440c89ed680341ee1c6cecb036b27b224ec`：仅推进 baseline `srs.status` review→approved；**不得复用旧误批准锚点 173cf9b6ffdf75acc4802398644ba67fb06f6cf6**（该锚点为 2026-08-07 误批准，已作废历史，仍保留但不复用）。
 - 基线 commit = `d7510254…`（SRS 启动前基线，未被完成态覆盖）。
-- SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ d166992（impact review）→ 26ae844（批准锚点）→ <关闭快照提交 sha，S3 回填>。
+- SRS 内容收口 commit 链：b7ef847（正文）→ bdba9f4（review correction）→ 8794aea（小范围收口）→ 97e44d4（TASK 证据回填）→ d166992（impact review）→ 26ae844（批准锚点 / approval_commit）→ 06798a2（关闭快照 / verified_commit）。
 - TASK-SRS-001 关闭后，用例规约冻结为历史输入（SRS 行为唯一源生效；precedence 中 srs 高于 use_cases/prd）。
 
 状态：Closed（2026-08-08）。

@@ -101,8 +101,8 @@
 - 未解决风险：SRS 状态为 review（未 approved），不得参与 baseline precedence 裁决；PRD §8.2 外部依赖（SMTP/域名/飞书授权/知识库文件/时间线）仍待确认，不阻塞设计但阻塞对应集成验收/上线
 - 是否偏离 TASK：是——误建临时文件 docs/requirements/SRS-大纲-吸收映射.md，超出本任务原允许路径（仅 docs/requirements/SRS.md 为主交付物）。该偏离已如实记录；其大纲与映射已吸收进 SRS.md，确认后删除该临时文件，后续仅维护唯一正式工件 SRS.md（不形成第二份需求工件）。其余改动（baseline 锚点去错误 tag 注释、baseline.yml srs=review、SRS 正文）均在授权范围内
 - 规范影响结论：none（纯文档/治理收口，不改业务行为；SRS 由 review→approved 是状态推进，不影响其他规范）
-- spec_sync：dirty（domain_model 1.1.3 尚未经用户明确批准，不得宣称 SRS based_on 已正式同步；SRS 虽机械引用 1.1.3，但 spec_sync 维持 dirty，待用户批准领域模型后由 TASK-SRS-001 重新执行 impact review 再转 clean）
-- verified_commit：173cf9b6ffdf75acc4802398644ba67fb06f6cf6（**已作废** — 系误批准锚点；SRS 已回退 review，待用户重新独立评审批准后方可生成新 verified_commit）
+- spec_sync：clean（domain_model 1.1.3 已获用户明确批准 2026-08-08；baseline.srs.based_on.domain_model 已同步至 1.1.3 并重做 impact review，结论=none，SRS 无需改业务内容）
+- verified_commit：<回填> — 待用户独立评审批准 SRS（baseline srs.status: review→approved）后由后续提交生成；旧 173cf9b6 已作废（误批准锚点）
 
 ## 关闭结论（已作废 — 系误批准，2026-08-07 回退至 review；实际关闭待用户独立评审批准 SRS 后）
 
@@ -133,6 +133,8 @@
 - SRS impact review（领域模型 1.1.2→1.1.3，2026-08-07）：上游 domain_model 升版触发基于 based_on 的 impact check。评估范围 = TASK-DM-001 的 3 类修改对 SRS 行为的影响：① 密码算法裁定边界（domain §1/§6.1）—— SRS §6.3 已声明「由《安全设计》ADR 明确、不预选算法」，与领域模型一致，无冲突；② 门禁引用（domain §10）—— 改引用 baseline `development_gate` 全 10 项，不影响 SRS 行为；③ 字段清理（domain §9 purge 改名痕迹）—— SRS 不定义物理表，无行为影响。结论：**impact = none**，SRS 无需改业务内容，仅将 based_on 的 domain_model 由 1.1.2 同步至 1.1.3。spec_sync 由 dirty 转 clean。待用户独立评审批准 SRS（baseline srs.status: review→approved）后，本 TASK 方可关闭。
 
 - 领域模型状态回退与 spec_sync 再置 dirty（2026-08-07，用户纠偏第 2/4 步）：上轮将 domain_model 1.1.3 误置 approved、TASK-DM-001 spec_sync 误置 clean、并据以将本 TASK spec_sync 转 clean。现按用户指令向前修正——baseline `domain_model.status` 回退 review；TASK-DM-001 spec_sync 改 dirty（pending downstream impact review）；本 TASK（TASK-SRS-001）spec_sync 由 clean 重新置 dirty，明确"domain_model 1.1.3 未经用户明确批准前，不得宣称 SRS based_on 已正式同步"。SRS §1.1 机械残留的"v1.1.2"更正为"v1.1.3"。待用户批准领域模型后，再由本 TASK 重新执行 impact review 并视情况转 clean。
+
+- 领域模型批准与 SRS impact review 收口（2026-08-08，用户明确批准 domain_model 1.1.3）：执行治理 ⑥⑦ 步骤——① baseline `domain_model.status` 置 approved（锚点 f64b6de）；② TASK-DM-001 补 verified_commit=f64b6de 并关闭（e216d01）；③ baseline `srs.based_on.domain_model` 由 1.1.2 同步至 1.1.3；④ 重做 impact review：上游 domain_model 1.1.3 的 3 类修改（密码算法裁定边界 §1/§6.1 / 门禁引用 §10 / 字段清理 §9）均不改实体、不变量、状态机——与 SRS §6.3「待安全设计裁定」一致、§10 门禁引用与 baseline `development_gate` 全 10 项一致、§9 字段清理不影响 SRS 行为；结论 **impact = none**，SRS 无需改业务内容；⑤ spec_sync 由 dirty 转 clean。SRS 仍 status=review，**未代签 approved**——待用户独立评审批准后生成新 verified_commit 并关闭本 TASK（关闭结论维持"已作废"记录仅作历史，新关闭结论待 SRS 批准后写）。
 
 ## 关联
 - Change Request：无

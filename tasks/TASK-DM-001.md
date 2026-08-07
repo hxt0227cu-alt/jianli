@@ -50,7 +50,7 @@
 
 ## 功能验收
 - domain-model.md 升版至 v1.1.3（标题 + 整改说明段 + 页脚版本号一致）
-- baseline.yml `domain_model.version` = "1.1.3"、status = review（2026-08-08 经用户批准后发现 P0 算法锁定缺陷，重新开启修正；待用户重新评审批准）
+- baseline.yml `domain_model.version` = "1.1.3"、status = approved（本任务关闭时态，批准锚点 `f64b6de`）。**后续说明**：v1.1.3 批准后经复评发现 P0 算法锁定缺陷，因同一版本号不得对应批准前后两份内容，修正由**新任务 TASK-DM-002 升版 v1.1.4** 承载；baseline 当前 `domain_model` 已为 1.1.4/review。本任务不因此重开。
 - 密码算法裁定边界、门禁引用、字段清理 3 类修改经本任务评审，均确认不改动领域实体/不变量
 - 活动规范正文（domain-model.md）无 `purge_before` 残留字段、无"仅接口契约+测试计划通过即开放编码"误述（任务文件中的 purge_before 为历史清理记录引用，非活动残留）
 
@@ -84,30 +84,30 @@
 - DB 迁移验证：不适用
 - 验收证据：① 升版号三处一致（标题/整改段/页脚）；② baseline domain_model=1.1.3；③ 3 类修改评审结论（见「阶段性证据」）；④ Grep 无残留
 - 变更预算实际值：max_files=3、实际 3 文件（domain-model.md / baseline.yml / TASK-DM-001.md）；prod 行数小幅（升版号 3 处 + 整改说明段约 6 行，共约 9 行）；test_lines=0；未超出 TASK-DM-001 change_budget
-- 一致性检查结果（Grep 校验，2026-08-07 首轮 + 2026-08-08 P0 修正轮）：① 活动规范正文（domain-model.md）无 `purge_before` 残留字段（已清除为 purge_after，§9）；任务文件中的 `purge_before` 为历史清理记录引用，非活动残留；② domain-model §10 门禁引用已改引用 baseline `development_gate` 全 10 项，无"仅接口契约+测试计划通过即开放编码"误述；③ domain-model 版本号三处（标题/整改说明段/页脚）一致为 1.1.3；④ baseline `domain_model.status` = review（P0 修正后重新开启，未代签 approved）；⑤ SRS based_on 已正式同步至 1.1.3（baseline 第 20 行）、TASK-SRS-001 spec_sync=clean（impact=none）；⑥ TASK-UI-001 / ui-wireframe.md 顶部标记"基线无效/不得评审"。
-- 未解决风险：domain_model 1.1.3 因 P0 算法锁定缺陷重新开启（status=review），待用户重新评审批准；SRS 仍 status=review，待用户独立评审批准
+- 一致性检查结果（Grep 校验，2026-08-07 首轮 + 2026-08-08 关闭轮；均为**本任务关闭时点**的校验结论）：① 活动规范正文（domain-model.md）无 `purge_before` 残留字段（已清除为 purge_after，§9）；任务文件中的 `purge_before` 为历史清理记录引用，非活动残留；② domain-model §10 门禁引用已改引用 baseline `development_gate` 全 10 项，无"仅接口契约+测试计划通过即开放编码"误述；③ 关闭时 domain-model 版本号三处（标题/整改说明段/页脚）一致为 1.1.3；④ 关闭时 baseline `domain_model.status` = approved（锚点 f64b6de，用户明确批准）；⑤ 关闭时 SRS based_on 已同步至 1.1.3、TASK-SRS-001 spec_sync=clean（impact=none）；⑥ TASK-UI-001 / ui-wireframe.md 顶部标记"基线无效/不得评审"。
+- 未解决风险（关闭时点记录）：SRS 仍 status=review，待用户独立评审批准。**关闭后新发现（2026-08-08 复评）**：v1.1.3 存在 P0 算法锁定缺陷（正文 5 处仍指向 Argon2id），已由 **TASK-DM-002 / domain_model v1.1.4** 取代；下游 SRS 的 based_on 与 impact review 状态相应由 TASK-SRS-001 重新处理（spec_sync 回退 dirty）。此为**后继版本问题**，不推翻本任务在 1.1.3 时点的关闭有效性。
 - 是否偏离 TASK：否（本任务即用户指令第 3 步的"独立领域模型修正任务"，追认 8794aea 越界改动属授权范围）
 - 规范影响结论：none（领域模型升版 3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）
-- spec_sync：clean（domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由本轮 TASK-SRS-001 执行且结论=none，无 pending downstream）
+- spec_sync：clean（**关闭时点，针对 v1.1.3**：domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由 TASK-SRS-001 执行且结论=none）。**注**：v1.1.4 引入的新一轮下游同步不属本任务范围，由 TASK-DM-002 / TASK-SRS-001 承担。
 - verified_commit：f64b6de852f99007a0073636c834d31c81ae1864（domain_model 1.1.3 批准锚点，本任务正式关闭；非 tag 占位）
 
-## 关闭结论（2026-08-08 首次填写 — 因 P0 算法锁定缺陷已作废，本任务重新开启）
+## 关闭结论（2026-08-08 — 有效，本任务已关闭）
 
 > **关闭条件（修订，消除循环）**：本任务关闭前提仅为——domain_model 1.1.3 经用户明确批准 + 批准锚点（verified_commit）与交付证据补全。**SRS 的 based_on 同步与 impact review 由下游 TASK-SRS-001 独立负责，不构成本任务关闭条件。**
-
-（下方为首次关闭门禁复核记录；状态已回退为重新开启，待用户重新评审批准 domain_model 1.1.3 后据本规则重新填写关闭结论。）
+>
+> **版本取代声明（2026-08-08 复评后追记，不改变本任务关闭状态）**：v1.1.3 于 `f64b6de` 获得的批准是**真实发生且有效**的历史事实。其后复评发现 P0 算法锁定缺陷，按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，而由**新任务 TASK-DM-002 升版 domain_model v1.1.4** 承载。本任务保持已关闭，`f64b6de` 保留为旧版 1.1.3 的真实批准锚点。
 
 1. **测试通过**：纯文档/升版任务，无代码/测试；一致性 Grep 校验通过（活动规范正文无 `purge_before` 残留字段 / §10 门禁引用 development_gate 全 10 项 / 版本号三处一致 / 无"仅接口契约+测试计划通过即开放编码"误述）。
 2. **规范影响已处理**：规范影响结论 = none（3 类修改均不改实体/不变量/状态机，对 PRD/用例/SRS 行为无规范影响；SRS based_on 同步属 provenance，impact review 结论=none，无 normative 影响）。
 3. **spec_sync = clean**：domain_model 1.1.3 已获用户明确批准；下游 SRS 的 based_on 同步与 impact review 由本轮 TASK-SRS-001 执行且结论=none，无 pending downstream。
-4. **真实 verified_commit**：`f64b6de852f99007a0073636c834d31c81ae1864`（domain_model 1.1.3 首次批准锚点，因 P0 作废待重新生成）。
+4. **真实 verified_commit**：`f64b6de852f99007a0073636c834d31c81ae1864`（domain_model **v1.1.3 的真实批准锚点，有效且保留**；后继版本 v1.1.4 须生成**独立**批准锚点，不得复用本锚点）。
 
 其他治理账目收正确认：
 - 越界来源：8794aea 在 TASK-SRS-001 内改 domain-model.md（超出该任务允许路径）；本任务（TASK-DM-001）为独立追认载体，已获用户授权。
 - 3 类修改评审结论（首次）：① 密码算法裁定边界——`password_hash` 待《安全设计》ADR 裁定，不预选算法，边界正确；② 门禁引用——§10 改引 baseline `development_gate` 全 10 项，与 baseline 一致；③ 字段清理——§9 `purge_before→purge_after` 改名痕迹已清除。
 - 下游 SRS 同步：TASK-SRS-001 已于首轮将 `baseline.srs.based_on.domain_model` 由 1.1.2 同步至 1.1.3 并重做 impact review（结论=none，spec_sync 转 clean）。
 
-状态：重新开启（Reopened — P0 算法仍锁定 Argon2id，待修正后重新评审批准）。
+状态：**已关闭（Closed，2026-08-08）** — 对应 domain_model v1.1.3，批准锚点 `f64b6de`。后续发现的 P0 算法锁定缺陷由 **TASK-DM-002（domain_model v1.1.4）** 取代处理，本任务不重开。
 
 ## 阶段性证据
 - 越界追认：8794aea 在 TASK-SRS-001 内修改 domain-model.md（§1/§6.1 密码裁定边界、§10 门禁引用、§9 purge 字段清理），已确认改动内容正确，于本任务下升版 v1.1.3 追认。
@@ -119,5 +119,6 @@
 ## 关联
 - Change Request：无
 - 上游越界来源：TASK-SRS-001（commit 8794aea）
-- 下游影响：TASK-SRS-001（SRS based_on 更新至 domain_model 1.1.3 + impact review）
+- 下游影响：TASK-SRS-001（SRS based_on 更新至 domain_model 1.1.3 + impact review，已于关闭时点完成）
+- **后继任务（取代关系）**：TASK-DM-002 —— 承载 v1.1.3 的 P0 算法锁定缺陷修正并升版 **domain_model v1.1.4**；本任务成果在 1.1.3 时点有效，其后由 1.1.4 取代
 - 测试任务：无（文档）

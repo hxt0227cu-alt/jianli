@@ -3,19 +3,19 @@
 > 本文件**只记录任务态**：当前阶段 / 当前任务 / 本周阻塞 / 下一步 / 最后通过测试的 commit。
 > **不重复维护任何版本号、评审状态、优先级或延后项**——那些只存在于 `docs/baseline.yml`（唯一规范源）。
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
-> 最后更新：2026-08-08（domain_model 1.1.3 经用户批准 approved；TASK-DM-001 关闭；SRS impact review 完成 spec_sync=clean；SRS 仍 status=review 待用户批准；UI 线框标记基线无效、不得评审）
+> 最后更新：2026-08-08（domain_model 1.1.3 因 P0 算法锁定缺陷回退 review、TASK-DM-001 重新开启；SRS impact review 已完成 spec_sync=clean、仍 status=review 待用户批准；UI 线框标记基线无效、不得评审）
 
 ---
 
 ## 当前阶段
 
-分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。领域模型 1.1.3 **已获用户明确批准（approved，参与 baseline precedence 裁决）**；SRS v1.0 **仍 status=review（未 approved，不计入 precedence 裁决）**，其 impact review（上游 domain_model 1.1.3）已完成、spec_sync=clean；待用户独立评审批准 SRS 后，用例规约冻结为历史输入，再进入 UI 线框。
+分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。领域模型 1.1.3 **因 P0 算法锁定缺陷已回退 review（重新开启修正，待用户重新评审批准，不计入 precedence 裁决）**；SRS v1.0 **仍 status=review（未 approved，不计入 precedence 裁决）**，其 impact review（上游 domain_model 1.1.3）已完成、spec_sync=clean；待用户独立评审批准 SRS 后，用例规约冻结为历史输入，再进入 UI 线框。
 
 ---
 
 ## 当前任务
 
-- 当前动作：① 领域模型 1.1.3 已批准、TASK-DM-001 已关闭；② TASK-SRS-001 已完成 SRS impact review（based_on.domain_model 同步至 1.1.3、spec_sync=clean）；③ SRS 仍 status=review，待用户独立评审批准（AI 不代签）。UI 线框（TASK-UI-001）标记为基线无效、不得评审。
+- 当前动作：① 领域模型 1.1.3 因 P0 算法锁定缺陷回退 review、TASK-DM-001 重新开启修正；② TASK-SRS-001 已完成 SRS impact review（based_on.domain_model 同步至 1.1.3、spec_sync=clean）；③ SRS 仍 status=review，待用户独立评审批准（AI 不代签）。UI 线框（TASK-UI-001）标记为基线无效、不得评审。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---
@@ -33,7 +33,7 @@
 SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同 → 测试计划 → 开发准入评审 → 功能编码
 ```
 
-> 注：SRS v1.0 当前 status=review（未 approved，不计入 baseline precedence 裁决）；领域模型 1.1.3 已 approved、SRS impact review 已完成（spec_sync=clean）；待用户独立评审 approved SRS 后，用例规约冻结为历史输入或 SRS 附录，再进入 UI 线框（经重新 impact review 决定是否沿用）→ 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划。
+> 注：SRS v1.0 当前 status=review（未 approved，不计入 baseline precedence 裁决）；领域模型 1.1.3 回退 review（P0 算法锁定缺陷修正中，待用户重新批准）、SRS impact review 已完成（spec_sync=clean）；待用户独立评审 approved SRS 后，用例规约冻结为历史输入或 SRS 附录，再进入 UI 线框（经重新 impact review 决定是否沿用）→ 架构/ADR → 安全设计 → OpenAPI/SSE → 测试计划。
 
 ---
 

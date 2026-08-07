@@ -108,7 +108,7 @@
 
 任务于 SRS 独立评审通过后正式关闭（用户授权 2026-08-07 将 srs.status 置 approved）。关闭门禁四条件逐项复核：
 
-1. **测试通过**：纯文档/治理变更，无代码/测试；全仓一致性 Grep 校验通过（无 `review` 硬编码残留 / 无 `待复评` / 无违规 `PRD §8.5` 引用 / 无 `purge_before` 残留）。
+1. **测试通过**：纯文档/治理变更，无代码/测试；一致性 Grep 校验通过（无 `review` 硬编码残留 / 无 `待复评` / 无违规 `PRD §8.5` 引用 / 活动规范正文无 `purge_before` 残留字段）。
 2. **规范影响已处理**：规范影响结论 = none（纯文档收口，不改业务行为）；SRS 由 review→approved 是状态推进，不影响其他规范。
 3. **spec_sync = clean**：SRS based_on = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.2，上游版本未变且均为 approved；R1–R26 / UC-01–23 双向追踪完整，无 impact check 需求。
 4. **真实 verified_commit**：`173cf9b6ffdf75acc4802398644ba67fb06f6cf6`（SRS v1.0 正式 approved 锚点，非 tag 占位）。

@@ -1,11 +1,11 @@
 # TASK-DM-003 领域模型修订：NotificationDelivery 多投递目的（delivery_purpose）支持
 
 > 领域模型修订 review 草案，承载 domain_model **v1.1.4 → v1.1.5**。本任务**只修一个实现阻塞**：`NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」。
-> **不批准领域模型**：`baseline.domain_model.status` 保持 `review`；**不修改下游工件**（SRS v1.1 / UI v1.0 / architecture v0.2），仅完成影响分析，待用户先批准 v1.1.5 后再同步下游。
+> **领域模型已批准并关闭（2026-08-08 末用户批准，批准锚点 `f412c7d`）**：baseline.domain_model.status=approved；下游 SRS v1.1 / UI v1.0 / architecture v0.2 已按本任务影响分析同步（SRS 仅版本引用+based_on、行为不变、不复制物理索引；UI v1.0 impact=none；architecture v0.2 §6 已纳入 delivery_purpose 同步）；spec_sync=clean，本任务已关闭。
 > **不建 TASK-GOV-\***；不处理历史措辞；不进入安全设计 / OpenAPI / 测试计划 / 编码。
 
 ## 任务类型
-- design         # 领域模型修订 review 草案（不代签 approved）
+- design         # 领域模型修订（v1.1.5 已 approved 并关闭）
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / SRS 1.1（approved，行为唯一源）/ UI 线框 1.0（approved）/ 架构 v0.2（review，TASK-ARCH-002）/ AI 治理 1.0.1（均取自 `docs/baseline.yml`）
@@ -34,7 +34,7 @@
 - 同时在架构待办中登记两项后续修正（不另建治理任务）：① 用户取消后 Slot 不得无条件 `available`，须按 AvailabilityOverride 与日历规则重新物化（owner 强制取消仍 `owner_locked`）；② `created_at` 隐式租约须限定 Worker 只创建可立即处理的尝试、`queued→sending` 立即发生、外部超时远小于 5 分钟，并区分 `queued` 超时（未发送）与 `sending` 超时（结果未知）。
 
 ## 非目标（明确排除）
-- **不批准领域模型**（不得把 `baseline.domain_model.status` 改为 approved）。
+- **不批准领域模型**（任务创建时约束：不得把 `baseline.domain_model.status` 改为 approved）——**已被用户 2026-08-08 末批准 v1.1.5（f412c7d）override**，本非目标不再适用。
 - **不修改 SRS v1.1 / UI v1.0 / architecture v0.2 正文**（仅记录影响分析；下游同步待用户批准 v1.1.5 后由相应任务执行）。
 - **不重新引入 `confirm_mail` 业务事件类型**：投递目的用 `delivery_purpose` 表达，事件类型保持业务事实语义。
 - 不新增冗余明文收件人字段；候选人收件人沿用 `OwnerContactConfig.candidate_phone_ciphertext` / `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（AES 密文）+ `owner_admin` 的 `User.email`，面试官收件人沿用 `Appointment.user_id → User.email`，发送时按访问控制解密。
@@ -44,7 +44,7 @@
 ## 允许修改路径
 - docs/design/domain-model.md        # 主交付物：v1.1.4 → v1.1.5（新增 delivery_purpose + 调整唯一约束 + 目的映射）
 - tasks/TASK-DM-003.md               # 本任务单自身（含证据回填）
-- docs/baseline.yml                  # domain_model.version 1.1.4→1.1.5；status approved→review
+- docs/baseline.yml                  # domain_model.version 1.1.4→1.1.5；status review→approved（用户 2026-08-08 末批准 f412c7d）
 - PROJECT_STATE.md                   # 同步领域模型阶段态与门禁顺序
 - docs/design/architecture.md        # 仅追加 §13 后续修正待办（两项），不改 v0.2 技术内容、不推进 based_on
 
@@ -139,7 +139,7 @@
   - §13 已登记两项后续修正（Slot 重新物化 / 租约区分未发送与结果未知），待 v1.1.5 批准后执行。
 - **结论**：需同步更新，但本任务**不修改** architecture v0.2 技术内容（仅 §13 待办登记）。
 
-## 交付证据（review 草案，**不关闭**）
+## 交付证据（**已关闭**）
 - commit / PR：448bcac4b4b615a441256bcc79a5f9da97a7577c（G1 快照）
 - 修改文件清单：docs/design/domain-model.md / tasks/TASK-DM-003.md / docs/baseline.yml / PROJECT_STATE.md / docs/design/architecture.md（5 个路径，与「允许修改路径」逐一对照一致）
 - 测试命令及结果：
@@ -153,15 +153,15 @@
 - 验收证据：domain-model.md v1.1.5（§1/§2.3/§5/§6.11/§6.12/脚注）：新增 `NotificationDelivery.delivery_purpose` 列 + 唯一约束调整 + 三目的合法 channel/收件人来源映射（收件人不新增明文字段）；§5/§6.11 明确事件类型与投递目的解耦、不重新引入 `confirm_mail`；architecture.md §13 登记两项后续修正待办。baseline.domain_model=1.1.5/review；PROJECT_STATE 同步阶段态与门禁顺序。
 - 变更预算实际值：max_files=5，实际 5 文件（domain-model.md / TASK-DM-003.md / baseline.yml / PROJECT_STATE.md / architecture.md 仅 §13），未超预算。
 - 未解决风险：
-  1. **下游影响待同步（spec_sync=dirty，预期触发 needs impact check，符合意图）**：SRS v1.1 需文字同步级更新（显式 `delivery_purpose` 概念与目的映射 + `uq_active_owner_admin` 约束与单 owner 不变量，不改变用户行为）；architecture v0.2 §6 须纳入 `delivery_purpose`（唯一约束 + 幂等键 + 投递创建置目的）；均待用户批准 v1.1.5 后由相应任务执行。
+  1. **下游影响已同步（spec_sync=clean）**：SRS v1.1 已文字同步级更新（版本引用 + based_on，行为不变、不复制物理索引，见 `10fb2f2`）；UI v1.0 impact=none（未改动）；architecture v0.2 §6 已纳入 `delivery_purpose`（投递创建/幂等键/重试驱动/`uq_delivery_attempt` 5 列）、单活跃 owner 收件人解析（`uq_active_owner_admin`）、飞书接收标识缺失处理（见 `f0d3264`）。无残留未决影响。
   2. **面试官改期/会议号更新/主动取消告知均属 MVP（已修正，非未来扩展）**：`appointment_rescheduled → interviewer_confirmation`、`appointment_details_updated → interviewer_confirmation`（会议号更新函）、`appointment_cancelled → interviewer_cancellation`（面试官主动取消告知）均已被三目的既有覆盖范围接纳，属 approved SRS v1.1 MVP 行为，不再列为可后续增补目的枚举。
   3. **单 owner 唯一性（已裁定，方案 A，已收口）**：用户末次裁定 MVP=单候选人个人站点、不引入 `SiteConfig`，采用方案 A——`User.uq_active_owner_admin` 部分唯一索引（`WHERE role='owner_admin' AND deleted_at IS NULL`）+ 三条运行不变量 + `candidate_notification` 收件人解析固定链路（见领域模型 §6.1）。**原 Stop & Report 阻塞已解除**，本草案严格按用户裁定落地、未假设。
-- 是否偏离 TASK：否（仅做方案 A 主线修正 + 安全表述修正；未批准领域模型、未修改 SRS/UI 正文、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
-- 规范影响结论：srs=需文字同步级更新（非 none，不改变用户行为）；ui=none；architecture=需同步更新（待批准后）
-- spec_sync：dirty（domain_model 升 1.1.5，下游 SRS/UI/architecture 的 based_on/引用仍为 1.1.4，**预期触发 needs impact check**；按用户指令暂不修改下游，待批准后同步）
-- verified_commit：4c895e9f0900854d55cabff1958bdd4446b324b5（G5 最终内容评审包，非自指；G1=448bcac、G3=e41c0a1 为前置快照）
-- **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（下游 impact review 已执行并同步）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
-  **本任务保持 review，待用户独立评审批准 domain_model v1.1.5 后方可关闭。AI 不得代签 approved。**
+- 是否偏离 TASK：否（仅做方案 A 主线修正 + 安全表述修正 + 下游同步；领域模型已由用户批准、下游已按影响分析同步、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
+- 规范影响结论：srs=文字同步级更新已完成（非 none，不改变用户行为）；ui=none；architecture=已同步（v0.2 §6 纳入 delivery_purpose，仍 review 待用户批准）
+- spec_sync：clean（domain_model 1.1.5 approved；SRS v1.1 based_on→1.1.5 且版本引用同步、行为不变、不复制物理索引；UI v1.0 无改动；architecture v0.2 已同步 delivery_purpose 且 based_on→1.1.5）
+- verified_commit：f0d3264c5d91ec5d2a9c46ac3ed88c30e3643844（architecture v0.2 同步提交，含 domain_model 1.1.5 批准下游全链路收口；G1=448bcac、G3=e41c0a1、G5=4c895e9 为前置快照）
+- **关闭门禁（四条件全满足，已关闭）**：① 测试通过（一致性校验见交付证据）；② 规范影响已处理（下游 impact review 已执行并同步，spec_sync=clean）；③ spec_sync = clean；④ verified_commit 已记录真实 sha（`f0d3264`）。
+  **本任务由用户 2026-08-08 末批准 domain_model v1.1.5（f412c7d）后关闭。AI 未代签。**
 
 ## 补正记录（v1.1.5 补正内容评审包，2026-08-08，指令：修实质实体/字段错误）
 - 触发：用户对 v1.1.5 审查后指出会误导实现的实体/字段错误；指令只修实质问题、不建 TASK-GOV、不追修提交描述、不改下游工件、不批准、不进安全设计。

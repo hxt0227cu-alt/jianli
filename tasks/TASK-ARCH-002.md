@@ -115,19 +115,25 @@
 - **其余硬停条件**：超出 `change_budget.max_files`（5）→ 拆任务。
 
 ## 交付证据（review 草案升版，**不关闭**）
-- commit / PR：<G1 待回填>
+- commit / PR：ef671228c02b3c099e8b17c2026eb6de9d3fa5dd（G1 快照）
 - 修改文件清单：docs/design/architecture.md / tasks/TASK-ARCH-002.md / tasks/TASK-ARCH-001.md / docs/baseline.yml / PROJECT_STATE.md（5 个路径，与「允许修改路径」逐一对照一致）
-- 测试命令及结果：<待回填>
+- 测试命令及结果：
+  1. `grep "Redis" architecture.md` → 仅出现「MVP SSE 路径不使用消息中间件」与「v0.1 错误记录」两处表述，无「Redis 保证一致/有序/可恢复」类断言（pass）；
+  2. 逐条比对 §6 状态转换表与 SRS §6.2 / 领域模型 §5/§6.11：NotificationEvent=`pending/processing/processed/cancelled/failed`、NotificationDelivery=`queued/sending/succeeded/failed/retry_scheduled/dead_letter`、退信仅入 `channel_metadata`，无新增状态（pass）；
+  3. 逐条比对 §4 事务用到的表/列/索引（Company / Appointment / CompanyBookingException / AppointmentSlot + 既有索引 uq_active_company / uq_appointment_exception / uq_delivery_attempt）与领域模型 §6.5–§6.17，无新增结构（pass）；
+  4. `grep "architecture:" baseline.yml` → `version: "0.2", status: review`，未变为 approved（pass）。
 - lint / typecheck：不适用（设计任务）
 - DB 迁移验证：无
-- 验收证据：<待回填>
-- 变更预算实际值：<待回填>
-- 未解决风险：<待回填>
-- 是否偏离 TASK：<待回填>
+- 验收证据：architecture.md v0.2（§1–§12）覆盖六项强制要求：§5 SSE 改 commit-derived 轮询消除双写窗口、§4 统一锁顺序 L0→L3、§6 Outbox `FOR UPDATE SKIP LOCKED`+隐式租约+至少一次、§7 退信入口边界、§10 四项 ADR 唯一推荐；§12 含 16 项 v0.1→v0.2 变更记录；§6.10 模型边界声明（零扩模型）。
+- 变更预算实际值：max_files=5，实际 5 文件（architecture.md / TASK-ARCH-002.md / TASK-ARCH-001.md / baseline.yml / PROJECT_STATE.md），未超预算。
+- 未解决风险：
+  1. **残留重复投递风险（转《测试计划》）**：Outbox 至少一次语义下，若外部发送成功但 `NotificationDelivery` 状态提交失败（进程崩溃/网络分区），服务商侧已发邮件而 DB 未落库 → Sweeper 回收后重发 → 用户可能收到重复邮件。已用稳定幂等键（不含 attempt_no）尽力降低，但不保证跨崩溃端到端去重；须由《测试计划》覆盖重发幂等验证与业务可接受性评估。
+  2. **开放项待用户裁定**：ADR-005/006/007/008 留《安全设计》；`AUTH_EXPIRED` 语义冲突（SRS §3.3 关联限频 vs §8 定义登录过期）；§11.2 取消释放目标状态（`available` vs `force_unavailable` override）需裁定。
+- 是否偏离 TASK：否（仅做六项强制修正；未处理历史措辞、未建 TASK-GOV-*、未扩模型、未批准架构、未进入下游阶段）。
 - 规范影响结论：none（与上方「规范影响评估」一致）
 - spec_sync：clean（上游 SRS v1.1 / 领域模型 v1.1.4 / UI 线框 v1.0 均 approved 且 based_on 未变）
-- verified_commit：<G1 待回填>
-- **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
+- verified_commit：ef671228c02b3c099e8b17c2026eb6de9d3fa5dd（G1 快照，非自指）
+- **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
   **本任务与 TASK-ARCH-001 均保持 review，待用户独立评审批准 architecture v0.2 后方可关闭。AI 不得代签 approved。**
 
 ## 关联

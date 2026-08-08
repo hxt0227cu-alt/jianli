@@ -153,13 +153,13 @@
 - 验收证据：domain-model.md v1.1.5（§1/§2.3/§5/§6.11/§6.12/脚注）：新增 `NotificationDelivery.delivery_purpose` 列 + 唯一约束调整 + 三目的合法 channel/收件人来源映射（收件人不新增明文字段）；§5/§6.11 明确事件类型与投递目的解耦、不重新引入 `confirm_mail`；architecture.md §13 登记两项后续修正待办。baseline.domain_model=1.1.5/review；PROJECT_STATE 同步阶段态与门禁顺序。
 - 变更预算实际值：max_files=5，实际 5 文件（domain-model.md / TASK-DM-003.md / baseline.yml / PROJECT_STATE.md / architecture.md 仅 §13），未超预算。
 - 未解决风险：
-  1. **下游影响待同步（spec_sync=dirty，预期触发 needs impact check，符合意图）**：SRS v1.1 需文字同步级更新（显式 `delivery_purpose` 概念与目的映射，不改变用户行为）；architecture v0.2 §6 须纳入 `delivery_purpose`（唯一约束 + 幂等键 + 投递创建置目的）；均待用户批准 v1.1.5 后由相应任务执行。
+  1. **下游影响待同步（spec_sync=dirty，预期触发 needs impact check，符合意图）**：SRS v1.1 需文字同步级更新（显式 `delivery_purpose` 概念与目的映射 + `uq_active_owner_admin` 约束与单 owner 不变量，不改变用户行为）；architecture v0.2 §6 须纳入 `delivery_purpose`（唯一约束 + 幂等键 + 投递创建置目的）；均待用户批准 v1.1.5 后由相应任务执行。
   2. **面试官改期/会议号更新/主动取消告知均属 MVP（已修正，非未来扩展）**：`appointment_rescheduled → interviewer_confirmation`、`appointment_details_updated → interviewer_confirmation`（会议号更新函）、`appointment_cancelled → interviewer_cancellation`（面试官主动取消告知）均已被三目的既有覆盖范围接纳，属 approved SRS v1.1 MVP 行为，不再列为可后续增补目的枚举。
-  3. **单 owner 唯一性（已裁定，方案 A）**：用户 2026-08-08 末次裁定采用方案 A——MVP 单候选人个人站点、不引入 `SiteConfig`，在 `User` 上加 `uq_active_owner_admin` 部分唯一索引（`WHERE role='owner_admin' AND deleted_at IS NULL`），确立三条运行不变量并固定 `candidate_notification` 收件人解析链路（见领域模型 §6.1）。**原 Stop & Report 阻塞已解除**，本草案未假设、完全按用户裁定落地。
-- 是否偏离 TASK：否（仅做六项强制修正 + 两项架构待办登记；未批准领域模型、未修改 SRS/UI 正文、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
+  3. **单 owner 唯一性（已裁定，方案 A，已收口）**：用户末次裁定 MVP=单候选人个人站点、不引入 `SiteConfig`，采用方案 A——`User.uq_active_owner_admin` 部分唯一索引（`WHERE role='owner_admin' AND deleted_at IS NULL`）+ 三条运行不变量 + `candidate_notification` 收件人解析固定链路（见领域模型 §6.1）。**原 Stop & Report 阻塞已解除**，本草案严格按用户裁定落地、未假设。
+- 是否偏离 TASK：否（仅做方案 A 主线修正 + 安全表述修正；未批准领域模型、未修改 SRS/UI 正文、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
 - 规范影响结论：srs=需文字同步级更新（非 none，不改变用户行为）；ui=none；architecture=需同步更新（待批准后）
 - spec_sync：dirty（domain_model 升 1.1.5，下游 SRS/UI/architecture 的 based_on/引用仍为 1.1.4，**预期触发 needs impact check**；按用户指令暂不修改下游，待批准后同步）
-- verified_commit：448bcac4b4b615a441256bcc79a5f9da97a7577c（G1 快照，非自指）
+- verified_commit：4c895e9f0900854d55cabff1958bdd4446b324b5（G5 最终内容评审包，非自指；G1=448bcac、G3=e41c0a1 为前置快照）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（下游 impact review 已执行并同步）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
   **本任务保持 review，待用户独立评审批准 domain_model v1.1.5 后方可关闭。AI 不得代签 approved。**
 

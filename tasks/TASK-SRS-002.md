@@ -1,6 +1,6 @@
 # TASK-SRS-002 SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）
 
-> 向前治理修正：SRS v1.0 声称吸收 PRD/用例规约但**遗漏退信(Bounce) 用户可观察行为**——PRD §4.6 / R26（场景 18）与 UC-21 已明确要求记录退信、后台展示/筛选、告警、手动重发且不回滚预约。本任务将退信行为补入 SRS，升版 **v1.1（review）**；不修改已批准 v1.0 快照（26ae844）；完成下游影响评审，但**不代签批准 SRS**。
+> 向前治理修正：SRS v1.0 声称吸收 PRD/用例规约但**遗漏退信(Bounce) 用户可观察行为**——PRD §4.6 / R26（场景 18）与 UC-21 已明确要求记录退信、后台展示/筛选、告警、手动重发且不回滚预约。本任务将退信行为补入 SRS，升版 **v1.1**；不修改已批准 v1.0 快照（26ae844）；完成下游影响评审；**SRS v1.1 已于 2026-08-08 经用户独立评审批准（approval_commit=00e125c）**，下游 TASK-UI-002 已同步退信并关闭。本任务现关闭。
 
 ## 任务类型
 - spec_correction（SRS 缺陷修正）
@@ -89,7 +89,7 @@
 
 ## 下游影响评审（downstream impact review，本任务完成）
 - **domain_model v1.1.4**：退信字段 `bounced_at`/`bounce_reason` 已在 §5 `channel_metadata` 定义，无需变更；影响 none。
-- **TASK-UI-002 / ui-wireframe**：其「待裁定项（UI 批准前阻塞项）」中退信阻塞在 SRS v1.1 approved 后解除；当前 TASK-UI-002 与 ui_wireframe 维持 pending，本任务不修改，待用户批准 SRS v1.1 后由 TASK-UI-002 同步执行（含退信展示/筛选/重发线框）。
+- **TASK-UI-002 / ui-wireframe**：其「待裁定项（UI 批准前阻塞项）」中退信阻塞在 SRS v1.1 approved 后解除；当前 TASK-UI-002 与 ui_wireframe 维持 pending，本任务不修改，TASK-UI-002 已执行并关闭（commit `266a773`，verified_commit 同），完成 A6/A7 失败状态三态 + 退信(Bounce) 展示/筛选/告警/重发线框同步，吸收已批准 SRS v1.1；ui-wireframe.status 仍 pending，待用户评审实际线框后批准。
 - **openapi / architecture / security / test_plan**：均 pending（0.0），无现有下游工件需即时同步；spec_sync 标 dirty 以待其产出时吸收退信行为，但不阻塞本缺陷修正（无已存在工件被破坏）。
 - **结论**：SRS v1.1 为缺陷修正，行为增量已由 PRD/UC 规定；无需触发新的 Change Request（PRD/UC 已含退信要求，SRS 仅补写）。下游 UI 同步待 SRS 批准后由 TASK-UI-002 执行。
 
@@ -110,21 +110,22 @@
   2. docs/baseline.yml — srs.version 1.0→1.1、status approved→review
   3. tasks/TASK-SRS-002.md — 本任务单（新建）
   4. PROJECT_STATE.md — TASK-SRS-002 条目 + srs review 状态同步
-- 测试命令及结果：<命令> → <pass/fail>
+- 测试命令及结果：全仓 Grep 复核 SRS v1.1 含"退信/Bounce"行为节（§3.8/§3.9/§4.3/§6.2/§9）且与 PRD §4.6/R26、UC-21 一致；下游 ui-wireframe.md A6/A7 已含退信展示/筛选/告警/重发（commit `266a773`）→ **pass**
 - lint / typecheck：无（纯文档）
 - DB 迁移验证：无
-- 验收证据：SRS v1.1 与 PRD §4.6/R26、UC-21 逐条对照（退信记录/展示筛选/告警/手动重发/不回滚预约均覆盖）；domain_model v1.1.4 §5 channel_metadata 已含 bounce 字段，无冲突
+- 验收证据：SRS v1.1 与 PRD §4.6/R26、UC-21 逐条对照（退信记录/展示筛选/告警/手动重发/不回滚预约均覆盖）；domain_model v1.1.4 §5 channel_metadata 已含 bounce 字段，无冲突；下游 TASK-UI-002 已同步并关闭（A6/A7 失败三态 + 退信线框）
 - 变更预算实际值：max_files=4，实际 4 文件，未超预算
-- 未解决风险：下游 UI 同步待 SRS 批准后执行（非本任务范围）
+- 未解决风险：无（SRS v1.1 已 approved、TASK-UI-002 已同步退信并关闭；openapi/security/test_plan 待后续阶段产出时吸收，不影响本任务）
 - 是否偏离 TASK：否
-- 规范影响结论：behavior_change=true（补遗漏行为），domain_model none，下游待批准后同步
-- spec_sync：dirty（openapi/security/test_plan 待产出时吸收；无现有工件破坏）
-- verified_commit：1c21d7dcae4c3c1c413697d251a4c7e7f136696a（TASK-SRS-002 SRS v1.1 review 草案锚点 / G1；G2 为纯证据回填，不得循环指向自身）
+- 规范影响结论：behavior_change=true（补遗漏行为），domain_model none，下游已由 TASK-UI-002 同步并关闭
+- spec_sync：clean（SRS v1.1 已 approved；下游 UI 已同步；openapi/security/test_plan 尚未产出，无现有工件破坏，spec_sync 转 clean）
+- verified_commit：b38febd591d487f915dc466618e25b7e178b1c14（TASK-UI-002 关闭提交，承载下游退信同步验证；本任务 SRS 修订交付于 1c21d7d，approval_commit=00e125c；verified_commit 指向真实下游验证快照，非自指）
 
 ## 关闭门禁
-- 本任务**不等同于批准 SRS**。SRS 批准由用户独立操作 `docs/baseline.yml`（status→approved）。
-- 本任务完成判据：① SRS v1.1 review 草案完成（含退信行为）；② 下游影响评审完成；③ spec_sync 已标注（dirty 待下游吸收）；④ 未偏离授权路径。
-- 用户批准 SRS v1.1（baseline status→approved）后，TASK-UI-002 退信阻塞解除、可同步执行；本 SRS 缺陷修正视为落地。AI 不代签批准。
+- SRS 批准由用户独立操作 `docs/baseline.yml`（status→approved，approval_commit=`00e125c`），AI 不代签。
+- 本任务完成判据（已满足）：① SRS v1.1 review 草案完成（含退信行为，commit `1c21d7d`）；② 下游影响评审完成；③ spec_sync=clean（UI 已同步）；④ 未偏离授权路径。
+- 用户批准 SRS v1.1 后，TASK-UI-002 退信阻塞解除、已同步执行并关闭（commit `266a773`）；本 SRS 缺陷修正视为落地。
+- **状态：已关闭（Closed，2026-08-08）**。
 
 ## 关联
 - 上游：SRS v1.0（26ae844，approved，遗漏退信）/ PRD §4.6/R26 / UC-21

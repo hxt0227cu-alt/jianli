@@ -7,6 +7,7 @@
 > **v1.1.2 整改（第六轮 P0-6~P0-8 + 实现边界）**：`CompanyBookingException` 补 `revoked_at`/`revoked_by` 与并发消费锁（`FOR UPDATE` + `uq_appointment_exception`）；`DeliveryAttempt` 幽灵实体全文改为 `NotificationDelivery` 尝试记录并补唯一约束；`RecommendedQuestionCache` 改为 `page_key/questions_json/generated_at/invalidated_at` + `UNIQUE(page_key) WHERE invalidated_at IS NULL`（取消全局版本字段）；`AvailabilityOverride` 补 NOT NULL 约束与 `CHECK`、明确为 owner 意图真相源；并发抢占补三格连续性服务端校验；逻辑模型与物理 Schema 分离说明；配套 PRD v2.3.3、用例规约 v1.7.2；**v1.1.3 整改（TASK-DM-001 独立修正，2026-08-07；已于 `f64b6de` 正式批准，内容以该 commit 快照为准）**：密码哈希算法裁定边界表述（`password_hash` 当前按 Argon2id 设计、最终算法待《安全设计》ADR 裁定，PRD §8.7 BCrypt 冲突以安全设计为准）；编码准入门禁改引用 baseline `development_gate` 全 10 项（纠正「仅接口契约+测试计划通过即开放编码」误述）；遗留 `purge_before→purge_after` 改名痕迹清除。**该版本批准后经复评发现 P0 缺陷——正文 5 处仍将实现指向 Argon2id，与「领域模型不预选算法」自相矛盾，故已由 v1.1.4 取代；1.1.3 的批准事实与锚点 `f64b6de` 保留为历史记录，不予否认。**
 > **v1.1.4 整改（TASK-DM-002 独立修正，2026-08-08）**：**密码哈希算法彻底中性化**——领域模型**仅规定 `password_hash` 存储密码哈希（不存明文），不预选任何具体哈希算法**；算法裁定权归《安全设计》ADR。落点 4 处：§1 存储策略、§2.3 类图 `User`、§4 ER 图 `USER`、§6.1 字段表（原 Argon2id 实现指向全部清除）。同时新增**冲突升级条款**：若《安全设计》ADR **拟选算法**与 PRD §8.7 记载的 BCrypt 不一致，**必须先通过变更请求（Change Request）更新并批准所有受影响的规范（至少含 PRD §8.7 与 SRS 相关条款），规范同步完成并获批准前不得按该 ADR 实现**；不得允许 ADR 与规范长期冲突并存。本版不改领域实体 / 属性 / 关系 / 状态机 / 不变量 / 并发约束；对 SRS 存在**文字同步级**影响（SRS §6.3 现称「领域模型 §6.1 记为 Argon2id」已过期），须由 TASK-SRS-001 在 v1.1.4 获批后执行 impact review（结论不得记为 none）。
 > **v1.1.5 整改（TASK-DM-003 review 草案，2026-08-08）**：修复 `NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」的实现阻塞——新增 `delivery_purpose` 枚举列（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），唯一约束由 `(event_id, channel, event_version, attempt_no)` 调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`；**事件类型继续表达业务事实**，投递目的表达该事实产生的**投递意图**，不得重新引入 `confirm_mail` 业务事件类型。本版**不改**密码哈希冲突升级条款（沿用 v1.1.4）。v1.1.4 已于 `f537296` 正式批准（历史事实保留，不予否认），其内容由本 v1.1.5 review 草案取代；下游 SRS v1.1 / UI v1.0 / architecture v0.2 的影响分析见 TASK-DM-003，**待用户批准 v1.1.5 后再同步下游，本草案不修改下游工件**。
+> **v1.1.5 补正（本次内容评审包）**：① 面试官收件人来源由错误虚构的 `Appointment.interview_id → Interview.interviewer_id → InterviewerProfile.registered_email` 修正为既有 `Appointment.user_id → User.id → User.email`（删除不存在的 `Interview` 实体引用与 `InterviewerProfile.registered_email` 字段）；② `OwnerContactConfig` 新增 `candidate_feishu_open_id_ciphertext` 字段（候选人飞书接收标识，原本无领域字段，作为**显式领域模型变更**列出，沿用已批准 AES 密文模式）；③ 候选人邮箱来源指向 `owner_admin` 的 `User.email`，但模型当前**无单 owner 唯一性约束、亦无显式配置关系**——**Stop & Report 触发**，未假设，留待用户裁定（方案 A：`User` 上 `WHERE role='owner_admin'` 部分唯一索引；方案 B：单例 `SiteConfig.owner_user_id`）；④ 补全事件类型→投递目的完整映射与「`appointment_cancelled` 同事件多目的并发投递」说明，明确面试官改期确认函 / 会议号更新函 / 面试官主动取消告知函均属 approved SRS v1.1 MVP 行为、非未来扩展。
 
 ---
 
@@ -119,6 +120,7 @@ classDiagram
         +id UUID PK
         +user_id UUID UK,FK
         +candidate_phone_ciphertext bytes AES
+        +candidate_feishu_open_id_ciphertext bytes AES
         +updated_at timestamptz
     }
     class EmailVerificationToken {
@@ -442,7 +444,7 @@ erDiagram
 
 ### 6.3 InterviewerProfile / OwnerContactConfig（0..1）
 | InterviewerProfile.user_id UUID PK,FK | display_name string NULL |
-| OwnerContactConfig.id UUID PK | user_id UUID UK,FK | candidate_phone_ciphertext bytes AES NULL | updated_at timestamptz |
+| OwnerContactConfig.id UUID PK | user_id UUID UK,FK | candidate_phone_ciphertext bytes AES NULL | candidate_feishu_open_id_ciphertext bytes AES NULL | updated_at timestamptz |
 
 ### 6.4 EmailVerificationToken / PasswordResetToken（P0-7）
 | (EmailVerificationToken\|PasswordResetToken).id UUID PK | user_id UUID FK | token_hash string NOT NULL | expires_at timestamptz NOT NULL | consumed_at timestamptz NULL |
@@ -534,12 +536,17 @@ CREATE UNIQUE INDEX uq_delivery_attempt
 
 | delivery_purpose | 含义 | 合法 channel | 收件人来源（不新增明文字段） |
 |---|---|---|---|
-| `candidate_notification` | 面向**候选人**的通知/提醒（reminder_due、appointment_created/rescheduled/cancelled 的候选人侧告知） | `email` + `feishu`（双通道，SRS §3.8） | 候选人：由 `Appointment` → 候选人用户（`candidate` 联系方式密文，受访问控制解密）；飞书经候选人 feishu 用户标识 |
-| `interviewer_confirmation` | 面向**面试官**的预约确认函（appointment_created 的面试官侧确认） | `email`（PRD §4.5.1 确认函投递至面试官注册邮箱） | 面试官注册邮箱：由 `Appointment.interview_id` → `Interview.interviewer_id` → `InterviewerProfile.registered_email`（密文，受访问控制解密） |
-| `interviewer_cancellation` | 面向**面试官**的取消告知函（owner 强制取消的面试官侧告知） | `email`（PRD P0-4 owner 取消发注册邮箱取消告知函） | 同上，`InterviewerProfile.registered_email` |
+| `candidate_notification` | 面向**候选人（即站点 owner_admin 本人）**的通知/提醒：涵盖 `appointment_created` / `appointment_rescheduled` / `appointment_cancelled` 的候选人侧告知，以及 `reminder_due` | `email` + `feishu`（双通道，SRS §3.8） | **邮箱**：`owner_admin` 角色 `User.email`（系统唯一确定该 owner_admin，见下方「单 owner 决议项」）；**手机**：`OwnerContactConfig.candidate_phone_ciphertext`；**飞书**：`OwnerContactConfig.candidate_feishu_open_id_ciphertext`（**新增字段**，见下方） |
+| `interviewer_confirmation` | 面向**面试官**的预约确认函（涵盖 `appointment_created` / `appointment_rescheduled` / `appointment_details_updated` 的面试官侧确认，含改期确认函与会议号更新函） | `email`（PRD §4.5.1 确认函投递至面试官注册邮箱） | `Appointment.user_id` → `User.id` → `User.email`（面试官注册邮箱；`User.email` 受既有 UK 与访问控制约束，密文存取由会话/访问控制层保证） |
+| `interviewer_cancellation` | 面向**面试官**的取消告知函（涵盖 `appointment_cancelled` 的面试官侧告知，含面试官主动取消场景） | `email` | 同上，`Appointment.user_id` → `User.id` → `User.email` |
 
-> 收件人**绝不**以明文列冗余存储：候选人/面试官联系方式沿用既有密文字段（`candidate_*` / `InterviewerProfile.registered_email`），发送时按访问控制解密；`delivery_purpose` 仅决定「取哪个业务实体的哪个联系方式」与「用哪个通道模板」，不改变收件人存储方式。
-> 事件类型与投递目的解耦：`appointment_created` 可同时产生 `candidate_notification`（email+feishu 通知候选人）与 `interviewer_confirmation`（email 确认函给面试官）；二者为 `NotificationDelivery` 中两行不同 `delivery_purpose`、可独立重试/退信/重发。未在最小目的集中列出的「面试官改期告知」等可后续增补目的枚举，不破坏唯一约束与既有三目的语义。
+> 收件人**绝不**以明文列冗余存储：候选人联系方式沿用 `OwnerContactConfig.candidate_phone_ciphertext` / `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（均为已批准加密字段模式下的密文）+ `owner_admin` 的 `User.email`；面试官联系方式沿用 `User.email`（由 `Appointment.user_id` 关联）。`delivery_purpose` 仅决定「取哪个业务实体的哪个联系方式」与「用哪个通道模板」，不改变收件人存储方式。
+> **事件类型 → 投递目的映射（完整，已是 approved SRS v1.1 MVP 行为，非未来扩展）**：
+> - `candidate_notification`：`appointment_created` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`
+> - `interviewer_confirmation`：`appointment_created` / `appointment_rescheduled` / `appointment_details_updated`
+> - `interviewer_cancellation`：`appointment_cancelled`
+> **同事件多目的并发投递**：`appointment_cancelled` 必须**同时**产生① 候选人 `candidate_notification`（`email` + `feishu` 两行）与② 面试官 `interviewer_cancellation`（`email` 一行）；面试官的改期确认函（`appointment_rescheduled`）、会议号更新函（`appointment_details_updated`）、面试官主动取消告知函（`appointment_cancelled` 的面试官侧）**均为上述三目的既有覆盖范围，属 approved SRS v1.1 MVP 行为，不得列为未来扩展**。
+> **单 owner 决议项（Stop & Report 待裁定）**：当前模型 `User.role=owner_admin` 为普通枚举值，**无单 owner 唯一性约束**（缺 `WHERE role='owner_admin'` 的部分唯一索引），亦**无显式配置关系**（缺 `SiteConfig.owner_user_id` 之类单例）。因此系统**尚无法确定性解析「哪一个 User 是 THE owner_admin」**；本草案**不假设**，留待用户裁定：方案 A 在 `User` 上增加 `WHERE role='owner_admin'` 的部分唯一索引（或等价单例约束）；方案 B 引入单例 `SiteConfig`（或复用既有单例模式）显式持有 `owner_user_id`。该决议落地前，`candidate_notification` 的 `User.email` 来源视为**未决**。
 
 ### 6.13 Conversation / Message（含留存）
 | Conversation.id UUID PK | user_id FK→User | created_at / updated_at | deleted_at timestamptz NULL | purge_after timestamptz NULL（180 天） |

@@ -37,7 +37,7 @@
 - **不批准领域模型**（不得把 `baseline.domain_model.status` 改为 approved）。
 - **不修改 SRS v1.1 / UI v1.0 / architecture v0.2 正文**（仅记录影响分析；下游同步待用户批准 v1.1.5 后由相应任务执行）。
 - **不重新引入 `confirm_mail` 业务事件类型**：投递目的用 `delivery_purpose` 表达，事件类型保持业务事实语义。
-- 不新增冗余明文收件人字段；收件人沿用既有密文（`candidate_*` / `InterviewerProfile.registered_email`），发送时按访问控制解密。
+- 不新增冗余明文收件人字段；候选人收件人沿用 `OwnerContactConfig.candidate_phone_ciphertext` / `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（AES 密文）+ `owner_admin` 的 `User.email`，面试官收件人沿用 `Appointment.user_id → User.email`，发送时按访问控制解密。
 - **不修改密码哈希冲突升级条款**（沿用 v1.1.4）。
 - 不建 TASK-GOV-*；不处理历史措辞；不写代码/迁移脚本；不进入安全设计 / OpenAPI / 测试计划 / 编码。
 
@@ -56,9 +56,11 @@
 - 安全设计 / 测试计划 工件
 
 ## 已批准的 DB / API / 依赖变更
-- **本任务即领域模型修订本身**：在领域模型 v1.1.4 已批准范围内，**新增一个字段** `NotificationDelivery.delivery_purpose`（`enum[candidate_notification, interviewer_confirmation, interviewer_cancellation]`）并**调整一个唯一索引** `uq_delivery_attempt` 由 `(event_id, channel, event_version, attempt_no)` 改为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`。
-- 此为修复实现阻塞的**最小必要变更**，由用户本指令明确授权；**未新增**任何实体 / 表 / 其他字段 / 外部依赖。
-- **不触发 Stop & Report**：变更范围完全由用户本指令界定（新增 delivery_purpose 列 + 唯一约束调整），属于领域模型自身修订，未越界到 SRS/UI/架构正文、未引入新实体或外部依赖。
+- **本任务即领域模型修订本身**：在领域模型 v1.1.4 已批准范围内，含两类变更：
+  1. **`NotificationDelivery.delivery_purpose`**：新增字段 `enum[candidate_notification, interviewer_confirmation, interviewer_cancellation]`；**调整唯一索引** `uq_delivery_attempt` 由 `(event_id, channel, event_version, attempt_no)` 改为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`。
+  2. **`OwnerContactConfig.candidate_feishu_open_id_ciphertext`**：新增 AES 密文字段（候选人飞书接收标识，原无领域字段），由用户补正指令 item 3 显式授权「如需新增持久化字段，先作为领域模型变更明确列出」。
+- 上述两项均为领域模型自身修订，由用户指令授权；**未新增任何实体 / 表 / 外部依赖**。
+- **不触发越界硬停**：变更范围由用户指令界定（delivery_purpose + uq_delivery_attempt + 新增一处 owner 联系密文字段），未越界到 SRS/UI/架构正文、未引入新实体或外部依赖；`candidate_feishu_open_id_ciphertext` 作为显式列明的领域模型变更，不构成「未列明的新字段」。
 
 ## 规范影响评估（spec impact）
 - behavior_change：**false**（对最终用户可观察行为无变化：同一预约仍分别通知候选人与面试官，渠道/收件人/模板与 PRD/SRS 既有规定一致；仅为数据模型可正确表达既已要求的多目的投递）。
@@ -80,7 +82,7 @@
 - **架构待办**：architecture.md §13 已登记两项后续修正（Slot 重新物化 / 租约区分未发送与结果未知）。
 
 ## 安全与隐私验收
-- 收件人沿用既有密文字段（`candidate_*` / `InterviewerProfile.registered_email`），发送时按访问控制解密；不新增明文收件人列。
+- 候选人收件人沿用 `OwnerContactConfig.candidate_phone_ciphertext` / `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（AES 密文）+ `owner_admin` 的 `User.email`；面试官收件人沿用 `User.email`（经 `Appointment.user_id` 关联）；不新增明文收件人列。
 - 密码哈希冲突升级条款沿用 v1.1.4，未改动。
 
 ## 性能验收
@@ -151,13 +153,28 @@
 - 变更预算实际值：max_files=5，实际 5 文件（domain-model.md / TASK-DM-003.md / baseline.yml / PROJECT_STATE.md / architecture.md 仅 §13），未超预算。
 - 未解决风险：
   1. **下游影响待同步（spec_sync=dirty，预期触发 needs impact check，符合意图）**：SRS v1.1 需文字同步级更新（显式 `delivery_purpose` 概念与目的映射，不改变用户行为）；architecture v0.2 §6 须纳入 `delivery_purpose`（唯一约束 + 幂等键 + 投递创建置目的）；均待用户批准 v1.1.5 后由相应任务执行。
-  2. **面试官改期告知超出最小目的集**：`appointment_rescheduled → 面试官` 告知不在本草案强制三目内，列为可后续增补目的枚举，不破坏既有三目语义。
+  2. **面试官改期/会议号更新/主动取消告知均属 MVP（已修正，非未来扩展）**：`appointment_rescheduled → interviewer_confirmation`、`appointment_details_updated → interviewer_confirmation`（会议号更新函）、`appointment_cancelled → interviewer_cancellation`（面试官主动取消告知）均已被三目的既有覆盖范围接纳，属 approved SRS v1.1 MVP 行为，不再列为可后续增补目的枚举。
+  3. **单 owner 唯一性未决（Stop & Report 触发，留待用户裁定）**：模型 `User.role=owner_admin` 无单 owner 唯一性约束（缺 `WHERE role='owner_admin'` 部分唯一索引）、亦无 `SiteConfig.owner_user_id` 之类显式配置关系；`candidate_notification` 的 `User.email` 来源在决议落地前视为**未决**，本草案**未假设**。需用户选择方案 A（部分唯一索引）或方案 B（单例 SiteConfig）后方可落地该映射。
 - 是否偏离 TASK：否（仅做六项强制修正 + 两项架构待办登记；未批准领域模型、未修改 SRS/UI 正文、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
 - 规范影响结论：srs=需文字同步级更新（非 none，不改变用户行为）；ui=none；architecture=需同步更新（待批准后）
 - spec_sync：dirty（domain_model 升 1.1.5，下游 SRS/UI/architecture 的 based_on/引用仍为 1.1.4，**预期触发 needs impact check**；按用户指令暂不修改下游，待批准后同步）
 - verified_commit：448bcac4b4b615a441256bcc79a5f9da97a7577c（G1 快照，非自指）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（下游 impact review 已执行并同步）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
   **本任务保持 review，待用户独立评审批准 domain_model v1.1.5 后方可关闭。AI 不得代签 approved。**
+
+## 补正记录（v1.1.5 补正内容评审包，2026-08-08，指令：修实质实体/字段错误）
+- 触发：用户对 v1.1.5 审查后指出会误导实现的实体/字段错误；指令只修实质问题、不建 TASK-GOV、不追修提交描述、不改下游工件、不批准、不进安全设计。
+- 本次修正（均落在 domain-model.md v1.1.5 review 草案内，未动下游）：
+  1. **面试官收件人来源修正**：删除虚构的 `Appointment.interview_id → Interview.interviewer_id → InterviewerProfile.registered_email`；改为既有 `Appointment.user_id → User.id → User.email`（`InterviewerProfile` 仅有 `display_name`、无 `registered_email`；`Interview` 实体不存在）。
+  2. **候选人收件人来源**：手机=`OwnerContactConfig.candidate_phone_ciphertext`（沿用）；邮箱=`owner_admin` 的 `User.email`（方向正确，但见 Stop & Report）。
+  3. **候选人飞书接收标识（原无领域字段）**：新增 `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（AES 密文），作为**显式领域模型变更**列出（指令 item 3 授权）。
+  4. **完整事件→目的映射**：`candidate_notification`=created/rescheduled/cancelled/reminder_due；`interviewer_confirmation`=created/rescheduled/details_updated；`interviewer_cancellation`=cancelled。
+  5. **同事件多目的并发投递**：`appointment_cancelled` 必须同时产生 候选人 `candidate_notification`（email+feishu）+ 面试官 `interviewer_cancellation`（email）；面试官改期确认函/会议号更新函/主动取消告知函均属 SRS v1.1 MVP 行为，非未来扩展。
+- **Stop & Report（item 2）**：模型当前无单 owner 唯一性约束、亦无显式配置关系，系统无法确定性解析「哪一个 User 是 THE owner_admin」；本草案**未假设**，留待用户裁定（方案 A 部分唯一索引 / 方案 B 单例 SiteConfig）。`candidate_notification` 的 `User.email` 来源在决议前视为未决。
+- 补正提交（G3）：<待回填>
+- 修改文件清单（补正包）：docs/design/domain-model.md / tasks/TASK-DM-003.md（2 个路径，均在「允许修改路径」内，未超 change_budget max_files=5）
+- 是否偏离 TASK：否（补正在用户本指令授权范围内；domain_model 仍 review、未批准、未动下游、未进安全设计；新增字段已由指令 item 3 显式授权，不触发越界硬停）
+- verified_commit（补正包）：<待回填>
 
 ## 关联
 - 上游任务：TASK-DM-002（v1.1.4 approved，锚点 `f537296`；本任务 v1.1.5 取代其正文，v1.1.4 批准事实保留为历史）

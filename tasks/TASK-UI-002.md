@@ -1,6 +1,6 @@
 # TASK-UI-002 UI 线框内容修正（承载 TASK-UI-IMPACT-001 的 MP-1 + 吸收 SRS v1.1 退信要求）
 
-> 修正 UI 线框中经影响评审确认的内容缺口，并吸收已批准 SRS v1.1 的退信(Bounce) 用户可观察行为；不扩需求、不批准 ui_wireframe、不推进下游。按 TASK-TEMPLATE 补全（TASK-GOV-004 校正；本回合更新依据为已批准 SRS v1.1）。本任务**执行中、未关闭**，待用户评审实际线框后授权批准 UI。
+> 修正 UI 线框中经影响评审确认的内容缺口，并吸收已批准 SRS v1.1 的退信(Bounce) 用户可观察行为；不扩需求、不批准 ui_wireframe、不推进下游。按 TASK-TEMPLATE 补全（TASK-GOV-004 校正；本回合更新依据为已批准 SRS v1.1）。本任务**已关闭（2026-08-08）**，待用户评审实际线框后授权批准 UI。
 
 ## 任务类型
 - design_correction
@@ -97,18 +97,21 @@
 - 其余硬停：超出 change_budget（max_files=3）→ 拆任务
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填>
-- 修改文件清单：<回填，与「允许修改路径」对照>
-- 测试命令及结果：<命令> → <pass/fail；Grep 复核 A6/A7 含 dead_letter/retry_scheduled + 退信展示/筛选/告警/重发>
+- commit / PR：266a7733bee57861c4f678e763dd4889b134d799（ui-wireframe.md A6/A7 同步提交 / 本任务 verified_commit=G1）
+- 修改文件清单（按路径逐条计数，与「允许修改路径」对照）：
+  1. docs/design/ui-wireframe.md — A6/A7 失败状态三态 + 退信(Bounce) 展示/筛选/告警/重发同步（MP-1 + SRS v1.1 吸收）
+  2. tasks/TASK-UI-002.md — 本任务单（范围更新 + 关闭证据）
+  3. tasks/TASK-UI-001.md — 标注内容缺口已闭合
+- 测试命令及结果：全仓 Grep 复核 A6/A7 含 `dead_letter`/`retry_scheduled`、`bounced_at`/`bounce_reason` 展示、按通道与状态筛选、退信告警状态、手动重发新建 NotificationDelivery 尝试 → **pass**（9 处匹配，见 ui-wireframe.md L6/L275/L276/L314/L318–L323）
 - lint / typecheck：无（纯文档）
 - DB 迁移验证：无
-- 验收证据：<线框片段，敏感字段脱敏>
-- 变更预算实际值：<max_files 实际 / 行数，与预算对照>
-- 未解决风险：<或「无」>
-- 是否偏离 TASK：<否>
-- 规范影响结论：none（纯设计修正，不改行为）
+- 验收证据：ui-wireframe.md A6（状态列 failed/retry_scheduled/dead_letter + 退信行 bounced_at/bounce_reason + 按通道与状态筛选 + 退信告警 + 手动重发新建 NotificationDelivery 尝试）、A7（通知失败列含 dead_letter 标红 + 退信列显 bounced_at/bounce_reason 与告警状态）；语义色与 SRS §6.2 一致
+- 变更预算实际值：max_files=3，实际 3 文件，未超预算
+- 未解决风险：无
+- 是否偏离 TASK：否
+- 规范影响结论：none（纯设计修正，不改行为；SRS v1.1 已含退信且 approved）
 - spec_sync：clean
-- verified_commit：<回填>
+- verified_commit：266a7733bee57861c4f678e763dd4889b134d799（UI 同步交付快照 G1；本任务关闭提交为 G2 纯证据回填，不循环指向自身）
 
 ## 关闭门禁（四条件全满足方可关闭）
 ① 测试通过（Grep 复核 A6/A7 枚举一致 + 退信展示/筛选/告警/重发）；② 规范影响 none；③ spec_sync=clean；④ verified_commit 已记录真实 sha。任一不满足→不得关闭。

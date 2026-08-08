@@ -93,6 +93,7 @@
 - UI 线框 v1.0 初稿已完成（commit `30afe97b`），覆盖 U1–U12（用户页面）+ A1–A8（admin 后台），与 SRS §3.1–§3.9 功能域一一映射；语义色（绿=available / 黄=前端临时态不落库 / 红=booked/owner_locked/unavailable）与 SRS §6.2 状态模型一致。
 - 关键交互流（预约原子创建、改期原子事务、owner 强制取消）已按 §3.5/§3.6/§3.7 绘制。
 - baseline `ui_wireframe` 仍 `pending`；本任务未关闭，待用户/独立评审批准 v1.0 后将 `ui_wireframe.status` 置 `approved` 并补全关闭证据。
+- **内容缺口已闭合**：TASK-UI-002 已执行并关闭（commit `266a773`，verified_commit 同），完成 A6/A7 失败状态三态（failed/retry_scheduled/dead_letter）+ 退信(Bounce) 展示/筛选/告警/重发同步，吸收已批准 SRS v1.1（approval_commit `00e125c`）。线框现已与 SRS v1.1 一致，待用户评审实际线框后授权批准 UI。
 
 ## 关联
 - Change Request：无

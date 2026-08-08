@@ -14,6 +14,7 @@
 - **领域模型 v1.1.4 / status=approved**（经用户 2026-08-08 明确批准「我批准领域模型 v1.1.4 的内容」，独立批准锚点 `f537296`，不复用 `f64b6de`）。v1.1.3 已于 `f64b6de` **正式批准（历史事实保留，不予否认）**，但其后发现 P0 算法锁定缺陷；按"同一版本号不得对应批准前后两份不同内容"的治理原则，修正**不复用 1.1.3**，改由 **TASK-DM-002 升版 v1.1.4** 承载（密码算法中性化 + Security ADR 与 PRD §8.7 BCrypt 冲突须走规范影响/变更评审的条款）。TASK-DM-002 已关闭。
 - **SRS v1.1 / status=approved**（v1.0 于 `26ae844` 批准；v1.1 退信(Bounce) 缺陷修正经用户 2026-08-08 独立评审批准，独立批准锚点 `00e125c`，不复用 review 草案 `1c21d7d`；v1.0 approved 快照冻结于 `26ae844` 不重写），`spec_sync=clean`。`baseline.srs.based_on` = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.4（上游均已 approved 且对齐）；TASK-SRS-001 已完成 impact review 并关闭；**SRS 现为行为唯一源**（precedence 高于 PRD/用例规约），用例规约冻结为历史输入；**v1.1 缺陷修正（TASK-SRS-002）已关闭**：补充退信记录/展示筛选/告警/手动重发/不回滚预约，v1.0 遗漏项已补。
 - **UI 线框 v1.0（TASK-UI-001 / ui-wireframe.md）**：UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=`38b102a`，baseline.status=`approved`）；影响评审（TASK-UI-IMPACT-001）结论=基本可沿用 + 1 处缺口；内容缺口由 TASK-UI-002 执行并闭合（A6/A7 失败三态 + 退信），8 项后续内容修正由 **TASK-UI-003** 一次性修正并闭合（对齐 SRS v1.1、消除误导实现表述）；TASK-UI-001 已关闭。下游进入架构/ADR 阶段。
+- **架构设计（TASK-ARCH-001 / architecture.md）**：**review 草案（v0.1）**——覆盖系统边界/模块划分、部署与调用关系、预约创建/原子改期/owner 强制取消事务边界、多实例 SSE 一致性与断线全量恢复、通知 Outbox/重试/死信/退信回写/人工重发、知识库热更新与索引原子切换、腾讯云部署/备份/监控/降级、需独立裁定 ADR 清单（含密码哈希留《安全设计》）。baseline.architecture=`review`；**不代签 approved**；密码哈希算法不在本阶段裁定；`AUTH_EXPIRED` 语义冲突（§3.3 vs §8）登记为「OpenAPI 设计前必须裁定」开放项。
 
 ---
 
@@ -29,6 +30,7 @@
 - **TASK-UI-002**：**已关闭（Closed，2026-08-08）**——UI 线框内容修正（A6/A7 通知失败中心失败处理态 failed/retry_scheduled/dead_letter 补全 + 吸收 SRS v1.1 退信：退信记录 bounced_at/bounce_reason 展示、按通道与状态筛选、退信告警状态、手动重发新建 NotificationDelivery 尝试）。依据已批准 SRS v1.1 §6.2/§4.3/§3.8/§3.9；verified_commit=`266a773`；`baseline.ui_wireframe.status` 保持 pending，待用户评审实际线框后授权批准。
 - **TASK-UI-003**：**已关闭（Closed，2026-08-08）**——UI 线框 8 处内容修正（消除误导实现表述，对齐 SRS v1.1）：A6 筛选拆分（投递态 failed/retry_scheduled/dead_letter / 退信 全部·是·否）、U9 两类通知分述（确认函→面试官注册邮箱 / 新事件→飞书+邮箱提醒候选人）、U3 周一–周日 7 独立列、红图例"已预约/不可约"、U3 交互冲突校验后直接弹 U7、U4 AUTH_EXPIRED 仅会话过期、U5 单次邮箱验证、文档顶部统一 SRS v1.1 并标注退信缺口闭合。依据已批准 SRS v1.1（§3.3/§3.4/§3.5/§3.8/§6.2/§8）；verified_commit=`c0f5829`；`baseline.ui_wireframe.status` 保持 pending，待用户评审实际线框后授权批准。
 - **TASK-SRS-002**：**已关闭（Closed，2026-08-08）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；approval_commit=`00e125c`（SRS v1.1 批准锚点）；verified_commit=`b38febd`（下游 UI 同步验证快照）；spec_sync=clean。SRS v1.1 现已 approved。
+- **TASK-ARCH-001**：**进行中（review 草案，2026-08-08）**——架构设计 review 草案（architecture.md v0.1）；覆盖 8 项目标 + ADR 清单；based_on SRS v1.1/领域模型 1.1.4/UI 线框 1.0；baseline.architecture=`review`；**不代签 approved**；密码哈希留《安全设计》；AUTH_EXPIRED 冲突登记为 OpenAPI 设计前开放项。待用户独立评审批准架构。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---
@@ -52,7 +54,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 > ③ ✅ **TASK-DM-002 `spec_sync` 转 clean + 关闭**（verified_commit=`94bedb5`，approval_commit=`f537296` 即 domain_model v1.1.4 独立批准锚点；对齐 TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
 > ④ ✅ 用户独立评审批准 **SRS v1.0**（AI 不代签，独立批准锚点 `26ae844`，不复用 `173cf9b6`）→ 关闭 TASK-SRS-001（verified_commit 见 S3 回填）、用例规约冻结为历史输入、SRS 成为行为唯一源；
 > ⑤ ✅ **UI 线框影响评审（TASK-UI-IMPACT-001）**：结论=基本可沿用（SRS `26ae844` + 领域模型 1.1.4 与现有线框对齐；仅 A6 通知失败中心状态枚举轻微缺口）→ 内容缺口由 **TASK-UI-002** 承载；`ui_wireframe.status` 仍 pending，待用户评审实际线框。
-> ⑤b ✅ 用户独立评审批准 **UI 线框 v1.0**（approval_commit=`38b102a`，baseline status→approved，TASK-UI-001 已关闭）→ ⑥ ⏳ **架构与 ADR（TASK-ARCH-001）**：产出架构设计 review 草案 → 安全设计 → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
+> ⑤b ✅ 用户独立评审批准 **UI 线框 v1.0**（approval_commit=`38b102a`，baseline status→approved，TASK-UI-001 已关闭）→ ⑥ ⏳ **架构与 ADR（TASK-ARCH-001）**：产出架构设计 review 草案（已提交，baseline.architecture=`review`）→ ⑦ ⏳ 用户独立评审批准架构 → 安全设计 → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
 > `development_gate` 全 10 项 approved 前不得进入编码。
 
 ---

@@ -1,6 +1,6 @@
 # TASK-UI-001 产出 UI 线框 v1.0（阶段 1 设计工件）
 
-> ⚠️ **基线已恢复有效 / 待用户评审实际线框**：本任务原始依据为误批准的 SRS（锚点 173cf9b6，已作废，不复用）。现 SRS v1.0 已于 `26ae844` 正式批准、领域模型 v1.1.4 已批准；UI 线框影响评审（TASK-UI-IMPACT-001）结论=基本可沿用，1 处轻微内容缺口由 TASK-UI-002 承载。`baseline.ui_wireframe.status` 仍 `pending`，未经用户评审不得置 approved。当前冻结以待评审，不得进入架构/API/测试/编码阶段。
+> ✅ **UI 线框 v1.0 已批准**：UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=`38b102a`）。原始依据误批准 SRS（173cf9b6）已作废不复用；现行依据为已批准 SRS v1.1（`00e125c`）/ 领域模型 v1.1.4（f537296）。内容缺口（TASK-UI-002 A6/A7 失败三态+退信）与 8 项内容修正（TASK-UI-003）均已闭合。`baseline.ui_wireframe.status`=`approved`，本任务已关闭，下游可进入架构/ADR 阶段。
 
 > 复制本模板为 `tasks/TASK-UI-001.md`，作为 AI **仓库变更**的唯一范围约束。无任务单不得写入仓库，包括文档、设计、测试和代码变更。
 
@@ -75,26 +75,27 @@
 - **必须立即停止并报告（不得自行决定）**：出现任何未在「允许修改路径」列明的变化，包括新增/修改数据库表、字段、索引；新增/修改公开 API；改变加密/鉴权/权限策略；修改 SRS 业务内容；实现任务范围外功能（含 deferred 延后项）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：30afe97b562f73e9166b93761416b43633c567ed（UI 线框 v1.0 初稿 + TASK-UI-001 创建）
-- 修改文件清单：<回填，与「允许修改路径」对照>
-- 测试命令及结果：全仓一致性 Grep 校验（语义色 / 页面-用例映射）→ <回填>
+- commit / PR：38b102a91b3d8f0447de36791e67ae342be9e1f4（UI v1.0 批准锚点 / approval_commit）；UI 内容最终交付快照 c0f58290a49ab052a3a79262d3a2a01611108fe7（TASK-UI-003 G1，含 TASK-UI-002 266a7733 / TASK-UI-003 c0f5829 全部修正）
+- 修改文件清单：docs/design/ui-wireframe.md（初稿 30afe97b，经 TASK-UI-002 266a773、TASK-UI-003 c0f5829 修正）；本任务单自身回填（tasks/TASK-UI-001.md）。与「允许修改路径」（ui-wireframe.md + 本任务单）一致。
+- 测试命令及结果：全仓一致性 Grep 校验（语义色 / 页面-用例映射 / 退信不混入 DeliveryStatus / U3 七列 / U5 单次验证 / U4 AUTH_EXPIRED 仅会话过期）→ pass（A6 筛选拆分 failed/retry_scheduled/dead_letter + 退信 全部·是·否；U9 两类通知分述；U3 周一–周日 7 独立列；红图例"已预约/不可约"；均与 SRS v1.1 一致）
 - lint / typecheck：不适用（设计任务）
 - DB 迁移验证：无
-- 验收证据：<页面清单 + 每页 SRS/UC 映射 + 关键交互流线框>
-- 变更预算实际值：<回填>
-- 未解决风险：<或「无」>
-- 是否偏离 TASK：<否 / 偏离项>
+- 验收证据：UI 线框 v1.0 覆盖 U1–U12 + A1–A8，与 SRS §3.1–§3.9 功能域一一映射；语义色（绿=available / 黄=前端临时态不落库 / 红=booked/owner_locked/unavailable）与 SRS §6.2 一致；A6/A7 失败三态+退信、8 项内容修正均已落地（TASK-UI-002 / TASK-UI-003 已关闭）
+- 变更预算实际值：max_files=2，实际 ui-wireframe.md(1 路径) + 本任务单(1 路径) = 2 文件，未超预算
+- 未解决风险：无（UI 已批准；AUTH_EXPIRED 语义冲突为 SRS 内部问题，已登记为 OpenAPI 设计前开放项，不阻塞 UI）
+- 是否偏离 TASK：否
 - 规范影响结论：none（纯设计，不改业务行为；SRS 已 approved 为上游依据）
-- spec_sync：clean（SRS 已 approved 且 based_on 未变，UI 线框为下游设计、不反向改 SRS）
-- verified_commit：30afe97b562f73e9166b93761416b43633c567ed（UI 线框 v1.0 初稿提交；任务未关闭，待评审批准后更新为批准锚点）
+- spec_sync：clean（SRS v1.1 已 approved 且 based_on 未变，UI 线框为下游设计、不反向改 SRS）
+- verified_commit：c0f58290a49ab052a3a79262d3a2a01611108fe7（UI v1.0 内容最终交付快照，含 TASK-UI-002/TASK-UI-003 全部修正；非自指）
+- **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。状态：Closed。
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
 
 ## 阶段性证据
 - UI 线框 v1.0 初稿已完成（commit `30afe97b`），覆盖 U1–U12（用户页面）+ A1–A8（admin 后台），与 SRS §3.1–§3.9 功能域一一映射；语义色（绿=available / 黄=前端临时态不落库 / 红=booked/owner_locked/unavailable）与 SRS §6.2 状态模型一致。
 - 关键交互流（预约原子创建、改期原子事务、owner 强制取消）已按 §3.5/§3.6/§3.7 绘制。
-- baseline `ui_wireframe` 仍 `pending`；本任务未关闭，待用户/独立评审批准 v1.0 后将 `ui_wireframe.status` 置 `approved` 并补全关闭证据。
+- baseline `ui_wireframe`=`approved`（version 1.0，approval_commit=`38b102a`）；本任务已关闭，UI 线框 v1.0 交付证据已补全。
 - **内容缺口已闭合**：TASK-UI-002 已执行并关闭（commit `266a773`，verified_commit 同），完成 A6/A7 失败状态三态（failed/retry_scheduled/dead_letter）+ 退信(Bounce) 展示/筛选/告警/重发同步，吸收已批准 SRS v1.1（approval_commit `00e125c`）。线框现已与 SRS v1.1 一致，待用户评审实际线框后授权批准 UI。
-- **8 项后续内容修正由 TASK-UI-003 承载**：UI 线框虽与 SRS v1.1 行为对齐，但存在 8 处会误导实现的表述（A6 筛选拆分 / U9 两类通知 / U3 七列日历 / 红图例"已预约/不可约" / U3 交互冲突校验后直弹 U7 / U4 AUTH_EXPIRED 仅会话过期 / U5 单次邮箱验证 / 文档顶部统一 SRS v1.1 并标注退信缺口闭合），已由 TASK-UI-003 一次性修正（commit `c0f5829`，verified_commit 同）并关闭；`baseline.ui_wireframe.status` 仍 pending，待用户评审实际线框后授权批准 UI。
+- **8 项后续内容修正由 TASK-UI-003 承载**：UI 线框虽与 SRS v1.1 行为对齐，但存在 8 处会误导实现的表述（A6 筛选拆分 / U9 两类通知 / U3 七列日历 / 红图例"已预约/不可约" / U3 交互冲突校验后直弹 U7 / U4 AUTH_EXPIRED 仅会话过期 / U5 单次邮箱验证 / 文档顶部统一 SRS v1.1 并标注退信缺口闭合），已由 TASK-UI-003 一次性修正（commit `c0f5829`，verified_commit 同）并关闭；`baseline.ui_wireframe.status` 已 `approved`；TASK-UI-003 已关闭；UI 线框 v1.0 经用户独立评审批准（approval_commit=`38b102a`）。
 
 ## 关联
 - Change Request：无

@@ -171,10 +171,10 @@
   4. **完整事件→目的映射**：`candidate_notification`=created/rescheduled/cancelled/reminder_due；`interviewer_confirmation`=created/rescheduled/details_updated；`interviewer_cancellation`=cancelled。
   5. **同事件多目的并发投递**：`appointment_cancelled` 必须同时产生 候选人 `candidate_notification`（email+feishu）+ 面试官 `interviewer_cancellation`（email）；面试官改期确认函/会议号更新函/主动取消告知函均属 SRS v1.1 MVP 行为，非未来扩展。
 - **Stop & Report（item 2）**：模型当前无单 owner 唯一性约束、亦无显式配置关系，系统无法确定性解析「哪一个 User 是 THE owner_admin」；本草案**未假设**，留待用户裁定（方案 A 部分唯一索引 / 方案 B 单例 SiteConfig）。`candidate_notification` 的 `User.email` 来源在决议前视为未决。
-- 补正提交（G3）：<待回填>
+- 补正提交（G3）：e41c0a12dfd5b67b668b418c3cdd39def708c79f
 - 修改文件清单（补正包）：docs/design/domain-model.md / tasks/TASK-DM-003.md（2 个路径，均在「允许修改路径」内，未超 change_budget max_files=5）
 - 是否偏离 TASK：否（补正在用户本指令授权范围内；domain_model 仍 review、未批准、未动下游、未进安全设计；新增字段已由指令 item 3 显式授权，不触发越界硬停）
-- verified_commit（补正包）：<待回填>
+- verified_commit（补正包）：e41c0a12dfd5b67b668b418c3cdd39def708c79f
 
 ## 关联
 - 上游任务：TASK-DM-002（v1.1.4 approved，锚点 `f537296`；本任务 v1.1.5 取代其正文，v1.1.4 批准事实保留为历史）

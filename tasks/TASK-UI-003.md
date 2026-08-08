@@ -82,21 +82,21 @@
 - **必须立即停止并报告**：发现 MP-1 已列范围之外的 ui-wireframe.md 不一致，或任何超出"允许修改路径"的修改（含改 baseline、改 SRS、建页面）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填 G1>
-- 修改文件清单：<回填，与「允许修改路径」对照>
-- 测试命令及结果：<命令> → <pass/fail；Grep 复核 8 处修正>
+- commit / PR：c0f58290a49ab052a3a79262d3a2a01611108fe7（TASK-UI-003 内容修正快照 G1）
+- 修改文件清单：docs/design/ui-wireframe.md（8 处修正）/ tasks/TASK-UI-003.md（本任务单）/ tasks/TASK-UI-001.md（标注承接）/ PROJECT_STATE.md（TASK-UI-003 条目）—— 与「允许修改路径」一致，max_files=4
+- 测试命令及结果：全仓 Grep 复核 8 处修正（A6 筛选拆分 / U9 两类通知 / U3 七列 / 红图例 / U3 交互 / U4 AUTH_EXPIRED / U5 单次验证 / 文档顶部 v1.1）→ pass（无残留错误表述）
 - lint / typecheck：无（纯文档）
 - DB 迁移验证：无
-- 验收证据：<线框片段，敏感字段脱敏>
-- 变更预算实际值：<max_files 实际>
-- 未解决风险：<或「无」>
+- 验收证据：A6 筛选「[投递状态 failed/retry_scheduled/dead_letter] [退信 全部/是/否]」；U9「预约确认函已发送至面试官注册邮箱」+「新预约事件已通过飞书+邮箱提醒候选人」；U3 周一…周日 7 列 + 「冲突校验通过→直接弹预约表单(U7)」；U4「AUTH_EXPIRED 仅用于登录会话过期」；U5「发送验证码→输入并校验验证码→注册成功」
+- 变更预算实际值：max_files=4，实际 4 文件，未超预算
+- 未解决风险：SRS §3.3 异常流将「限频→提示稍后（AUTH_EXPIRED/EMAIL_UNVERIFIED）」与 §8 错误码表「AUTH_EXPIRED=登录过期」存在内部不一致；属 SRS 范围、非本任务修改路径，已另行提示用户（不影响本任务 8 处修正正确性）
 - 是否偏离 TASK：<否>
 - 规范影响结论：none（纯设计表述纠偏，不改行为）
 - spec_sync：clean
-- verified_commit：<回填 G1>
+- verified_commit：c0f58290a49ab052a3a79262d3a2a01611108fe7（TASK-UI-003 内容修正快照 G1；非自指）
 
 ## 关闭门禁（四条件全满足方可关闭）
-① 测试通过（Grep 复核 8 处修正）② 规范影响 none ③ spec_sync=clean ④ verified_commit 真实 sha。状态：执行中（UI 未批准，待用户评审）。
+① 测试通过（Grep 复核 8 处修正）② 规范影响 none ③ spec_sync=clean ④ verified_commit 真实 sha。状态：Closed（UI 线框 8 处内容修正已落地；`baseline.ui_wireframe.status` 仍 pending，待用户评审批准；本任务不代签 UI）。
 
 ## 关联
 - 上游：TASK-UI-002（退信缺口已闭合，本任务承接 8 项后续内容修正）；SRS v1.1（`00e125c`）

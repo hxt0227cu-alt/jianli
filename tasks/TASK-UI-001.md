@@ -94,6 +94,7 @@
 - 关键交互流（预约原子创建、改期原子事务、owner 强制取消）已按 §3.5/§3.6/§3.7 绘制。
 - baseline `ui_wireframe` 仍 `pending`；本任务未关闭，待用户/独立评审批准 v1.0 后将 `ui_wireframe.status` 置 `approved` 并补全关闭证据。
 - **内容缺口已闭合**：TASK-UI-002 已执行并关闭（commit `266a773`，verified_commit 同），完成 A6/A7 失败状态三态（failed/retry_scheduled/dead_letter）+ 退信(Bounce) 展示/筛选/告警/重发同步，吸收已批准 SRS v1.1（approval_commit `00e125c`）。线框现已与 SRS v1.1 一致，待用户评审实际线框后授权批准 UI。
+- **8 项后续内容修正由 TASK-UI-003 承载**：UI 线框虽与 SRS v1.1 行为对齐，但存在 8 处会误导实现的表述（A6 筛选拆分 / U9 两类通知 / U3 七列日历 / 红图例"已预约/不可约" / U3 交互冲突校验后直弹 U7 / U4 AUTH_EXPIRED 仅会话过期 / U5 单次邮箱验证 / 文档顶部统一 SRS v1.1 并标注退信缺口闭合），已由 TASK-UI-003 一次性修正（commit `c0f5829`，verified_commit 同）并关闭；`baseline.ui_wireframe.status` 仍 pending，待用户评审实际线框后授权批准 UI。
 
 ## 关联
 - Change Request：无

@@ -100,3 +100,16 @@
 ## 关联
 - Change Request：无（AUTH_EXPIRED 冲突建议升 Change Request，但不得在本任务内裁定）
 - 测试任务：无（设计）
+
+## 缺陷登记（v0.1 被 TASK-ARCH-002 升版 v0.2 取代）
+
+> 本段为**追加登记**，不改写上方 v0.1 的任何历史交付证据。v0.1 草案快照锚点 `2f73982` 保留为历史，不重写。
+
+- **取代关系**：`architecture.md` v0.1（快照锚点 `2f73982`，由本任务 TASK-ARCH-001 产出）已被 **TASK-ARCH-002** 升版为 **v0.2（review 草案，未批准）**。v0.2 在 review 态内完成内容修正，本任务（TASK-ARCH-001）保持 review，不代签 approved，不涉及状态推进。
+- **v0.1 主要缺陷（由 TASK-ARCH-002 修正，逐条对应）**：
+  1. **SSE 方案缺陷**：误用 Redis Pub/Sub 作事件源并声称其保证一致 / 有序 / 可恢复（实际至多一次、不持久、不重放）；存在「DB commit 后 publish」的**双写丢事件窗口**。
+  2. **事务锁顺序缺陷**：缺乏统一的全局锁顺序，创建 / 改期 / 取消可能因加锁顺序不一致导致死锁或互相覆盖；`CompanyBookingException` 消费与 Appointment 写入未明确在同一事务 `FOR UPDATE` 校验并写 `dedupe_exception_id`、受 `uq_appointment_exception` 保护。
+  3. **Outbox Worker 缺陷**：未补全多 Worker 原子领取（`FOR UPDATE SKIP LOCKED`）与超时回收机制；幂等键 / 至少一次语义 / 状态转换与 SRS §6.2 的对齐未明确。
+  4. **退信入口缺陷**：Bounce 回调入口未标记为公网不可信入口，未规定幂等回写 / 未知消息拒绝 / 不得改预约状态边界。
+  5. **ADR 缺陷**：四项核心 ADR（部署形态 / 向量方案 / SSE 传播 / Outbox 消费）未给出唯一推荐与重裁触发条件。
+- **不触发 Stop & Report**：v0.2 全部方案仅使用领域模型 v1.1.4 已批准实体 / 字段 / 索引，未新增任何结构；识别到的扩模型方案（事件日志表 / `updated_at` 列 / 租约列 / CDC 复制槽）明确不采纳，若将来采纳须另走 Change Request。

@@ -2,7 +2,7 @@
 
 > **文档状态**：v0.2 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决约束；经用户独立评审通过后方可置 `approved`）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
-> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐。逐项差异见 §12。
+> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径。逐项差异见 §12。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
 > **模型边界**：本文全部方案仅使用领域模型 v1.1.5 已批准的实体、字段与索引，**未新增任何实体 / 表 / 字段 / 索引 / 外部依赖**（详见 §5.6、§6.10）。
@@ -180,8 +180,21 @@ BEGIN;
 
   UPDATE AppointmentSlot SET status='booked', appointment_id=:aid, version=version+1
    WHERE id = ANY(:new_ids);                               -- 先占新
-  UPDATE AppointmentSlot SET status='available', appointment_id=NULL, version=version+1
-   WHERE id = ANY(:old_ids_except_overlap);                -- 后释旧（排除与新段重叠的格）
+  -- 后释旧（排除与新段重叠的格）：释放后按 §4.6 重新物化，不得无条件写 available
+  UPDATE AppointmentSlot s SET status = (
+      CASE
+        WHEN EXISTS (SELECT 1 FROM AvailabilityOverride o
+                     WHERE o.action='force_unavailable'
+                       AND o.start_at < s.end_at AND o.end_at > s.start_at)
+          THEN 'unavailable'
+        WHEN EXISTS (SELECT 1 FROM AvailabilityOverride o
+                     WHERE o.action='force_available'
+                       AND o.start_at < s.end_at AND o.end_at > s.start_at)
+          THEN 'available'
+        ELSE calendar_auto_status(s.start_at, s.end_at)    -- 日历自动规则（§4.6 / 领域模型 §6.9）
+      END),
+    appointment_id=NULL, version=version+1
+   WHERE id = ANY(:old_ids_except_overlap);
   UPDATE Appointment SET start_at=:n1, end_at=:n1 + interval '90 minutes',
                          version=version+1 WHERE id=:aid;
 
@@ -215,8 +228,21 @@ BEGIN;
   UPDATE Appointment SET status='cancelled', cancelled_at=now(),
                          purge_after=now() + interval '30 days', version=version+1
    WHERE id=:aid;
-  UPDATE AppointmentSlot SET status='available', appointment_id=NULL, version=version+1
-   WHERE appointment_id=:aid;                                  -- 释放为 available
+  -- 释放：本预约占用的格已在 L3 锁集合内；释放后按 §4.6 重新物化，不得无条件写 available
+  UPDATE AppointmentSlot s SET status = (
+      CASE
+        WHEN EXISTS (SELECT 1 FROM AvailabilityOverride o
+                     WHERE o.action='force_unavailable'
+                       AND o.start_at < s.end_at AND o.end_at > s.start_at)
+          THEN 'unavailable'
+        WHEN EXISTS (SELECT 1 FROM AvailabilityOverride o
+                     WHERE o.action='force_available'
+                       AND o.start_at < s.end_at AND o.end_at > s.start_at)
+          THEN 'available'
+        ELSE calendar_auto_status(s.start_at, s.end_at)    -- 日历自动规则（§4.6 / 领域模型 §6.9）
+      END),
+    appointment_id=NULL, version=version+1
+   WHERE appointment_id=:aid;
   UPDATE NotificationEvent SET status='cancelled', cancelled_at=now()
    WHERE biz_id=:aid AND type='reminder_due' AND status='pending';   -- 撤销未执行提醒
   INSERT INTO NotificationEvent(type='appointment_cancelled', biz_id=:aid,
@@ -224,7 +250,6 @@ BEGIN;
   INSERT INTO AuditLog(action='appointment.cancelled', actor='归属人', masked_detail=...);
 COMMIT;
 ```
-> **释放目标状态的细化（开放项 §11.2，待用户裁定）**：默认释放为 `available`。若该时段处于生效中的 `AvailabilityOverride(action='force_unavailable')` 覆盖范围内，按领域模型 §6.9「人工覆盖优先于自动规则」应物化为 `unavailable`。本文按用户指令主流程写 `available`，该细化点单列为开放项，**不在本轮自行裁定**。
 
 ### 4.4 owner 强制取消（SRS §3.7，领域模型 §6.7/§6.15）
 
@@ -266,6 +291,30 @@ COMMIT;
 | 创建 vs 改期抢同一空格 | 先到者占用，后到者锁后校验失败 → `SLOT_TAKEN` | 二者对 Slot 的加锁顺序一致（升序） |
 
 ---
+
+### 4.6 Slot 释放 / 覆盖后的状态重新物化（rematerialize）
+
+无论是改期释放旧格（§4.2）、用户取消释放格（§4.3），还是 `AvailabilityOverride` 的创建 / 修改 / 删除（§4.7），**释放 / 解除锁定后都不得无条件写 `available`**——`AppointmentSlot.status` 只是供网格查询的**物化状态**，owner 人工意图（`AvailabilityOverride`，领域模型 §6.9）与日历自动规则才是真相源。释放后必须按以下优先级**重新物化**该格的 `status`：
+
+1. **生效 `force_unavailable`**（存在覆盖该格时间范围、当前存在的 `AvailabilityOverride(action='force_unavailable')`）→ 物化为 `unavailable`；
+2. **生效 `force_available`**（存在覆盖该格的 `AvailabilityOverride(action='force_available')`）→ 物化为 `available`；
+3. **无人工覆盖** → 按**日历自动规则**（周末 / 节假日 / 用餐系统规则，领域模型 §6.9 的自动规则）重新计算：受规则约束的格 → `unavailable`，其余 → `available`。
+
+> `calendar_auto_status(start_at, end_at)` 为本草案的**应用层纯函数示意**（非新增数据库对象）：输入时段起止，按领域模型 §6.9 的日历自动规则返回 `available` / `unavailable`；具体节假日清单与用餐窗口属配置数据，沿用既有模型、不新增实体 / 字段。
+> `owner` 强制取消（§4.4）**不属于「释放」**——它主动锁定，写 `owner_locked`（红，优先级高于自动规则与 `force_available`），**不进入上述重新物化**。
+> 重新物化在**持有该 Slot 行锁的事务内**完成（见 §4.0 统一锁顺序：相关 Slot 已在本事务 L3 锁集合内），与原本的释放 / 写回同事务提交，保证原子性。
+> 创建 `AvailabilityOverride` 时已校验「不与另一冲突 override 同时覆盖同一时段」（领域模型 §6.9），故重新物化时同一格至多被一个 `force_*` override 覆盖，无需处理 override 间冲突。
+
+### 4.7 AvailabilityOverride 变更事务（创建 / 修改 / 删除）
+
+owner_admin 维护 `AvailabilityOverride`（领域模型 §6.9）时，其事务须（§4.0 锁顺序，本场景不触及 Company / Appointment，实际从 L3 起锁）：
+
+1. 写 `AvailabilityOverride` 行（`INSERT` 创建 / `UPDATE` 修改 / `DELETE` 删除——删除即物理删除，模型无软删列）；
+2. 把「受本次变更影响、且未被任何 `Appointment` 占用（`appointment_id IS NULL`）的所有 `AppointmentSlot`」合并进 L3 锁集合（按 `start_at` 升序一次性 `FOR UPDATE`）；
+3. 对受影响且未被占用的 Slot，调用 §4.6 重新物化 `status` 并**同事务写回**；
+4. 提交；SSE 由 §5 的提交派生机制自然推送新状态。
+
+> **并发最终状态由 Slot 行锁串行化**：受影响 Slot 被本事务 `FOR UPDATE` 锁定，并发的改期 / 取消 / 另一 override 变更（也须锁这些 Slot）会被行锁串行化，最终 `status` 由最后一个提交事务的物化结果决定——**不存在「override 已生效但 Slot 仍显示旧状态」的竞态窗口**。被预约占用的格（`booked`）不在此处变更，其状态在预约释放时由 §4.2 / §4.3 的重新物化决定。
 
 ## 5. SSE 实时传播、一致性与恢复
 
@@ -370,9 +419,10 @@ INSERT INTO NotificationDelivery(event_id, delivery_purpose, channel, event_vers
 COMMIT;
 ```
 
-**双重互斥**：
+**双重互斥（仅作用于「建行」，不作用于「发送」）**：
 1. `FOR UPDATE SKIP LOCKED` 保证并发 Worker 不会领取同一事件（跳过已被锁定的行，不阻塞）；
-2. `uq_delivery_attempt(event_id, delivery_purpose, channel, event_version, attempt_no)`（领域模型 §6.12 调整后的索引）保证即使第一层失效（例如 Sweeper 与 Worker 并发、或事件被重复领取），也**不可能**产生第二条相同尝试记录——唯一冲突的一方直接放弃。不同 `delivery_purpose` 可并存多行，各自独立记录尝试 / 状态 / 退信 / 重试 / 手动重发。
+2. `uq_delivery_attempt(event_id, delivery_purpose, channel, event_version, attempt_no)`（领域模型 §6.12 调整后的索引）**只负责防止重复建行**——保证即使第一层失效（例如 Sweeper 与 Worker 并发、或事件被重复领取），也**不可能**产生第二条相同 `(event_id, delivery_purpose, channel, event_version, attempt_no)` 的尝试记录，唯一冲突的一方直接放弃。不同 `delivery_purpose` 可并存多行，各自独立记录尝试 / 状态 / 退信 / 重试 / 手动重发。
+3. **`uq_delivery_attempt` 不防止「同一行被发送两次」**：该索引约束的是「重复建行」，不是「重复发送」。进程在 `queued → sending` 之后、提交 `sending → succeeded` 之前崩溃，该行仍停留在 `sending`，Sweeper 按 §6.4「结果未知」回收后**必然可能重复发送**。`uq_delivery_attempt` 对这类重复发送**无任何约束力**——重复发送由 §6.5 稳定幂等键 + 服务商幂等尽力去重，如实登记为至少一次语义的残留风险（§6.1）。真正把「同一事件只发一次」的语义边界划在「行级互斥防建行、幂等键防重复送达」两层，而非误以为唯一索引能防重复发送。
 
 ### 6.3.1 投递目的（delivery_purpose）与收件人解析
 
@@ -380,25 +430,49 @@ COMMIT;
 - **单活跃 owner 收件人解析（candidate_notification）**：`candidate_notification` 的收件人须解析为**唯一活跃 owner_admin**——由 `User` 上的部分唯一索引 `uq_active_owner_admin`（`WHERE role='owner_admin' AND deleted_at IS NULL`，领域模型 §6.1）保证至多一个未删除的 owner_admin。解析链路固定为：`活跃 owner_admin User` → 其 `User.email`（邮箱）→ 同一 `user_id` 的 `OwnerContactConfig` → `candidate_phone_ciphertext`（手机）/ `candidate_feishu_open_id_ciphertext`（飞书）。**不存在活跃 owner_admin 时**，该解析**必须失败并触发运维告警**，**不得**任意挑选某 `User` 顶替（运行不变量见领域模型 §6.1）。
 - **飞书接收标识缺失（candidate_notification 的 `feishu` 通道）**：当 `OwnerContactConfig.candidate_feishu_open_id_ciphertext` 为 NULL（未配置飞书接收标识）时，`feishu` 通道投递**直接置 `failed` 并触发告警**；但**不影响**同事件的 `email` 通道——`email` 通道（`User.email` 始终存在）照常投递。两通道独立重试、不相互兜底（与 §6.8 一致）。`interviewer_*` 目的仅走 `email`，不受此影响。
 
-### 6.4 处理超时恢复（Sweeper）——用既有列构成隐式租约，不新增租约字段
+### 6.3.2 投递原子领取（NotificationDelivery：queued → sending）
 
-`NotificationDelivery` 处于非终态（`queued` / `sending`）即表示「已领取、未回执」，其 `created_at` 即领取时刻。二者共同构成**隐式租约**：`lease = 5 分钟`（远大于 SRS §5.1 的邮件 P95 ≤10s 与飞书调用超时上限，避免误回收）。
+`Txn C`（§6.3）领取 `NotificationEvent` 并建好 `NotificationDelivery(queued)` 后，真正「调用外部通道」前还需一次**投递级原子领取**：把 `queued` 行安全地翻转为 `sending` 并取走投递数据。这一步与「建行」分离，是避免「同一行被发送两次」的关键边界。
+
+```
+-- Txn D：短事务，内部【禁止】任何外部调用（SMTP / 飞书 / HTTP）
+UPDATE NotificationDelivery SET status='sending'
+ WHERE id IN (
+   SELECT id FROM NotificationDelivery
+    WHERE status='queued'
+    ORDER BY created_at, id
+    FOR UPDATE SKIP LOCKED
+    LIMIT :batch)
+ RETURNING id, event_id, channel, delivery_purpose, event_version,
+           attempt_no, channel_metadata;     -- 取走本次要发送的投递数据
+COMMIT;   -- ★ 提交之后，才在事务【外】调用 SMTP / 飞书
+```
+
+- **事务内只改状态 + RETURNING，不碰外部**：`queued → sending` 与取数在同一短事务内原子完成；SMTP / 飞书调用在 `COMMIT` **之后**进行，**绝不在持有行锁的事务内发起**（与 §3.2「事务内禁止外部调用」一致，保证预约提交 P95 与 Slot 行锁不被外部延迟拖住）。
+- **`queued` 不得长驻**：Worker 必须「领即发」——领取到 `queued` 行后立即在事务外调用通道，不把行留成 `queued` 长时间等待；`queued → sending` 必须**立即**发生（见 §6.4 超时区分：只有「领后未发」才落入 `queued` 超时）。
+- **与外部调用超时的关系**：通道调用超时阈值须远小于 5 分钟隐式租约（如 10–30s），否则 `sending` 行尚未回执就会被 Sweeper 误回收（§6.4）。
+- **与 `uq_delivery_attempt` 的边界**：本领取只翻转已存在行的 `status`，不新建行，故不受 `uq_delivery_attempt` 约束；该索引防的是「重复建行」（§6.3），本步骤防的是「同一行被重复发送」——二者职责不同，后者由「事务外调用 + 至少一次重投 + 幂等键去重」共同保证（§6.4/§6.5）。
+
+### 6.4 处理超时恢复（Sweeper）——区分「未发送」与「结果未知」，用既有列构成隐式租约
+
+`NotificationDelivery` 处于非终态（`queued` / `sending`）即表示「已领取、未回执」，其 `created_at` 即领取时刻。二者共同构成**隐式租约**：`lease = 5 分钟`（远大于 SRS §5.1 的邮件 P95 ≤10s 与飞书调用超时上限，避免误回收）。**外部通道调用超时阈值须远小于 5 分钟（如 10–30s）**——否则 `sending` 行尚未拿到回执就会被 Sweeper 抢先回收，造成「发了又被重发」的误判。
+
+`queued → sending` 必须**立即发生**（见 §6.3.2 原子领取）：因此 `queued` 长驻只可能是「Worker 在发送前崩溃」，而 `sending` 长驻是「已调用外部、等待回执时崩溃」。**两类中间态的失败语义不同，Sweeper 必须按 `status` 分别处理，并使用不同 `last_error` 口径**：
 
 ```
 -- Txn S：每 60s 执行
-SELECT id, event_id, channel, event_version, attempt_no FROM NotificationDelivery
+SELECT id, event_id, channel, delivery_purpose, event_version, attempt_no, status
+  FROM NotificationDelivery
  WHERE status IN ('queued','sending')
    AND created_at < now() - interval '5 minutes'
  ORDER BY created_at
  FOR UPDATE SKIP LOCKED LIMIT :n;
--- → 置 status='failed', last_error='worker_lease_expired'
---   attempt_no < 3 → 同行改 'retry_scheduled' + next_retry_at（指数退避）
---   attempt_no = 3 → 'dead_letter' + 后台高优先级告警
---   回写 NotificationEvent：出现 dead_letter → status='failed'
-COMMIT;
 ```
+- **`queued` 超时（= 领后未发，Worker 崩溃在发送前）**：外部**根本没被调用过** → 按「**未发送**」回收，`last_error='queued_lease_expired'`；直接重投即可，**不担心外部重复发送**。
+- **`sending` 超时（= 已调用外部、未回执，Worker 崩溃在等待回执）**：外部**可能已发出** → 按「**结果未知**」回收，`last_error='sending_lease_expired_unknown'`；按 §6.1 至少一次语义**重投**，并**显式登记重复风险**（在 `last_error` 已区分的基础上触发运维告警，由《测试计划》覆盖该重投幂等场景）——服务商侧可能已收到一封相同的信。
+- 两类回收后续分支相同：`attempt_no < 3 → 同行改 'retry_scheduled' + next_retry_at（指数退避）`；`attempt_no = 3 → 'dead_letter' + 后台高优先级告警`；回写 `NotificationEvent`：出现 `dead_letter → status='failed'`。
 
-> **租约到期不等于外部未送达**——进程可能已把邮件交给 SMTP 才崩溃。因此回收后的动作是「再投一次」，这是至少一次语义的既定后果，由 §6.5 的幂等键消解，而不是假装没发生过。
+> **租约到期不等于外部未送达**——尤其 `sending` 超时，进程可能已把邮件交给 SMTP 才崩溃。因此回收后的动作是「再投一次」，这是至少一次语义的既定后果，由 §6.5 的幂等键消解，而不是假装没发生过。`queued` 超时风险低（未发过）、`sending` 超时风险高（可能重复），二者在 `last_error` 与告警上刻意区分，便于运维与《测试计划》分别处理。
 
 ### 6.5 稳定幂等键与「外部成功、DB 提交失败」的重复投递
 
@@ -444,9 +518,9 @@ SELECT d.* FROM NotificationDelivery d
 | 转换 | 触发 |
 |---|---|
 | （建行）`queued` | Txn C 领取 / 重试驱动 / 手动重发，在事务内建行 |
-| `queued → sending` | 发送器取走并即将调用外部通道 |
+| `queued → sending` | Txn D 原子领取（§6.3.2）：短事务 `FOR UPDATE SKIP LOCKED` 置 `sending` 并 `RETURNING` 投递数据；**提交后**才在事务外调用外部通道 |
 | `sending → succeeded` | 服务商接受（记 `provider_message_id`、`channel_metadata.smtp_accepted_at` 或 `feishu_record_id`/`response_code`） |
-| `queued|sending → failed` | 发送异常、超时，或 §6.4 租约回收（`last_error='worker_lease_expired'`） |
+| `queued|sending → failed` | 发送异常、外部调用超时（须远小于 5min），或 §6.4 租约回收（`queued`→`queued_lease_expired` / `sending`→`sending_lease_expired_unknown`） |
 | `failed → retry_scheduled` | `attempt_no < 3`，写 `next_retry_at`（指数退避） |
 | `failed → dead_letter` | `attempt_no = 3`（≤3 次已用尽） |
 | `succeeded` + 退信回执 | **不改 `status`**，仅写 `channel_metadata.bounced_at` / `bounce_reason`（SRS §4.3/§6.2：退信不属 `DeliveryStatus` 枚举） |
@@ -572,11 +646,7 @@ SELECT d.* FROM NotificationDelivery d
 - **本阶段处理**：架构**不裁定、不新增错误码、不修改 SRS**。登记为「OpenAPI 设计前必须裁定」开放项，须由 Change Request 明确（§3.3 限频改用语，或 §8 增补限频错误码）；裁定完成前不得据此实现登录/限频错误映射。
 - **架构影响**：登录鉴权失败统一走 `AUTH_EXPIRED`（仅会话过期）；凭证错误与限频按普通错误提示呈现（与 UI 线框 v1.0 U4 一致）。
 
-### 11.2 取消后 Slot 释放目标状态的细化（**本轮新增，需用户裁定**）
-- 用户取消时释放为 `available`（§4.3）。但若该时段被生效中的 `AvailabilityOverride(action='force_unavailable')` 覆盖，领域模型 §6.9 规定「`AvailabilityOverride` 是 owner 意图真相源、人工覆盖优先于自动规则、`AppointmentSlot.status` 仅为物化状态」，此时物化为 `available` 会与 owner 意图相悖。
-- **本轮不自行裁定**：主流程按指令写 `available`，此细化点单列待裁。裁定为「按 override 物化」时，仅需在 §4.3/§4.4 的释放语句加一次 override 命中判断，不涉及模型变更。
-
-### 11.3 其他待定（不阻塞架构评审）
+### 11.2 其他待定（不阻塞架构评审）
 - 飞书多维表格字段映射与是否提供幂等令牌（留《接口契约》+ 集成验证清单）。
 - 托管 PostgreSQL 的 `pgvector` 可用性确认（ADR-ARCH-002 验证项）。
 
@@ -611,25 +681,18 @@ SELECT d.* FROM NotificationDelivery d
 | 15 | 正文预设「会话存 Redis/DB」「限频 Redis 令牌桶」「Bounce Webhook 接入」 | 越界预判安全设计 | §1.1/§9.1/§10 全部中性化，仅保留与实现无关的边界约束 |
 | 16 | ADR 仅列候选，无推荐 | 无法评审裁定 | §10 对部署形态/向量方案/SSE/Outbox 各给唯一推荐 + 理由 + 重裁触发 |
 
-### 12.3 模型边界结论
+### 12.3 v0.2 本轮补充修正（2026-08-09，3 项实现正确性，仍 review）
+
+| # | 问题 | 修正 |
+|---|------|------|
+| 17 | Outbox 缺「投递级原子领取」；`uq_delivery_attempt` 被误读为能防同一行重复发送 | §6.3.2 新增 `NotificationDelivery` 投递级原子领取（`queued→sending`，短事务 `FOR UPDATE SKIP LOCKED` + RETURNING，提交后才调外部）；§6.3 明确 `uq_delivery_attempt` **只防重复建行、不防同一行重复发送** |
+| 18 | §4.2/§4.3 释放 Slot 无条件写 `available`，破坏 `AvailabilityOverride` 真相源 | §4.6 定义释放后**重新物化**规则（force_unavailable→unavailable / force_available→available / 无覆盖→日历规则）；§4.2 改期旧格、§4.3 用户取消均改走重新物化；§4.7 规定 `AvailabilityOverride` 变更事务须锁受影响 Slot 并重新物化，由 Slot 行锁串行化并发 |
+| 19 | §6.4 隐式租约未区分 `queued`（未发送）与 `sending`（结果未知）超时 | §6.4 按 `status` 分两类回收：`queued` 超时→`queued_lease_expired`（未发送，安全重投）；`sending` 超时→`sending_lease_expired_unknown`（结果未知，至少一次重投+登记重复风险）；外部调用超时须远小于 5min；原开放项 §11.2 与待办 §13.1/§13.2 已并入正文，§13 删除 |
+
+### 12.4 模型边界结论
 本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.5 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。
 
 ---
-
-## 13. 后续修正待办（Backlog，不另建治理任务）
-
-> 本节为架构待办登记，非本次 v0.2 内容修正。领域模型 v1.1.5 已批准、下游（SRS/UI/架构）同步已完成；下列待办仍待执行（由后续任务在架构 v0.2 批准后补入正文，或并行修正）。
-
-### 13.1 用户取消后 Slot 状态须按规则重新物化（非无条件 available）
-- **问题**：§4.3 当前「用户取消 → Slot 释放为 `available`」过于粗暴。若该时段正处于 owner 的 `AvailabilityOverride`（如 `force_unavailable` 节假日覆盖、或 `force_available` 强制可约）之下，无条件置 `available` 会破坏 owner 意图真相源（`AvailabilityOverride` 是 owner 人工意图的唯一真相源，见领域模型 §6.9）。
-- **修正方向**：用户取消释放 Slot 时，**不得无条件置 `available`**；应依据当前生效的 `AvailabilityOverride` 与日历规则（周末/节假日/用餐系统规则）**重新物化**该格的 `status`（`available` / `unavailable` / 仍受 override 约束）。`owner` 强制取消仍按现规则置 `owner_locked`（owner 主动锁定语义保留）。物化逻辑与 §4.4 的 `owner_locked` 写回同属「释放/锁定」后的状态推导，须由下游同步任务补入 §4.3/§4.4。
-
-### 13.2 created_at 隐式租约须区分「未发送」与「结果未知」
-- **问题**：§6.4 以「非终态 `status` + `created_at`」构成 5 分钟隐式租约，未区分 `queued`（尚未调用外部通道）与 `sending`（已调用、等待回执）两种中间态的失败语义。
-- **修正方向**：Worker **只创建可立即处理的尝试**——`queued → sending` 必须**立即发生**（领取后即调用通道，不在 `queued` 长驻）；外部通道超时阈值须**远小于 5 分钟**（如 10–30s）。两类超时分别处理：
-  - **`queued` 超时**（领取后长时间未进入 `sending`，即 Worker 崩溃在发送前）：按「**未发送**」回收——可安全重投，不担心外部重复；
-  - **`sending` 超时**（调用后未回执，即 Worker 崩溃在等待回执）：按「**结果未知**」回收——外部可能已发出，重投有重复风险，须依赖服务商幂等（`provider_message_id`）+ 稳定幂等键尽力去重，并在《测试计划》覆盖该场景。
-  - 上述区分与 §6.5 稳定幂等键（不含 `attempt_no`）、§6.1 至少一次语义一致；具体阈值与回收分支补入 §6.4。
 
 ---
 

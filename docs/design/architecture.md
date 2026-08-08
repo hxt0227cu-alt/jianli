@@ -1,11 +1,11 @@
 # 架构设计与 ADR（review 草案 v0.2）
 
 > **文档状态**：v0.2 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决约束；经用户独立评审通过后方可置 `approved`）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.4** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
 > **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐。逐项差异见 §12。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
-> **模型边界**：本文全部方案仅使用领域模型 v1.1.4 已批准的实体、字段与索引，**未新增任何实体 / 表 / 字段 / 索引 / 外部依赖**（详见 §5.6、§6.10）。
+> **模型边界**：本文全部方案仅使用领域模型 v1.1.5 已批准的实体、字段与索引，**未新增任何实体 / 表 / 字段 / 索引 / 外部依赖**（详见 §5.6、§6.10）。
 
 ---
 
@@ -329,7 +329,7 @@ C6  进入稳态：同样按「高版本覆盖低版本」应用
 
 ### 5.6 适用边界与升级触发（如实登记，不隐藏）
 
-- 本方案是**窗口全量比对**，成立前提是展示窗口行数小（≈350 行 / 实例 / 秒）。领域模型 v1.1.4 的 `AppointmentSlot` **没有 `updated_at` 列**，因此无法做「按时间戳增量拉取」——这是选择全量比对的直接原因，不是疏忽。
+- 本方案是**窗口全量比对**，成立前提是展示窗口行数小（≈350 行 / 实例 / 秒）。领域模型 v1.1.5 的 `AppointmentSlot` **没有 `updated_at` 列**，因此无法做「按时间戳增量拉取」——这是选择全量比对的直接原因，不是疏忽。
 - **升级触发条件**：窗口行数 > 5,000，或应用实例数 > 4，或轮询占 DB 负载 > 20%，或 T 需压到 < 200ms。
 - 届时的候选方案（**均需扩模型或新增依赖，故本轮不采纳**）：新增持久化事件日志表（全局 `bigserial` 序列）、为 `AppointmentSlot` 增 `updated_at` 列做增量拉取、PostgreSQL 逻辑复制 CDC（需 `wal_level=logical` + 复制槽，且未消费的复制槽会撑爆 WAL）。**采纳前必须先走 Change Request 修改领域模型并重新批准，不得在实现阶段自行引入。**
 - **本轮结论：未新增任何领域实体 / 表 / 字段 / 索引 / 外部依赖 → 未触发 Stop & Report。**
@@ -365,14 +365,20 @@ UPDATE NotificationEvent SET status='processing'
  RETURNING id, type, biz_id, idempotency_key;
 
 -- 同一事务内为每个目标通道插入本次尝试记录（既是工作单元，也是互斥凭据）
-INSERT INTO NotificationDelivery(event_id, channel, event_version, attempt_no, status)
-     VALUES (:eid, :ch, 1, 1, 'queued');       -- 受 uq_delivery_attempt 保护
+INSERT INTO NotificationDelivery(event_id, delivery_purpose, channel, event_version, attempt_no, status)
+     VALUES (:eid, :purpose, :ch, 1, 1, 'queued');  -- :purpose 由「事件类型→投递目的」映射（领域模型 §6.12）确定；受 uq_delivery_attempt 保护
 COMMIT;
 ```
 
 **双重互斥**：
 1. `FOR UPDATE SKIP LOCKED` 保证并发 Worker 不会领取同一事件（跳过已被锁定的行，不阻塞）；
-2. `uq_delivery_attempt(event_id, channel, event_version, attempt_no)`（领域模型 §6.12 既有索引）保证即使第一层失效（例如 Sweeper 与 Worker 并发、或事件被重复领取），也**不可能**产生第二条相同尝试记录——唯一冲突的一方直接放弃。
+2. `uq_delivery_attempt(event_id, delivery_purpose, channel, event_version, attempt_no)`（领域模型 §6.12 调整后的索引）保证即使第一层失效（例如 Sweeper 与 Worker 并发、或事件被重复领取），也**不可能**产生第二条相同尝试记录——唯一冲突的一方直接放弃。不同 `delivery_purpose` 可并存多行，各自独立记录尝试 / 状态 / 退信 / 重试 / 手动重发。
+
+### 6.3.1 投递目的（delivery_purpose）与收件人解析
+
+- **目的由事件类型决定**（映射见领域模型 §6.12，本草案不重复罗列）：同一 `appointment_cancelled` 事件须**同时**产生① 候选人 `candidate_notification`（`email` + `feishu` 两行）与② 面试官 `interviewer_cancellation`（`email` 一行）；三者各自独立 `INSERT` 一条 `NotificationDelivery`，互不影响重试/退信/重发。
+- **单活跃 owner 收件人解析（candidate_notification）**：`candidate_notification` 的收件人须解析为**唯一活跃 owner_admin**——由 `User` 上的部分唯一索引 `uq_active_owner_admin`（`WHERE role='owner_admin' AND deleted_at IS NULL`，领域模型 §6.1）保证至多一个未删除的 owner_admin。解析链路固定为：`活跃 owner_admin User` → 其 `User.email`（邮箱）→ 同一 `user_id` 的 `OwnerContactConfig` → `candidate_phone_ciphertext`（手机）/ `candidate_feishu_open_id_ciphertext`（飞书）。**不存在活跃 owner_admin 时**，该解析**必须失败并触发运维告警**，**不得**任意挑选某 `User` 顶替（运行不变量见领域模型 §6.1）。
+- **飞书接收标识缺失（candidate_notification 的 `feishu` 通道）**：当 `OwnerContactConfig.candidate_feishu_open_id_ciphertext` 为 NULL（未配置飞书接收标识）时，`feishu` 通道投递**直接置 `failed` 并触发告警**；但**不影响**同事件的 `email` 通道——`email` 通道（`User.email` 始终存在）照常投递。两通道独立重试、不相互兜底（与 §6.8 一致）。`interviewer_*` 目的仅走 `email`，不受此影响。
 
 ### 6.4 处理超时恢复（Sweeper）——用既有列构成隐式租约，不新增租约字段
 
@@ -397,7 +403,7 @@ COMMIT;
 ### 6.5 稳定幂等键与「外部成功、DB 提交失败」的重复投递
 
 ```
-delivery_idempotency_key = H( NotificationEvent.idempotency_key || ':' || channel || ':' || event_version )
+delivery_idempotency_key = H( NotificationEvent.idempotency_key || ':' || delivery_purpose || ':' || channel || ':' || event_version )
 ```
 
 - **键中不含 `attempt_no`** —— 这是关键。若把 `attempt_no` 放进键，每次重试都会生成新键，服务商无法把它识别为同一封信，重复送达就变成必然。
@@ -412,9 +418,10 @@ delivery_idempotency_key = H( NotificationEvent.idempotency_key || ':' || channe
 SELECT d.* FROM NotificationDelivery d
  WHERE d.status='retry_scheduled' AND d.next_retry_at <= now()
    AND NOT EXISTS (SELECT 1 FROM NotificationDelivery x
-                    WHERE x.event_id=d.event_id AND x.channel=d.channel
+                    WHERE x.event_id=d.event_id AND x.delivery_purpose=d.delivery_purpose
+                      AND x.channel=d.channel
                       AND x.event_version=d.event_version
-                      AND x.attempt_no > d.attempt_no)          -- 只有最新一次尝试才驱动重试
+                      AND x.attempt_no > d.attempt_no)          -- 每个 (投递目的) 只有最新一次尝试才驱动重试
  ORDER BY d.next_retry_at
  FOR UPDATE SKIP LOCKED LIMIT :n;
 -- 为每行插入 attempt_no+1 的新尝试记录（status='queued'）；uq_delivery_attempt 兜底防重
@@ -449,13 +456,14 @@ SELECT d.* FROM NotificationDelivery d
 ### 6.8 通道独立、死信与告警（SRS §3.8 失败矩阵，不变）
 - 通道**独立重试，不相互兜底**：飞书失败 → 重试飞书 + 邮件告警；邮箱失败 → 重试邮件 + 飞书告警；均失败 → 后台高优先级告警持续重试。
 - 飞书同步失败 `FEISHU_SYNC_FAIL` → 邮件告警候选人 + 飞书任务重试；部分失败 `NOTIFY_PARTIAL`。
+- **飞书接收标识缺失（candidate_notification 的 `feishu` 通道，§6.3.1）**：当 `OwnerContactConfig.candidate_feishu_open_id_ciphertext` 为 NULL 时，`feishu` 通道投递**直接失败并触发告警**；同事件 `email` 通道（`User.email` 始终存在）照常投递，二者独立、不相互兜底。`interviewer_*` 目的仅走 `email`，不受此影响。
 
 ### 6.9 人工重发（SRS §3.8/§3.9，UC-21）
-- 失败中心手动重发 = 新建 `NotificationDelivery` 尝试记录（`attempt_no`+1，`event_version`+1 → 新幂等键），受 `uq_delivery_attempt` 约束防重复；入 `AuditLog`。
+- 失败中心手动重发 = 新建 `NotificationDelivery` 尝试记录（`delivery_purpose` 不变、`attempt_no`+1、`event_version`+1 → 新幂等键），受 `uq_delivery_attempt(event_id, delivery_purpose, channel, event_version, attempt_no)` 约束防重复；入 `AuditLog`。
 - 限频：同账号每 10 分钟 ≤5 次、每小时 ≤20 次（SRS §5.6）。**限频实现机制留《安全设计》，本文只记阈值来源。**
 
 ### 6.10 模型边界声明
-§6 全部机制仅使用领域模型 v1.1.4 既有结构：`NotificationEvent(status, scheduled_at, created_at, idempotency_key, cancelled_at, superseded_by_event_id)`、`NotificationDelivery(status, attempt_no, event_version, created_at, next_retry_at, last_error, provider_message_id, channel_metadata)` 与既有索引 `uq_delivery_attempt`。**未新增列、表或外部依赖。**
+§6 全部机制仅使用领域模型 v1.1.5 既有结构：`NotificationEvent(status, scheduled_at, created_at, idempotency_key, cancelled_at, superseded_by_event_id)`、`NotificationDelivery(delivery_purpose, status, attempt_no, event_version, created_at, next_retry_at, last_error, provider_message_id, channel_metadata)` 与既有索引 `uq_delivery_attempt`（已调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`）。`delivery_purpose` 为 v1.1.5 已批准字段，本草案仅使用、未新增。**未新增列、表或外部依赖。**
 
 ---
 
@@ -550,7 +558,7 @@ SELECT d.* FROM NotificationDelivery d
 ### 其余 ADR：本轮**不裁定**
 | ADR | 议题 | 本轮处理 |
 |-----|------|----------|
-| ADR-ARCH-005 | 密码哈希算法 | **不裁定**，留《安全设计》。若拟选算法与 PRD §8.7（BCrypt）不一致，须先经 Change Request 更新并批准全部受影响规范，规范同步完成前不得实现（领域模型 v1.1.4 §1 冲突升级条款、SRS §6.3） |
+| ADR-ARCH-005 | 密码哈希算法 | **不裁定**，留《安全设计》。若拟选算法与 PRD §8.7（BCrypt）不一致，须先经 Change Request 更新并批准全部受影响规范，规范同步完成前不得实现（领域模型 v1.1.5 §1 冲突升级条款、SRS §6.3） |
 | ADR-ARCH-006 | 退信接入方式（回调 / 定时拉取） | **不裁定**，留《安全设计》。架构正文不假定实现，仅规定 §7.2 的边界约束 |
 | ADR-ARCH-007 | 会话存储介质 | **不裁定**，留《安全设计》。架构仅约束「应用进程不得在本地内存持有会话状态」（§9.1） |
 | ADR-ARCH-008 | 限频实现机制 | **不裁定**，留《安全设计》。架构仅约束「限频计数不得存于单实例内存」并记录 SRS §5.6 阈值来源 |
@@ -577,7 +585,7 @@ SELECT d.* FROM NotificationDelivery d
 ## 12. 与基线/下游关系 + v0.1 → v0.2 变更记录
 
 ### 12.1 基线关系
-- 本文档 based_on SRS v1.1 / 领域模型 v1.1.4 / UI 线框 v1.0（均 approved）。
+- 本文档 based_on SRS v1.1 / 领域模型 v1.1.5 / UI 线框 v1.0（均 approved）。
 - 密码哈希算法**显式不在本阶段选择**；退信接入方式、会话存储、限频实现**显式不在本阶段假定**。
 - 下游：《安全设计》→《接口契约（OpenAPI/SSE）》→《测试计划》→ 开发准入评审。
 - 本文档 approved 前，下游不得据此锁定物理端点；SRS §8 错误码表为唯一权威。
@@ -604,25 +612,25 @@ SELECT d.* FROM NotificationDelivery d
 | 16 | ADR 仅列候选，无推荐 | 无法评审裁定 | §10 对部署形态/向量方案/SSE/Outbox 各给唯一推荐 + 理由 + 重裁触发 |
 
 ### 12.3 模型边界结论
-本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.4 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。
+本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.5 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。
 
 ---
 
-## 13. 后续修正待办（Backlog，待领域模型 v1.1.5 批准后执行，不另建治理任务）
+## 13. 后续修正待办（Backlog，不另建治理任务）
 
-> 本节为架构待办登记，非本次 v0.2 内容修正；待领域模型 v1.1.5 经用户批准、下游同步完成后，由相应任务执行。
+> 本节为架构待办登记，非本次 v0.2 内容修正。领域模型 v1.1.5 已批准、下游（SRS/UI/架构）同步已完成；下列待办仍待执行（由后续任务在架构 v0.2 批准后补入正文，或并行修正）。
 
 ### 13.1 用户取消后 Slot 状态须按规则重新物化（非无条件 available）
 - **问题**：§4.3 当前「用户取消 → Slot 释放为 `available`」过于粗暴。若该时段正处于 owner 的 `AvailabilityOverride`（如 `force_unavailable` 节假日覆盖、或 `force_available` 强制可约）之下，无条件置 `available` 会破坏 owner 意图真相源（`AvailabilityOverride` 是 owner 人工意图的唯一真相源，见领域模型 §6.9）。
-- **修正方向**：用户取消释放 Slot 时，**不得无条件置 `available`**；应依据当前生效的 `AvailabilityOverride` 与日历规则（周末/节假日/用餐系统规则）**重新物化**该格的 `status`（`available` / `unavailable` / 仍受 override 约束）。`owner` 强制取消仍按现规则置 `owner_locked`（owner 主动锁定语义保留）。物化逻辑与 §4.4 的 `owner_locked` 写回同属「释放/锁定」后的状态推导，须由下游同步任务在领域模型 v1.1.5 批准后补入 §4.3/§4.4。
+- **修正方向**：用户取消释放 Slot 时，**不得无条件置 `available`**；应依据当前生效的 `AvailabilityOverride` 与日历规则（周末/节假日/用餐系统规则）**重新物化**该格的 `status`（`available` / `unavailable` / 仍受 override 约束）。`owner` 强制取消仍按现规则置 `owner_locked`（owner 主动锁定语义保留）。物化逻辑与 §4.4 的 `owner_locked` 写回同属「释放/锁定」后的状态推导，须由下游同步任务补入 §4.3/§4.4。
 
 ### 13.2 created_at 隐式租约须区分「未发送」与「结果未知」
 - **问题**：§6.4 以「非终态 `status` + `created_at`」构成 5 分钟隐式租约，未区分 `queued`（尚未调用外部通道）与 `sending`（已调用、等待回执）两种中间态的失败语义。
 - **修正方向**：Worker **只创建可立即处理的尝试**——`queued → sending` 必须**立即发生**（领取后即调用通道，不在 `queued` 长驻）；外部通道超时阈值须**远小于 5 分钟**（如 10–30s）。两类超时分别处理：
   - **`queued` 超时**（领取后长时间未进入 `sending`，即 Worker 崩溃在发送前）：按「**未发送**」回收——可安全重投，不担心外部重复；
   - **`sending` 超时**（调用后未回执，即 Worker 崩溃在等待回执）：按「**结果未知**」回收——外部可能已发出，重投有重复风险，须依赖服务商幂等（`provider_message_id`）+ 稳定幂等键尽力去重，并在《测试计划》覆盖该场景。
-  - 上述区分与 §6.5 稳定幂等键（不含 `attempt_no`）、§6.1 至少一次语义一致；具体阈值与回收分支待领域模型 v1.1.5 批准后补入 §6.4。
+  - 上述区分与 §6.5 稳定幂等键（不含 `attempt_no`）、§6.1 至少一次语义一致；具体阈值与回收分支补入 §6.4。
 
 ---
 
-> **文档结束** · 架构 v0.2（review 草案） · based_on SRS v1.1 / 领域模型 v1.1.4 / UI 线框 v1.0 · **未批准，待用户独立评审**。
+> **文档结束** · 架构 v0.2（review 草案） · based_on SRS v1.1 / 领域模型 v1.1.5 / UI 线框 v1.0 · **未批准，待用户独立评审**。

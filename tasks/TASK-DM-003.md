@@ -137,18 +137,25 @@
 - **结论**：需同步更新，但本任务**不修改** architecture v0.2 技术内容（仅 §13 待办登记）。
 
 ## 交付证据（review 草案，**不关闭**）
-- commit / PR：<G1 待回填>
+- commit / PR：448bcac4b4b615a441256bcc79a5f9da97a7577c（G1 快照）
 - 修改文件清单：docs/design/domain-model.md / tasks/TASK-DM-003.md / docs/baseline.yml / PROJECT_STATE.md / docs/design/architecture.md（5 个路径，与「允许修改路径」逐一对照一致）
-- 测试命令及结果：<待回填>
+- 测试命令及结果：
+  1. `grep "delivery_purpose" domain-model.md` → 类图(200)/§5(412)/§6.12(524,533,535,541,542)/版本注(9)/脚注(645) 均出现，枚举值 `candidate_notification/interviewer_confirmation/interviewer_cancellation` 一致（pass）；
+  2. `grep "uq_delivery_attempt" domain-model.md` → 唯一约束 `ON NotificationDelivery(event_id, delivery_purpose, channel, event_version, attempt_no)`，`delivery_purpose` 位于 `event_id` 之后、`channel` 之前（pass）；
+  3. §6.12 目的映射表与 PRD §4.5.1/P0-4、SRS §3.5/§3.7 的收件人/通道规定一致（pass）；
+  4. `grep "domain_model:" baseline.yml` → `version: "1.1.5", status: review`，未变为 approved（pass）；
+  5. `grep "delivery_purpose" SRS.md / ui-wireframe.md` → 无结果（下游正文未被改，符合不修改下游）（pass）。
 - lint / typecheck：不适用（设计任务）
 - DB 迁移验证：无
-- 验收证据：<待回填>
-- 变更预算实际值：<待回填>
-- 未解决风险：<待回填>
-- 是否偏离 TASK：<待回填>
+- 验收证据：domain-model.md v1.1.5（§1/§2.3/§5/§6.11/§6.12/脚注）：新增 `NotificationDelivery.delivery_purpose` 列 + 唯一约束调整 + 三目的合法 channel/收件人来源映射（收件人不新增明文字段）；§5/§6.11 明确事件类型与投递目的解耦、不重新引入 `confirm_mail`；architecture.md §13 登记两项后续修正待办。baseline.domain_model=1.1.5/review；PROJECT_STATE 同步阶段态与门禁顺序。
+- 变更预算实际值：max_files=5，实际 5 文件（domain-model.md / TASK-DM-003.md / baseline.yml / PROJECT_STATE.md / architecture.md 仅 §13），未超预算。
+- 未解决风险：
+  1. **下游影响待同步（spec_sync=dirty，预期触发 needs impact check，符合意图）**：SRS v1.1 需文字同步级更新（显式 `delivery_purpose` 概念与目的映射，不改变用户行为）；architecture v0.2 §6 须纳入 `delivery_purpose`（唯一约束 + 幂等键 + 投递创建置目的）；均待用户批准 v1.1.5 后由相应任务执行。
+  2. **面试官改期告知超出最小目的集**：`appointment_rescheduled → 面试官` 告知不在本草案强制三目内，列为可后续增补目的枚举，不破坏既有三目语义。
+- 是否偏离 TASK：否（仅做六项强制修正 + 两项架构待办登记；未批准领域模型、未修改 SRS/UI 正文、未重新引入 `confirm_mail`、未新增明文收件人、未触动密码哈希冲突升级条款、未进入下游阶段）。
 - 规范影响结论：srs=需文字同步级更新（非 none，不改变用户行为）；ui=none；architecture=需同步更新（待批准后）
 - spec_sync：dirty（domain_model 升 1.1.5，下游 SRS/UI/architecture 的 based_on/引用仍为 1.1.4，**预期触发 needs impact check**；按用户指令暂不修改下游，待批准后同步）
-- verified_commit：<G1 待回填>
+- verified_commit：448bcac4b4b615a441256bcc79a5f9da97a7577c（G1 快照，非自指）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（下游 impact review 已执行并同步）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
   **本任务保持 review，待用户独立评审批准 domain_model v1.1.5 后方可关闭。AI 不得代签 approved。**
 

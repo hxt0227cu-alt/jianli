@@ -83,18 +83,18 @@
 - **必须立即停止并报告**：出现任何未在「允许修改路径」列明的变化，包括新增/修改数据库表/字段/索引（超出领域模型已批准范围）、新增/修改公开 API、改变加密/鉴权/权限策略、修改 SRS 业务内容、自行选择密码哈希算法、自行新增错误码、实现任务范围外功能（含 deferred 延后项）。
 
 ## 交付证据（review 草案，不关闭）
-- commit / PR：<回填 G1>
-- 修改文件清单：<回填，与「允许修改路径」对照>
-- 测试命令及结果：全仓一致性 Grep 校验（模块↔实体映射 / 事务边界引用）→ <回填>
+- commit / PR：2f7398266b89eaf0078fa2348a308679b8799f46（架构 review 草案快照 G1）
+- 修改文件清单：docs/design/architecture.md / docs/baseline.yml / PROJECT_STATE.md / tasks/TASK-ARCH-001.md（与「允许修改路径」一致）
+- 测试命令及结果：全仓一致性 Grep 校验（模块↔实体映射 / 事务边界引用 SRS §3.5/§3.6/§3.7 + 领域模型 §6.6/§6.7/§6.11）→ pass
 - lint / typecheck：不适用（设计任务）
 - DB 迁移验证：无
-- 验收证据：<架构草案 8 节覆盖 + ADR 清单 + 开放项>
-- 变更预算实际值：<max_files 实际>
+- 验收证据：架构草案 8 节覆盖（§1 边界/§2 模块/§3 部署调用/§4 事务边界/§5 SSE/§6 通知可靠性/§7 知识库热更新/§8 部署运维）+ ADR 清单（ADR-ARCH-001~008，含密码哈希留安全）+ 开放项（AUTH_EXPIRED 冲突）
+- 变更预算实际值：max_files=4，实际 4 文件，未超预算
 - 未解决风险：AUTH_EXPIRED 语义冲突（SRS §3.3 关联限频 vs §8 定义登录过期）登记为「OpenAPI 设计前必须裁定」开放项；架构阶段不裁定、不新增错误码、不修改 SRS
 - 是否偏离 TASK：否
 - 规范影响结论：none（纯架构设计，不改业务行为；依据均 approved）
 - spec_sync：clean（上游 SRS/DM/UI 均 approved 且 based_on 未变）
-- verified_commit：<回填 G1>
+- verified_commit：2f7398266b89eaf0078fa2348a308679b8799f46（架构 review 草案快照 G1，非自指）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。**本任务保持 review，待用户独立评审批准 architecture 后方可关闭。**
 
 ## 关联

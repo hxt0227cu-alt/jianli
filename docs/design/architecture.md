@@ -608,4 +608,21 @@ SELECT d.* FROM NotificationDelivery d
 
 ---
 
+## 13. 后续修正待办（Backlog，待领域模型 v1.1.5 批准后执行，不另建治理任务）
+
+> 本节为架构待办登记，非本次 v0.2 内容修正；待领域模型 v1.1.5 经用户批准、下游同步完成后，由相应任务执行。
+
+### 13.1 用户取消后 Slot 状态须按规则重新物化（非无条件 available）
+- **问题**：§4.3 当前「用户取消 → Slot 释放为 `available`」过于粗暴。若该时段正处于 owner 的 `AvailabilityOverride`（如 `force_unavailable` 节假日覆盖、或 `force_available` 强制可约）之下，无条件置 `available` 会破坏 owner 意图真相源（`AvailabilityOverride` 是 owner 人工意图的唯一真相源，见领域模型 §6.9）。
+- **修正方向**：用户取消释放 Slot 时，**不得无条件置 `available`**；应依据当前生效的 `AvailabilityOverride` 与日历规则（周末/节假日/用餐系统规则）**重新物化**该格的 `status`（`available` / `unavailable` / 仍受 override 约束）。`owner` 强制取消仍按现规则置 `owner_locked`（owner 主动锁定语义保留）。物化逻辑与 §4.4 的 `owner_locked` 写回同属「释放/锁定」后的状态推导，须由下游同步任务在领域模型 v1.1.5 批准后补入 §4.3/§4.4。
+
+### 13.2 created_at 隐式租约须区分「未发送」与「结果未知」
+- **问题**：§6.4 以「非终态 `status` + `created_at`」构成 5 分钟隐式租约，未区分 `queued`（尚未调用外部通道）与 `sending`（已调用、等待回执）两种中间态的失败语义。
+- **修正方向**：Worker **只创建可立即处理的尝试**——`queued → sending` 必须**立即发生**（领取后即调用通道，不在 `queued` 长驻）；外部通道超时阈值须**远小于 5 分钟**（如 10–30s）。两类超时分别处理：
+  - **`queued` 超时**（领取后长时间未进入 `sending`，即 Worker 崩溃在发送前）：按「**未发送**」回收——可安全重投，不担心外部重复；
+  - **`sending` 超时**（调用后未回执，即 Worker 崩溃在等待回执）：按「**结果未知**」回收——外部可能已发出，重投有重复风险，须依赖服务商幂等（`provider_message_id`）+ 稳定幂等键尽力去重，并在《测试计划》覆盖该场景。
+  - 上述区分与 §6.5 稳定幂等键（不含 `attempt_no`）、§6.1 至少一次语义一致；具体阈值与回收分支待领域模型 v1.1.5 批准后补入 §6.4。
+
+---
+
 > **文档结束** · 架构 v0.2（review 草案） · based_on SRS v1.1 / 领域模型 v1.1.4 / UI 线框 v1.0 · **未批准，待用户独立评审**。

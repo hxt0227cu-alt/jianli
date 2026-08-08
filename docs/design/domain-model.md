@@ -1,4 +1,4 @@
-# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.4
+# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.5
 
 > 本文档是《需求文档 v2.3.3》与《用例规约 v1.7.2》之后的分析设计工件，属"分析/设计"阶段产物。
 > 用途：冻结数据库边界与领域实体关系，作为《接口契约》《测试计划》与架构设计的前置输入。
@@ -6,6 +6,7 @@
 > **状态机枚举以需求文档 §8.10 为唯一规范源**，本文仅引用，不另立状态名。
 > **v1.1.2 整改（第六轮 P0-6~P0-8 + 实现边界）**：`CompanyBookingException` 补 `revoked_at`/`revoked_by` 与并发消费锁（`FOR UPDATE` + `uq_appointment_exception`）；`DeliveryAttempt` 幽灵实体全文改为 `NotificationDelivery` 尝试记录并补唯一约束；`RecommendedQuestionCache` 改为 `page_key/questions_json/generated_at/invalidated_at` + `UNIQUE(page_key) WHERE invalidated_at IS NULL`（取消全局版本字段）；`AvailabilityOverride` 补 NOT NULL 约束与 `CHECK`、明确为 owner 意图真相源；并发抢占补三格连续性服务端校验；逻辑模型与物理 Schema 分离说明；配套 PRD v2.3.3、用例规约 v1.7.2；**v1.1.3 整改（TASK-DM-001 独立修正，2026-08-07；已于 `f64b6de` 正式批准，内容以该 commit 快照为准）**：密码哈希算法裁定边界表述（`password_hash` 当前按 Argon2id 设计、最终算法待《安全设计》ADR 裁定，PRD §8.7 BCrypt 冲突以安全设计为准）；编码准入门禁改引用 baseline `development_gate` 全 10 项（纠正「仅接口契约+测试计划通过即开放编码」误述）；遗留 `purge_before→purge_after` 改名痕迹清除。**该版本批准后经复评发现 P0 缺陷——正文 5 处仍将实现指向 Argon2id，与「领域模型不预选算法」自相矛盾，故已由 v1.1.4 取代；1.1.3 的批准事实与锚点 `f64b6de` 保留为历史记录，不予否认。**
 > **v1.1.4 整改（TASK-DM-002 独立修正，2026-08-08）**：**密码哈希算法彻底中性化**——领域模型**仅规定 `password_hash` 存储密码哈希（不存明文），不预选任何具体哈希算法**；算法裁定权归《安全设计》ADR。落点 4 处：§1 存储策略、§2.3 类图 `User`、§4 ER 图 `USER`、§6.1 字段表（原 Argon2id 实现指向全部清除）。同时新增**冲突升级条款**：若《安全设计》ADR **拟选算法**与 PRD §8.7 记载的 BCrypt 不一致，**必须先通过变更请求（Change Request）更新并批准所有受影响的规范（至少含 PRD §8.7 与 SRS 相关条款），规范同步完成并获批准前不得按该 ADR 实现**；不得允许 ADR 与规范长期冲突并存。本版不改领域实体 / 属性 / 关系 / 状态机 / 不变量 / 并发约束；对 SRS 存在**文字同步级**影响（SRS §6.3 现称「领域模型 §6.1 记为 Argon2id」已过期），须由 TASK-SRS-001 在 v1.1.4 获批后执行 impact review（结论不得记为 none）。
+> **v1.1.5 整改（TASK-DM-003 review 草案，2026-08-08）**：修复 `NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」的实现阻塞——新增 `delivery_purpose` 枚举列（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），唯一约束由 `(event_id, channel, event_version, attempt_no)` 调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`；**事件类型继续表达业务事实**，投递目的表达该事实产生的**投递意图**，不得重新引入 `confirm_mail` 业务事件类型。本版**不改**密码哈希冲突升级条款（沿用 v1.1.4）。v1.1.4 已于 `f537296` 正式批准（历史事实保留，不予否认），其内容由本 v1.1.5 review 草案取代；下游 SRS v1.1 / UI v1.0 / architecture v0.2 的影响分析见 TASK-DM-003，**待用户批准 v1.1.5 后再同步下游，本草案不修改下游工件**。
 
 ---
 
@@ -196,6 +197,7 @@ classDiagram
     class NotificationDelivery {
         +id UUID PK
         +event_id UUID FK
+        +delivery_purpose enum[candidate_notification,interviewer_confirmation,interviewer_cancellation]
         +channel enum[feishu,email]
         +event_version int
         +attempt_no int
@@ -407,7 +409,7 @@ erDiagram
 | **AppointmentStatus**（预约） | `active` / `cancelled` / `completed` | `Appointment.status` | 提交即 `active`；改期 `active→active`（原子事务）；无 `pending`/`draft`；`cancelled`/`completed` 仅置位时间字段 |
 | **DeliveryStatus**（通知投递，通道无关） | `queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter` | `NotificationDelivery.status` | 独立于预约；手动重发=**新建 `NotificationDelivery` 尝试记录**（`attempt_no`+1）；邮件 `bounced` 与飞书 `response_code` 仅存 `channel_metadata` JSONB 分支，不混入通用枚举 |
 
-> **NotificationEvent 生命周期（P0-6）**：`status` = `pending` → `processing` → `processed`（终态）；异常 `failed`（进入 Delivery 重试/死信）；**改期/取消时**：未执行的 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`），改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件。事件类型仅表达**业务事实**：`appointment_created` / `appointment_details_updated` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`；具体用哪个模板/通道由消费者与通道适配器决定，**不允许 `appointment_created` 与 `confirm_mail` 重复投递**（已移除 `confirm_mail` 类型）。
+> **NotificationEvent 生命周期（P0-6）**：`status` = `pending` → `processing` → `processed`（终态）；异常 `failed`（进入 Delivery 重试/死信）；**改期/取消时**：未执行的 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`），改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件。事件类型仅表达**业务事实**：`appointment_created` / `appointment_details_updated` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`；具体用哪个模板/通道由消费者与通道适配器决定，**不允许 `appointment_created` 与 `confirm_mail` 重复投递**（已移除 `confirm_mail` 类型）。**投递意图由 `NotificationDelivery.delivery_purpose` 表达**（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），与事件类型解耦；同一业务事件可针对不同目的产生不同 `NotificationDelivery` 行（例：`appointment_created` → 对候选人 `candidate_notification` + 对面试官 `interviewer_confirmation`，二者通道/收件人不同、独立记录尝试/状态/退信/重试/手动重发）。
 
 > **通道元数据判别联合（P1-5）**：`NotificationDelivery.channel_metadata` 为 JSONB，但代码中必须定义为两个独立类型，禁止作为任意字典穿透业务层：
 > - email 分支：`smtp_accepted_at` / `bounced_at` / `bounce_reason`
@@ -517,13 +519,27 @@ COMMIT;
 | id UUID PK | type enum[appointment_created,appointment_details_updated,appointment_rescheduled,appointment_cancelled,reminder_due] | biz_id UUID | scheduled_at timestamptz NULL（仅 reminder_due） | idempotency_key string UK | status enum[pending,processing,processed,cancelled,failed] | cancelled_at timestamptz NULL | superseded_by_event_id UUID NULL | created_at |
 > 临近提醒：定时任务扫描 `type=reminder_due AND scheduled_at<=now() AND status=pending`，触发生成 `NotificationDelivery`，不独立建表。**改期/取消时**：将未执行 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`）；改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件，确保提醒随预约生命周期正确撤销/重建。
 
-### 6.12 NotificationDelivery（通用状态 + 通道元数据 JSONB，合并 Email/Feishu 元数据）
-| id UUID PK | event_id UUID FK | channel enum[feishu,email] | event_version int | attempt_no int | status enum[queued,sending,succeeded,failed,retry_scheduled,dead_letter] | channel_metadata jsonb（email/feishu **判别联合**，见 §5） | provider_message_id string NULL | next_retry_at timestamptz NULL | last_error text NULL | created_at |
+### 6.12 NotificationDelivery（通用状态 + 投递目的 + 通道元数据 JSONB，合并 Email/Feishu 元数据）
+
+| id UUID PK | event_id UUID FK | delivery_purpose enum[candidate_notification,interviewer_confirmation,interviewer_cancellation] | channel enum[feishu,email] | event_version int | attempt_no int | status enum[queued,sending,succeeded,failed,retry_scheduled,dead_letter] | channel_metadata jsonb（email/feishu **判别联合**，见 §5） | provider_message_id string NULL | next_retry_at timestamptz NULL | last_error text NULL | created_at |
+
 ```sql
 CREATE UNIQUE INDEX uq_delivery_attempt
-  ON NotificationDelivery(event_id, channel, event_version, attempt_no);
+  ON NotificationDelivery(event_id, delivery_purpose, channel, event_version, attempt_no);
 ```
-> 手动重发=新建一条 `NotificationDelivery` 尝试记录（`attempt_no`+1），幂等键含 `event_version`；该唯一索引防止并发消费者产生重复尝试记录。
+
+> 手动重发=新建一条 `NotificationDelivery` 尝试记录（`attempt_no`+1，保持 `delivery_purpose` 不变），幂等键含 `event_version`；该唯一索引防止并发消费者产生重复尝试记录，并允许同一 `event_id`+`channel`+`event_version` 下按 `delivery_purpose` 并存多行（不同目的独立记录尝试/状态/退信/重试/手动重发）。
+
+**投递目的（delivery_purpose）语义与合法通道/收件人来源**（收件人不得新增冗余明文字段，由业务实体 + 目的确定；发送时按访问控制解密既有密文）：
+
+| delivery_purpose | 含义 | 合法 channel | 收件人来源（不新增明文字段） |
+|---|---|---|---|
+| `candidate_notification` | 面向**候选人**的通知/提醒（reminder_due、appointment_created/rescheduled/cancelled 的候选人侧告知） | `email` + `feishu`（双通道，SRS §3.8） | 候选人：由 `Appointment` → 候选人用户（`candidate` 联系方式密文，受访问控制解密）；飞书经候选人 feishu 用户标识 |
+| `interviewer_confirmation` | 面向**面试官**的预约确认函（appointment_created 的面试官侧确认） | `email`（PRD §4.5.1 确认函投递至面试官注册邮箱） | 面试官注册邮箱：由 `Appointment.interview_id` → `Interview.interviewer_id` → `InterviewerProfile.registered_email`（密文，受访问控制解密） |
+| `interviewer_cancellation` | 面向**面试官**的取消告知函（owner 强制取消的面试官侧告知） | `email`（PRD P0-4 owner 取消发注册邮箱取消告知函） | 同上，`InterviewerProfile.registered_email` |
+
+> 收件人**绝不**以明文列冗余存储：候选人/面试官联系方式沿用既有密文字段（`candidate_*` / `InterviewerProfile.registered_email`），发送时按访问控制解密；`delivery_purpose` 仅决定「取哪个业务实体的哪个联系方式」与「用哪个通道模板」，不改变收件人存储方式。
+> 事件类型与投递目的解耦：`appointment_created` 可同时产生 `candidate_notification`（email+feishu 通知候选人）与 `interviewer_confirmation`（email 确认函给面试官）；二者为 `NotificationDelivery` 中两行不同 `delivery_purpose`、可独立重试/退信/重发。未在最小目的集中列出的「面试官改期告知」等可后续增补目的枚举，不破坏唯一约束与既有三目的语义。
 
 ### 6.13 Conversation / Message（含留存）
 | Conversation.id UUID PK | user_id FK→User | created_at / updated_at | deleted_at timestamptz NULL | purge_after timestamptz NULL（180 天） |
@@ -626,4 +642,4 @@ CREATE UNIQUE INDEX uq_appointment_exception
 
 ---
 
-> 版本：v1.1.4（2026-08-08，TASK-DM-002 密码算法中性化修正；取代 v1.1.3，1.1.3 批准锚点 `f64b6de` 保留为历史）｜配套 PRD v2.3.3、用例规约 v1.7.2｜状态机以需求文档 §8.10 为唯一规范源｜建表实体 20 个 + 合并实现 5 项能力（不独立建表）。
+> 版本：v1.1.5（2026-08-08，TASK-DM-003 review 草案；取代 v1.1.4，v1.1.4 批准锚点 `f537296` 保留为历史）｜配套 PRD v2.3.3、用例规约 v1.7.2｜状态机以需求文档 §8.10 为唯一规范源｜建表实体 20 个 + 合并实现 5 项能力（不独立建表）｜本版仅新增 `NotificationDelivery.delivery_purpose` 列并调整 `uq_delivery_attempt` 唯一约束，不改密码哈希冲突升级条款。

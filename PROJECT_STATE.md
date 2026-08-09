@@ -15,6 +15,7 @@
 - **SRS v1.1 / status=approved**（v1.0 于 `26ae844` 批准；v1.1 退信(Bounce) 缺陷修正经用户 2026-08-08 独立评审批准，独立批准锚点 `00e125c`，不复用 review 草案 `1c21d7d`；v1.0 approved 快照冻结于 `26ae844` 不重写），`spec_sync=clean`。`baseline.srs.based_on` = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.5（上游均已 approved 且对齐，domain_model 已随 v1.1.5 批准同步）；TASK-SRS-001 已完成 impact review 并关闭；**SRS 现为行为唯一源**（precedence 高于 PRD/用例规约），用例规约冻结为历史输入；**v1.1 缺陷修正（TASK-SRS-002）已关闭**：补充退信记录/展示筛选/告警/手动重发/不回滚预约，v1.0 遗漏项已补。
 - **UI 线框 v1.0（TASK-UI-001 / ui-wireframe.md）**：UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=`38b102a`，baseline.status=`approved`）；影响评审（TASK-UI-IMPACT-001）结论=基本可沿用 + 1 处缺口；内容缺口由 TASK-UI-002 执行并闭合（A6/A7 失败三态 + 退信），8 项后续内容修正由 **TASK-UI-003** 一次性修正并闭合（对齐 SRS v1.1、消除误导实现表述）；TASK-UI-001 已关闭。下游进入架构/ADR 阶段。
 - **架构设计 v0.2 已批准**：用户于 2026-08-09 明确批准，内容快照=`3a18b7f`，approval_commit=`da3f6fc`。TASK-ARCH-001 / TASK-ARCH-002 已关闭；SSE、事务锁序、Outbox、退信边界与四项核心 ADR 已定稿。ADR-ARCH-005~008 转安全设计，`AUTH_EXPIRED` 留 OpenAPI 前裁定。
+- **安全设计 v0.1 review（TASK-SEC-001）**：已产出密码、会话、Redis 限频、IMAP 退信、AES-256-GCM/密钥、RBAC、LLM/RAG、上传与日志安全草案；保持 review，待用户正式批准。
 
 ---
 
@@ -32,6 +33,7 @@
 - **TASK-SRS-002**：**已关闭（Closed，2026-08-08）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；approval_commit=`00e125c`（SRS v1.1 批准锚点）；verified_commit=`b38febd`（下游 UI 同步验证快照）；spec_sync=clean。SRS v1.1 现已 approved。
 - **TASK-ARCH-001 / TASK-ARCH-002**：**已关闭（Closed，2026-08-09）**——architecture v0.2 内容快照=`3a18b7f`，approval_commit=`da3f6fc`，spec_sync=clean。
 - **TASK-ARCH-003**：**已关闭（Closed，2026-08-09）**——承载用户明确批准后的单一用途状态推进与架构阶段收口。
+- **TASK-SEC-001**：**进行中（Review）**——安全设计 v0.1 草案，未批准、未关闭。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 

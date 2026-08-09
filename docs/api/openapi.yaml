@@ -1,0 +1,803 @@
+openapi: 3.1.0
+info:
+  title: AI 面试协作站 API
+  version: 0.1.0-review
+  description: >-
+    Review contract based on SRS 1.2 review, domain-model 1.1.5 approved,
+    architecture 0.2 approved and security 0.1 review. Not approved for implementation.
+servers:
+  - url: /api/v1
+security: []
+tags:
+  - { name: Public }
+  - { name: Answer }
+  - { name: Auth }
+  - { name: Slots }
+  - { name: Appointments }
+  - { name: Admin }
+paths:
+  /pages/{page_key}:
+    get:
+      tags: [Public]
+      operationId: getPageContent
+      parameters:
+        - $ref: '#/components/parameters/PageKey'
+      responses:
+        '200':
+          description: Page content
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageContent' }
+        default: { $ref: '#/components/responses/Error' }
+  /pages/{page_key}/recommendations:
+    get:
+      tags: [Public]
+      operationId: listRecommendedQuestions
+      parameters:
+        - $ref: '#/components/parameters/PageKey'
+      responses:
+        '200':
+          description: Cached or fixed fallback questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, source]
+                properties:
+                  items: { type: array, items: { type: string }, maxItems: 8 }
+                  source: { type: string, enum: [cache, fallback] }
+        default: { $ref: '#/components/responses/Error' }
+  /answers:stream:
+    post:
+      tags: [Answer]
+      operationId: streamAnswer
+      description: SSE over fetch. Anonymous answers are not persisted. See docs/api/sse.md.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnswerRequest' }
+      responses:
+        '200':
+          description: answer.started/delta/citations/completed SSE stream
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /conversations:
+    get:
+      tags: [Answer]
+      operationId: listConversations
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Current user's persisted conversations
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationList' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Answer]
+      operationId: createConversation
+      security: [{ cookieSession: [] }]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Conversation' }
+        default: { $ref: '#/components/responses/Error' }
+  /conversations/{conversation_id}/messages:
+    get:
+      tags: [Answer]
+      operationId: listConversationMessages
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '200':
+          description: Owner-only message history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Message' } }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerInterviewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '202': { description: Generic response; verification email queued if applicable }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      operationId: verifyEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '204': { description: Verified }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '204':
+          description: Session Cookie issued
+          headers:
+            Set-Cookie: { schema: { type: string } }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Session revoked }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/password-reset/request:
+    post:
+      tags: [Auth]
+      operationId: requestPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { description: Generic response }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmPasswordReset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/TokenRequest'
+                - type: object
+                  required: [new_password]
+                  properties:
+                    new_password: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        '204': { description: Password changed and all sessions revoked }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        default: { $ref: '#/components/responses/Error' }
+  /slots/snapshot:
+    get:
+      tags: [Slots]
+      operationId: getSlotSnapshot
+      security: [{ cookieSession: [] }]
+      parameters:
+        - name: week_offset
+          in: query
+          schema: { type: integer, enum: [0, 1], default: 0 }
+        - name: watermark
+          in: query
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Two-week slot snapshot with privacy-safe ownership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SlotSnapshot' }
+        default: { $ref: '#/components/responses/Error' }
+  /slots/events:
+    get:
+      tags: [Slots]
+      operationId: streamSlotEvents
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: SSE stream; see docs/api/sse.md
+          content:
+            text/event-stream:
+              schema: { type: string }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /appointment-confirmations:
+    post:
+      tags: [Appointments]
+      operationId: previewAppointment
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppointmentDraft' }
+      responses:
+        '200':
+          description: Three-minute signed confirmation bound to the submitted payload
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppointmentPreview' }
+        default: { $ref: '#/components/responses/Error' }
+  /appointments:
+    get:
+      tags: [Appointments]
+      operationId: listMyAppointments
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Current interviewer's appointments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Appointment' } }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Appointments]
+      operationId: createAppointment
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation_token, appointment]
+              properties:
+                confirmation_token: { type: string }
+                appointment: { $ref: '#/components/schemas/AppointmentDraft' }
+      responses:
+        '201':
+          description: Appointment committed; notifications are asynchronous
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '409': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /appointments/{appointment_id}:
+    patch:
+      tags: [Appointments]
+      operationId: updateAppointment
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AppointmentUpdate' }
+      responses:
+        '200':
+          description: Atomically rescheduled or details updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Appointments]
+      operationId: cancelAppointment
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Cancelled; slot status rematerialized }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/appointments:
+    get:
+      tags: [Admin]
+      operationId: adminListAppointments
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Owner-only decrypted emergency read view
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Appointment' } }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/appointments/{appointment_id}/force-cancel:
+    post:
+      tags: [Admin]
+      operationId: forceCancelAppointment
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/AppointmentId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': { description: Cancelled and affected slots owner_locked }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/availability-overrides:
+    get:
+      tags: [Admin]
+      operationId: listAvailabilityOverrides
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Overrides
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/AvailabilityOverride' } }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Admin]
+      operationId: createAvailabilityOverride
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvailabilityOverrideInput' }
+      responses:
+        '201':
+          description: Created and slots rematerialized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityOverride' }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/availability-overrides/{override_id}:
+    patch:
+      tags: [Admin]
+      operationId: updateAvailabilityOverride
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/OverrideId'
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AvailabilityOverrideInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AvailabilityOverride' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Admin]
+      operationId: deleteAvailabilityOverride
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/OverrideId'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Deleted and slots rematerialized }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/notification-deliveries:
+    get:
+      tags: [Admin]
+      operationId: listNotificationFailures
+      security: [{ cookieSession: [] }]
+      parameters:
+        - name: channel
+          in: query
+          schema: { type: string, enum: [email, feishu] }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/FailureDeliveryStatus' }
+        - name: bounced
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Failure center rows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/NotificationDelivery' } }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/notification-deliveries/{delivery_id}/resend:
+    post:
+      tags: [Admin]
+      operationId: resendNotificationDelivery
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DeliveryId'
+        - $ref: '#/components/parameters/CsrfToken'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { description: New attempt created with incremented event_version }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/knowledge-documents:
+    get:
+      tags: [Admin]
+      operationId: listKnowledgeDocuments
+      security: [{ cookieSession: [] }]
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/KnowledgeDocument' } }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Admin]
+      operationId: uploadKnowledgeDocuments
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, format: binary }
+      responses:
+        '202': { description: Accepted for indexing }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/knowledge-documents/{document_id}:
+    delete:
+      tags: [Admin]
+      operationId: deleteKnowledgeDocument
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/CsrfToken'
+      responses:
+        '204': { description: Immediately disabled from retrieval }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/announcements/current:
+    put:
+      tags: [Admin]
+      operationId: updateAnnouncement
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, maxLength: 1000 }
+      responses:
+        '204': { description: Updated }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/company-booking-exceptions:
+    post:
+      tags: [Admin]
+      operationId: createCompanyBookingException
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompanyBookingExceptionInput' }
+      responses:
+        '201': { description: One-time exception created }
+        default: { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: __Host-session
+  parameters:
+    PageKey:
+      name: page_key
+      in: path
+      required: true
+      schema: { type: string, enum: [resume, projects] }
+    ConversationId:
+      name: conversation_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AppointmentId:
+      name: appointment_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    OverrideId:
+      name: override_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DeliveryId:
+      name: delivery_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string, minLength: 32 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 16, maxLength: 128 }
+  responses:
+    Error:
+      description: Stable error envelope
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 1 } }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code, trace_id]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 400, maximum: 599 }
+        code:
+          type: string
+          enum: [SLOT_TAKEN, DUP_COMPANY, DUP_ACCOUNT, OWNER_LOCKED, EMAIL_UNVERIFIED, AUTH_EXPIRED, RATE_LIMITED, PERM_DENIED, OVERRIDE_NOT_FOUND, OVERRIDE_RANGE_EMPTY, FEISHU_SYNC_FAIL, NOTIFY_PARTIAL, INDEX_FAIL, MODEL_UNAVAILABLE, SSE_RECONNECT, CONFIRM_EXPIRED, CONFIRM_MAIL_FAIL, EMAIL_NOT_EDITABLE]
+        detail: { type: string }
+        trace_id: { type: string }
+        retry_after_seconds: { type: integer, minimum: 1 }
+    PageContent:
+      type: object
+      required: [page_key, title, sections, updated_at]
+      properties:
+        page_key: { type: string, enum: [resume, projects] }
+        title: { type: string }
+        sections: { type: array, items: { type: object, additionalProperties: true } }
+        updated_at: { type: string, format: date-time }
+    AnswerRequest:
+      type: object
+      required: [question, page_key]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 2000 }
+        page_key: { type: string, enum: [resume, projects] }
+        project_key: { type: string, enum: [jianli, sleep202603_an] }
+        conversation_id: { type: [string, 'null'], format: uuid }
+    Conversation:
+      type: object
+      required: [id, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ConversationList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Conversation' } }
+    Message:
+      type: object
+      required: [id, role, content, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        is_offtopic: { type: boolean }
+        created_at: { type: string, format: date-time }
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 10, maxLength: 72 }
+    EmailRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    TokenRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 32 }
+    LoginRequest:
+      type: object
+      required: [email, password, remember_me]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1, maxLength: 72 }
+        remember_me: { type: boolean }
+    UserSummary:
+      type: object
+      required: [id, email, role, verified]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        role: { type: string, enum: [interviewer, owner_admin] }
+        verified: { type: boolean }
+    Slot:
+      type: object
+      required: [id, start_at, end_at, status, resource_version, ownership]
+      properties:
+        id: { type: string, format: uuid }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        status: { type: string, enum: [available, booked, owner_locked, unavailable] }
+        resource_version: { type: integer, minimum: 0 }
+        ownership: { type: string, enum: [none, self, other] }
+    SlotSnapshot:
+      type: object
+      required: [watermark, generated_at, items]
+      properties:
+        watermark: { type: integer, minimum: 0 }
+        generated_at: { type: string, format: date-time }
+        items: { type: array, items: { $ref: '#/components/schemas/Slot' } }
+    AppointmentDraft:
+      type: object
+      required: [slot_ids, company_name, meeting_platform, meeting_number, contact_last_name, contact_salutation, contact_phone]
+      properties:
+        slot_ids:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { type: string, format: uuid }
+        company_name: { type: string, minLength: 1, maxLength: 200 }
+        meeting_platform: { type: string, minLength: 1, maxLength: 100 }
+        meeting_number: { type: string, minLength: 1, maxLength: 200 }
+        contact_last_name: { type: string, minLength: 1, maxLength: 50 }
+        contact_salutation: { type: string, minLength: 1, maxLength: 20 }
+        contact_phone: { type: string, minLength: 5, maxLength: 40 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    AppointmentPreview:
+      type: object
+      required: [confirmation_token, expires_at, company_name, recipient_email, salutation]
+      properties:
+        confirmation_token: { type: string }
+        expires_at: { type: string, format: date-time }
+        company_name: { type: string }
+        recipient_email: { type: string, format: email, readOnly: true }
+        salutation: { type: string }
+    Appointment:
+      allOf:
+        - $ref: '#/components/schemas/AppointmentDraft'
+        - type: object
+          required: [id, status, version, start_at, end_at]
+          properties:
+            id: { type: string, format: uuid }
+            status: { type: string, enum: [active, cancelled, completed] }
+            version: { type: integer, minimum: 1 }
+            start_at: { type: string, format: date-time }
+            end_at: { type: string, format: date-time }
+    AppointmentUpdate:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        new_slot_ids:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: { type: string, format: uuid }
+        meeting_platform: { type: string, minLength: 1, maxLength: 100 }
+        meeting_number: { type: string, minLength: 1, maxLength: 200 }
+        contact_last_name: { type: string, minLength: 1, maxLength: 50 }
+        contact_salutation: { type: string, minLength: 1, maxLength: 20 }
+        contact_phone: { type: string, minLength: 5, maxLength: 40 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    AvailabilityOverrideInput:
+      type: object
+      required: [start_at, end_at, action]
+      properties:
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        action: { type: string, enum: [force_unavailable, force_available] }
+        reason: { type: [string, 'null'], maxLength: 500 }
+    AvailabilityOverride:
+      allOf:
+        - $ref: '#/components/schemas/AvailabilityOverrideInput'
+        - type: object
+          required: [id, created_at]
+          properties:
+            id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
+    FailureDeliveryStatus:
+      type: string
+      enum: [failed, retry_scheduled, dead_letter]
+    NotificationDelivery:
+      type: object
+      required: [id, delivery_purpose, channel, event_version, attempt_no, status, bounced]
+      properties:
+        id: { type: string, format: uuid }
+        delivery_purpose: { type: string, enum: [candidate_notification, interviewer_confirmation, interviewer_cancellation] }
+        channel: { type: string, enum: [email, feishu] }
+        event_version: { type: integer, minimum: 1 }
+        attempt_no: { type: integer, minimum: 1 }
+        status: { $ref: '#/components/schemas/FailureDeliveryStatus' }
+        bounced: { type: boolean }
+        bounced_at: { type: [string, 'null'], format: date-time }
+        bounce_reason: { type: [string, 'null'] }
+        last_error: { type: [string, 'null'] }
+    KnowledgeDocument:
+      type: object
+      required: [id, name, type, size, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        type: { type: string, enum: [md, pdf, docx, txt] }
+        size: { type: integer, maximum: 10485760 }
+        status: { type: string, enum: [indexing, indexed, failed] }
+        parse_mode: { type: [string, 'null'], enum: [text, ocr, native, null] }
+        failure_reason: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }
+    CompanyBookingExceptionInput:
+      type: object
+      required: [interviewer_user_id, company_name, reason, expires_at]
+      properties:
+        interviewer_user_id: { type: string, format: uuid }
+        company_name: { type: string, minLength: 1, maxLength: 200 }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        expires_at: { type: string, format: date-time }

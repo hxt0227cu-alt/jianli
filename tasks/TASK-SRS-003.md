@@ -54,18 +54,18 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`b162c0a`（SRS v1.2 review 草案快照）
+- 修改文件清单：docs/requirements/SRS.md / docs/baseline.yml / tasks/TASK-SRS-003.md / PROJECT_STATE.md
+- 测试命令及结果：错误码全文一致性与 baseline srs=1.2/review 检查 → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：SRS §3.3 / §3.9 / §8 / v1.2 修订说明
+- 变更预算实际值：max_files=4，实际 4 文件，未超预算
 - 未解决风险：需用户独立批准 SRS v1.2
 - 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：dirty（待批准与 OpenAPI impact review）
-- verified_commit：待回填
+- verified_commit：`b162c0a`
 - 状态：Review
 
 ## 关联

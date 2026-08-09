@@ -2,7 +2,7 @@
 
 > **文档状态**：v0.2 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决约束；经用户独立评审通过后方可置 `approved`）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
-> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径。逐项差异见 §12。
+> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态。逐项差异见 §12.3 条目 20–21。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
 > **模型边界**：本文全部方案仅使用领域模型 v1.1.5 已批准的实体、字段与索引，**未新增任何实体 / 表 / 字段 / 索引 / 外部依赖**（详见 §5.6、§6.10）。
@@ -305,16 +305,21 @@ COMMIT;
 > 重新物化在**持有该 Slot 行锁的事务内**完成（见 §4.0 统一锁顺序：相关 Slot 已在本事务 L3 锁集合内），与原本的释放 / 写回同事务提交，保证原子性。
 > 创建 `AvailabilityOverride` 时已校验「不与另一冲突 override 同时覆盖同一时段」（领域模型 §6.9），故重新物化时同一格至多被一个 `force_*` override 覆盖，无需处理 override 间冲突。
 
-### 4.7 AvailabilityOverride 变更事务（创建 / 修改 / 删除）
+### 4.7 AvailabilityOverride 变更事务（创建 / 修改 / 删除，统一冲突串行化）
 
-owner_admin 维护 `AvailabilityOverride`（领域模型 §6.9）时，其事务须（§4.0 锁顺序，本场景不触及 Company / Appointment，实际从 L3 起锁）：
+owner_admin 维护 `AvailabilityOverride`（领域模型 §6.9）时，其事务须（§4.0 锁顺序，本场景不触及 Company / Appointment，实际从 L3 起锁）。**与 v0.2 早前版本「先写 Override、再只锁未占用 Slot」不同，本流程改为「先读旧范围 → 统一锁范围内【全部】Slot（含 booked）→ 锁后复检冲突 → 无冲突才写 Override」**，以消除「override 已提交、但并发事务仍按旧 override 集合物化 Slot」的竞态窗口：
 
-1. 写 `AvailabilityOverride` 行（`INSERT` 创建 / `UPDATE` 修改 / `DELETE` 删除——删除即物理删除，模型无软删列）；
-2. 把「受本次变更影响、且未被任何 `Appointment` 占用（`appointment_id IS NULL`）的所有 `AppointmentSlot`」合并进 L3 锁集合（按 `start_at` 升序一次性 `FOR UPDATE`）；
-3. 对受影响且未被占用的 Slot，调用 §4.6 重新物化 `status` 并**同事务写回**；
-4. 提交；SSE 由 §5 的提交派生机制自然推送新状态。
+1. **计算影响范围 `affected_range`**：
+   - **创建**：本次 `INSERT` 的 `[start_at, end_at)` 即 `affected_range`；
+   - **修改**：先 `SELECT` 旧行的 `[start_at, end_at)` 记为 `old_range`，与本次新 `[start_at, end_at)` 取并集 `affected_range = old_range ∪ new_range`；
+   - **删除**：`SELECT` 旧行的 `[start_at, end_at)` 即 `affected_range`。
+2. **按统一顺序锁范围内【全部】`AppointmentSlot`**：把 `affected_range` 覆盖到的 Slot 合并进 L3 锁集合，**按 `(start_at ASC, id ASC)` 一次性升序 `FOR UPDATE`**，且**包含 `booked` 格**——`booked` 格在此处**不物化、保持 `booked`**，但必须参与范围锁，使任何并发改期 / 取消 / 另一 override 变更被行锁串行化。
+3. **锁后复检冲突 `AvailabilityOverride`**：扫描与 `affected_range` 重叠、且**当前存在**的其他 `AvailabilityOverride`；**修改 / 删除时须排除自身 `id`**（`WHERE id <> :self_id`），避免把本次变更当成冲突。存在与本次意图冲突（同范围 `force_*` 覆盖）的其他 override → **ROLLBACK**，拒绝本次变更（领域模型 §6.9 的冲突约束在事务内以已加锁数据为准复核，不信任前端传入）。
+4. **无冲突才执行写 Override**：`INSERT` 创建 / `UPDATE` 修改 / `DELETE` 删除（删除即物理删除，模型无软删列）。
+5. **仅对 `appointment_id IS NULL` 的 Slot 重新物化**：对锁集合内 `appointment_id IS NULL` 的格调用 §4.6 重新物化 `status` 并**同事务写回**；`booked` 格（及其 `appointment_id` 指向的预约）**不动**，其状态在预约释放时由 §4.2 / §4.3 的重新物化决定。
+6. 提交；SSE 由 §5 的提交派生机制自然推送新状态（仅 `appointment_id IS NULL` 的格可见变化）。
 
-> **并发最终状态由 Slot 行锁串行化**：受影响 Slot 被本事务 `FOR UPDATE` 锁定，并发的改期 / 取消 / 另一 override 变更（也须锁这些 Slot）会被行锁串行化，最终 `status` 由最后一个提交事务的物化结果决定——**不存在「override 已生效但 Slot 仍显示旧状态」的竞态窗口**。被预约占用的格（`booked`）不在此处变更，其状态在预约释放时由 §4.2 / §4.3 的重新物化决定。
+> **并发最终状态由 Slot 行锁串行化**：本流程在写 Override **之前**已对 `affected_range` 内全部 Slot（含 `booked`）持 `FOR UPDATE`，并发的改期 / 取消 / 另一 override 变更（也须锁这些 Slot）会被行锁串行化；且冲突复检在持锁后基于已锁数据完成，故**不存在「override 已生效但 Slot 仍显示旧状态」或「两个并发 override 各自读 stale 后都提交」的竞态窗口**。被预约占用的 `booked` 格不在此处变更，但因其已被锁定，任何依赖该格的并发写都会被串行化，不会与本次 override 产生状态撕裂。
 
 ## 5. SSE 实时传播、一致性与恢复
 
@@ -434,12 +439,21 @@ COMMIT;
 
 `Txn C`（§6.3）领取 `NotificationEvent` 并建好 `NotificationDelivery(queued)` 后，真正「调用外部通道」前还需一次**投递级原子领取**：把 `queued` 行安全地翻转为 `sending` 并取走投递数据。这一步与「建行」分离，是避免「同一行被发送两次」的关键边界。
 
+> 注意：`created_at` 是**投递行创建时间**，**不是** Worker 真实领取时刻——`queued` 行可能在创建后很久才被本 `Txn D` 领取；隐式租约据此 `created_at` 计算（详见 §6.4）。
+
 ```
 -- Txn D：短事务，内部【禁止】任何外部调用（SMTP / 飞书 / HTTP）
+-- created_at 是「投递行创建时间」，不是「真实领取时间」；租约 = created_at + 5min（见 §6.4）
+-- 只领「剩余租约足以覆盖（最大外部调用超时 + 安全余量）」的 queued 行；
+--   剩余租约不足者不领，留待 Sweeper 在租约满 5min 时按「未发送」回收（§6.4），避免落入 sending 超时（结果未知）的误重发。
+-- claim_horizon = now() - (5min - 外呼超时 - 安全余量)
 UPDATE NotificationDelivery SET status='sending'
  WHERE id IN (
    SELECT id FROM NotificationDelivery
     WHERE status='queued'
+      AND created_at >= now() - (interval '5 minutes'
+                                 - interval '30 seconds'   -- 最大外部调用超时（§6.4）
+                                 - interval '10 seconds')  -- 安全余量
     ORDER BY created_at, id
     FOR UPDATE SKIP LOCKED
     LIMIT :batch)
@@ -450,14 +464,17 @@ COMMIT;   -- ★ 提交之后，才在事务【外】调用 SMTP / 飞书
 
 - **事务内只改状态 + RETURNING，不碰外部**：`queued → sending` 与取数在同一短事务内原子完成；SMTP / 飞书调用在 `COMMIT` **之后**进行，**绝不在持有行锁的事务内发起**（与 §3.2「事务内禁止外部调用」一致，保证预约提交 P95 与 Slot 行锁不被外部延迟拖住）。
 - **`queued` 不得长驻**：Worker 必须「领即发」——领取到 `queued` 行后立即在事务外调用通道，不把行留成 `queued` 长时间等待；`queued → sending` 必须**立即**发生（见 §6.4 超时区分：只有「领后未发」才落入 `queued` 超时）。
+- **`Txn D` 领取范围受剩余租约约束**：只领取 `created_at >= claim_horizon` 的 `queued` 行（`claim_horizon = now() - (5min - 外呼超时 - 安全余量)`）。剩余租约不足以覆盖「外呼超时 + 余量」的 `queued` 行**不领取**，继续留在 `queued`，由 Sweeper 在 `created_at` 满 5min 后按「未发送」回收并重投——**不会**因「领了却来不及发」而落入 `sending` 超时（结果未知）分支，从而消除一类不必要的重复发送。
 - **与外部调用超时的关系**：通道调用超时阈值须远小于 5 分钟隐式租约（如 10–30s），否则 `sending` 行尚未回执就会被 Sweeper 误回收（§6.4）。
 - **与 `uq_delivery_attempt` 的边界**：本领取只翻转已存在行的 `status`，不新建行，故不受 `uq_delivery_attempt` 约束；该索引防的是「重复建行」（§6.3），本步骤防的是「同一行被重复发送」——二者职责不同，后者由「事务外调用 + 至少一次重投 + 幂等键去重」共同保证（§6.4/§6.5）。
 
 ### 6.4 处理超时恢复（Sweeper）——区分「未发送」与「结果未知」，用既有列构成隐式租约
 
-`NotificationDelivery` 处于非终态（`queued` / `sending`）即表示「已领取、未回执」，其 `created_at` 即领取时刻。二者共同构成**隐式租约**：`lease = 5 分钟`（远大于 SRS §5.1 的邮件 P95 ≤10s 与飞书调用超时上限，避免误回收）。**外部通道调用超时阈值须远小于 5 分钟（如 10–30s）**——否则 `sending` 行尚未拿到回执就会被 Sweeper 抢先回收，造成「发了又被重发」的误判。
+`NotificationDelivery` 处于非终态（`queued` / `sending`）即表示「已建行、未回执」。`created_at` 是**投递行创建时间**，**并非** Worker 真实领取时刻——`queued` 行可能在创建后很久才被 `Txn D`（§6.3.2）领取。隐式租约仍以 `created_at` 为锚点计算：`lease_expire = created_at + 5 分钟`（5min 远大于 SRS §5.1 的邮件 P95 ≤10s 与飞书调用超时上限，避免误回收）。**外部通道调用超时阈值须远小于 5 分钟（如 10–30s）**——否则 `sending` 行尚未拿到回执就会被 Sweeper 抢先回收，造成「发了又被重发」的误判。
 
-`queued → sending` 必须**立即发生**（见 §6.3.2 原子领取）：因此 `queued` 长驻只可能是「Worker 在发送前崩溃」，而 `sending` 长驻是「已调用外部、等待回执时崩溃」。**两类中间态的失败语义不同，Sweeper 必须按 `status` 分别处理，并使用不同 `last_error` 口径**：
+> **关键约束（`Txn D` 领取范围，§6.3.2）**：`Txn D` 只领取 `created_at >= claim_horizon` 的 `queued` 行，其中 `claim_horizon = now() - (5min - 外呼超时 - 安全余量)`。剩余租约不足以覆盖「外呼超时 + 余量」的 `queued` 行**不领取**，继续留在 `queued`，由 Sweeper 在其 `created_at` 满 5min 后按「未发送」回收（见下），**不会**因「领了却来不及发」而落入 `sending` 超时（结果未知）分支。
+
+`queued → sending` 必须**立即发生**（见 §6.3.2 原子领取）：`queued` 长驻的两类情形——① Worker 在发送前崩溃（领前崩）；② `Txn D` 因剩余租约不足跳过、等待 Sweeper 按「未发送」回收。`sending` 长驻只可能是「已调用外部、等待回执时崩溃 / 进程被回收」。两类中间态的失败语义不同，Sweeper 必须按 `status` 分别处理，并使用不同 `last_error` 口径**：
 
 ```
 -- Txn S：每 60s 执行
@@ -473,6 +490,27 @@ SELECT id, event_id, channel, delivery_purpose, event_version, attempt_no, statu
 - 两类回收后续分支相同：`attempt_no < 3 → 同行改 'retry_scheduled' + next_retry_at（指数退避）`；`attempt_no = 3 → 'dead_letter' + 后台高优先级告警`；回写 `NotificationEvent`：出现 `dead_letter → status='failed'`。
 
 > **租约到期不等于外部未送达**——尤其 `sending` 超时，进程可能已把邮件交给 SMTP 才崩溃。因此回收后的动作是「再投一次」，这是至少一次语义的既定后果，由 §6.5 的幂等键消解，而不是假装没发生过。`queued` 超时风险低（未发过）、`sending` 超时风险高（可能重复），二者在 `last_error` 与告警上刻意区分，便于运维与《测试计划》分别处理。
+
+### 6.4.1 回执写回必须使用 CAS，处理迟到 Worker（late receipt）
+
+SMTP / 飞书调用**返回后**，无论成功或失败，Worker 写回状态都必须使用**条件更新（CAS）**，以 `status='sending'` 为前置条件：
+
+```sql
+-- Txn W：Worker 回执写回（成功 / 失败均走此路径）
+UPDATE NotificationDelivery
+   SET status   = :next,                 -- succeeded / failed
+       last_error = :err,               -- 失败原因；成功为 NULL
+       channel_metadata = :meta,        -- provider_message_id / smtp_accepted_at / feishu_record_id / response_code / bounce_*
+       version = version + 1
+ WHERE id = :id AND status = 'sending'  -- ★ CAS 前置：仅当仍是 sending 才写
+ RETURNING id;                          -- 命中返回 1 行；被回收则 0 行
+```
+
+- **命中 1 行**：本 Worker 仍是该尝试的拥有者，正常写回终态（`succeeded` / `failed`）。
+- **命中 0 行**：表示该 `sending` 行**已被 Sweeper 回收**（§6.4：租约超时 → `retry_scheduled` / `dead_letter`）。**迟到 Worker 不得覆盖** `retry_scheduled` / `dead_letter` / `next_retry_at` 等后续状态——它只记录一条「迟到回执」告警（含 `provider_message_id` / `attempt_no`），由 §6.5 幂等键在重投时消解可能的重复送达。
+  - 0 行的原因只可能是 Sweeper 回收：`sending` 只能由 `Txn D` 置位、只能由 `Txn W`（CAS）或 Sweeper 离开。因此「回执命中 0 行」是**预期内的迟到竞态**，不是 bug；禁止用无条件 `UPDATE` 兜底覆盖回收后的状态。
+- **CAS 与 §6.3.2 的衔接**：`Txn D` 已保证进入 `sending` 的行只被一个 Worker 领取（`SKIP LOCKED`），但进程崩溃后 Sweeper 会回收——CAS 写回是「崩溃回收」与「正常回执」之间的唯一正确仲裁点。
+- **该 CAS 规则与迟到回执处理须由《测试计划》覆盖**：用例须模拟「Worker A 发送后崩溃被 Sweeper 回收为 `retry_scheduled` / `dead_letter`，Worker B（迟到回执）再写回」→ 断言命中 0 行、`retry_scheduled`/`dead_letter` 不被覆盖、仅产生迟到告警。
 
 ### 6.5 稳定幂等键与「外部成功、DB 提交失败」的重复投递
 
@@ -519,8 +557,8 @@ SELECT d.* FROM NotificationDelivery d
 |---|---|
 | （建行）`queued` | Txn C 领取 / 重试驱动 / 手动重发，在事务内建行 |
 | `queued → sending` | Txn D 原子领取（§6.3.2）：短事务 `FOR UPDATE SKIP LOCKED` 置 `sending` 并 `RETURNING` 投递数据；**提交后**才在事务外调用外部通道 |
-| `sending → succeeded` | 服务商接受（记 `provider_message_id`、`channel_metadata.smtp_accepted_at` 或 `feishu_record_id`/`response_code`） |
-| `queued|sending → failed` | 发送异常、外部调用超时（须远小于 5min），或 §6.4 租约回收（`queued`→`queued_lease_expired` / `sending`→`sending_lease_expired_unknown`） |
+| `sending → succeeded` | 服务商接受（记 `provider_message_id`、`channel_metadata.smtp_accepted_at` 或 `feishu_record_id`/`response_code`）；**必须经 `Txn W` CAS（`WHERE id=:id AND status='sending'`，§6.4.1）写回**；命中 0 行 = 已被 Sweeper 回收，迟到 Worker 不得覆盖 `retry_scheduled`/`dead_letter`，仅记迟到告警 |
+| `queued|sending → failed` | 发送异常、外部调用超时（须远小于 5min），或 §6.4 租约回收（`queued`→`queued_lease_expired` / `sending`→`sending_lease_expired_unknown`）；`sending` 分支的失败写回同样经 `Txn W` CAS（§6.4.1），命中 0 行不覆盖后续状态 |
 | `failed → retry_scheduled` | `attempt_no < 3`，写 `next_retry_at`（指数退避） |
 | `failed → dead_letter` | `attempt_no = 3`（≤3 次已用尽） |
 | `succeeded` + 退信回执 | **不改 `status`**，仅写 `channel_metadata.bounced_at` / `bounce_reason`（SRS §4.3/§6.2：退信不属 `DeliveryStatus` 枚举） |
@@ -681,13 +719,15 @@ SELECT d.* FROM NotificationDelivery d
 | 15 | 正文预设「会话存 Redis/DB」「限频 Redis 令牌桶」「Bounce Webhook 接入」 | 越界预判安全设计 | §1.1/§9.1/§10 全部中性化，仅保留与实现无关的边界约束 |
 | 16 | ADR 仅列候选，无推荐 | 无法评审裁定 | §10 对部署形态/向量方案/SSE/Outbox 各给唯一推荐 + 理由 + 重裁触发 |
 
-### 12.3 v0.2 本轮补充修正（2026-08-09，3 项实现正确性，仍 review）
+### 12.3 v0.2 本轮补充修正（2026-08-09：3 项实现正确性 + 2 项并发竞态，仍 review）
 
 | # | 问题 | 修正 |
 |---|------|------|
 | 17 | Outbox 缺「投递级原子领取」；`uq_delivery_attempt` 被误读为能防同一行重复发送 | §6.3.2 新增 `NotificationDelivery` 投递级原子领取（`queued→sending`，短事务 `FOR UPDATE SKIP LOCKED` + RETURNING，提交后才调外部）；§6.3 明确 `uq_delivery_attempt` **只防重复建行、不防同一行重复发送** |
 | 18 | §4.2/§4.3 释放 Slot 无条件写 `available`，破坏 `AvailabilityOverride` 真相源 | §4.6 定义释放后**重新物化**规则（force_unavailable→unavailable / force_available→available / 无覆盖→日历规则）；§4.2 改期旧格、§4.3 用户取消均改走重新物化；§4.7 规定 `AvailabilityOverride` 变更事务须锁受影响 Slot 并重新物化，由 Slot 行锁串行化并发 |
 | 19 | §6.4 隐式租约未区分 `queued`（未发送）与 `sending`（结果未知）超时 | §6.4 按 `status` 分两类回收：`queued` 超时→`queued_lease_expired`（未发送，安全重投）；`sending` 超时→`sending_lease_expired_unknown`（结果未知，至少一次重投+登记重复风险）；外部调用超时须远小于 5min；原开放项 §11.2 与待办 §13.1/§13.2 已并入正文，§13 删除 |
+| 20 | §4.7 `AvailabilityOverride` 变更「先写 Override、再只锁未占用 Slot」存在竞态：override 提交的瞬间，并发事务仍可按旧 override 集合物化 Slot，产生「override 已生效但 Slot 显示旧状态」窗口 | §4.7 重写为「先读旧范围（更新/删除算 `old_range ∪ new_range`）→ 统一升序锁范围内**全部** `AppointmentSlot`（含 `booked`）→ 锁后复检冲突 override（更新排除自身 `id`）→ 冲突 ROLLBACK、无冲突才 `INSERT`/`UPDATE`/`DELETE` → 仅对 `appointment_id IS NULL` 的 Slot 重新物化（`booked` 保持 `booked` 但参与锁与冲突串行化）」 |
+| 21 | 投递 `created_at` 被当作真实领取时刻；`queued` 临近租约仍被领取致落入 `sending` 超时（结果未知）误重发；回执写回无 CAS，迟到 Worker 可覆盖 Sweeper 回收后的状态 | §6.3.2 明确 `created_at` 为创建时间（非领取时刻）、`Txn D` 仅领剩余租约足以覆盖「外呼超时+余量」的 `queued` 行（临近/超租约留 Sweeper 按未发送回收）；§6.4 重写租约锚点说明 + 新增 §6.4.1 `Txn W` 回执 CAS（`WHERE id=:id AND status='sending'`），命中 0 行=已被回收，迟到 Worker 仅记告警、不得覆盖 `retry_scheduled`/`dead_letter`；§6.7 两转换行同步 CAS 约束；CAS 迟到场景登记为《测试计划》待覆盖风险 |
 
 ### 12.4 模型边界结论
 本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.5 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。

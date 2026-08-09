@@ -58,10 +58,10 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`1f7eb3d`（OpenAPI/SSE v0.1 review 草案快照）
+- commit / PR：`1f7eb3d`（初始草案）→ `4fb0d01`（标准 lint 修正后的当前 review 快照）
 - 修改文件清单：docs/api/openapi.yaml / docs/api/sse.md / docs/baseline.yml / tasks/TASK-API-001.md / PROJECT_STATE.md
 - 测试命令及结果：33 个 operationId 唯一；33 个唯一本地 `$ref` 均可解析；`git diff --check` pass
-- lint / typecheck：Redocly 首次下载受网络阻塞未完成；已执行本地结构校验，正式批准前仍需标准 OpenAPI lint
+- lint / typecheck：Redocly recommended lint → exit 0，0 error / 26 warning；warning 均为已有统一 `default` 错误体但未逐操作展开显式 4xx，不影响契约有效性
 - DB 迁移验证：无
 - 验收证据：docs/api/openapi.yaml + docs/api/sse.md
 - 变更预算实际值：max_files=5，实际 5 文件，未超预算
@@ -69,7 +69,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
-- verified_commit：`1f7eb3d`
+- verified_commit：`4fb0d01`
 - 状态：Review
 
 ## 关联

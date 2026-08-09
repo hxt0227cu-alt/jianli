@@ -149,3 +149,10 @@
 - 上游任务：TASK-ARCH-001（产出 v0.1 草案，保持 review；v0.1 已被本任务的 v0.2 取代，v0.1 快照锚点 2f73982 保留为历史）
 - Change Request：无（AUTH_EXPIRED 语义冲突、以及将来若采纳 CDC/事件日志表方案，均须另走 Change Request，不得在本任务内裁定）
 - 测试任务：无（设计）
+
+## 批准后收口（2026-08-09）
+
+- 用户已明确批准 architecture v0.2；批准内容快照=`3a18b7f`，approval_commit=`da3f6fc`。
+- 四条件复核：一致性校验通过；规范影响 none；spec_sync=clean；verified_commit=`3a18b7f`。
+- `AUTH_EXPIRED` 继续作为 OpenAPI 前阻塞项；ADR-ARCH-005~008 进入安全设计裁定，不构成本任务关闭阻塞。
+- 状态：**Closed（2026-08-09）**。

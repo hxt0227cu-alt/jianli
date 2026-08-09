@@ -65,18 +65,18 @@
 - 批准提交夹带 baseline 状态之外的文件；改动架构正文或其他已批准规范；推进安全设计批准或编码。
 
 ## 交付证据
-- approval_commit：待生成
-- verified_commit：待生成
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- approval_commit：`da3f6fc`
+- verified_commit：待回填（指向包含三份任务关闭与 PROJECT_STATE 同步的收口快照）
+- 修改文件清单：docs/baseline.yml / tasks/TASK-ARCH-001.md / tasks/TASK-ARCH-002.md / tasks/TASK-ARCH-003.md / PROJECT_STATE.md
+- 测试命令及结果：baseline=architecture 0.2/approved；批准提交仅含 docs/baseline.yml；TASK-ARCH-001/002 均 Closed；工作树校验待提交后执行
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 变更预算实际值：待回填
+- 变更预算实际值：max_files=5，实际 5 文件，未超预算
 - 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- 状态：Open
+- 状态：Closed（2026-08-09；verified_commit 在纯证据回填提交中补齐）
 
 ## 关联
 - 上游：TASK-ARCH-001 / TASK-ARCH-002

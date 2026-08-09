@@ -22,7 +22,7 @@ artifacts:
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: review }    # TASK-SEC-001 安全设计 review 草案；待用户正式批准后才约束实现
   openapi:          { version: "0.1",   status: review }    # TASK-API-001 OpenAPI/SSE review 草案；上游 SRS 1.2/security 0.1 尚未批准，spec_sync=dirty
-  test_plan:        { version: "0.0",   status: pending }   # 阶段 4 待产出（编码准入条件）
+  test_plan:        { version: "0.1",   status: review }    # TASK-TEST-001 review 草案；上游 SRS/security/OpenAPI 尚未批准，spec_sync=dirty
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── 规范优先级（冲突裁决，高者胜）──

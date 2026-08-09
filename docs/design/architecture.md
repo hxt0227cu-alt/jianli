@@ -2,7 +2,7 @@
 
 > **文档状态**：v0.2 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决约束；经用户独立评审通过后方可置 `approved`）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
-> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态。逐项差异见 §12.3 条目 20–21。
+> **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态；**2026-08-09（续二）两项 Schema/并发收口**：⑥ §6.4.1 `Txn W` SQL 删除幻列 `version`、`provider_message_id` 写独立列、`channel_metadata` 改 JSONB 合并（bounce 键仍只由 §7 回写），并附逐字段核对表对齐领域模型 v1.1.5 §6.12；⑦ §4.7 补齐同一 override 的并发更新——新增锁层级 **L2.5**（UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取真实 `old_range`，先于 L3）、CREATE/UPDATE 范围须命中现存 Slot 否则拒绝。逐项差异见 §12.3 条目 20–23。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
 > **模型边界**：本文全部方案仅使用领域模型 v1.1.5 已批准的实体、字段与索引，**未新增任何实体 / 表 / 字段 / 索引 / 外部依赖**（详见 §5.6、§6.10）。
@@ -95,6 +95,7 @@
 L0  Company                   —— 按 normalized_name_fingerprint（仅创建流程 upsert 时）
 L1  Appointment               —— 按 id（改期 / 用户取消 / owner 强制取消）
 L2  CompanyBookingException   —— 按 id（仅创建流程消费例外时）
+L2.5 AvailabilityOverride     —— 按 id（仅 override 变更事务：UPDATE / DELETE 须先锁自身行，§4.7）
 L3  AppointmentSlot           —— 把本事务将要触碰的【全部】Slot 合并去重后，
                                  按 (start_at ASC, id ASC) 一次性升序加锁
 ```
@@ -107,6 +108,7 @@ L3  AppointmentSlot           —— 把本事务将要触碰的【全部】Slot
    `... WHERE start_at = ANY(:starts_sorted) ORDER BY start_at FOR UPDATE`，**加锁成功之后再校验 `status`**。
    （v0.1 的 `WHERE ... AND status='available' FOR UPDATE` 属此类缺陷，已修正。）
 4. PostgreSQL 执行计划中 `LockRows` 节点位于 `Sort` 之上，`ORDER BY ... FOR UPDATE` 即按排序结果依次加锁；若实现改为逐行加锁，必须保持同一升序。
+5. **`AvailabilityOverride` 变更事务（§4.7）必须在取 L3 之前先取 L2.5**（`SELECT ... FOR UPDATE` 锁自身 override 行），禁止「先锁 Slot 再回头锁 override 行」——否则两个并发 UPDATE 会各自基于陈旧 `old_range` 计算出不同的 Slot 锁集合，行锁串行化失效。
 5. 锁后校验一律以**服务端**为权威，不信任前端传入的格子集合（领域模型 §6.8）。
 
 ### 4.1 预约创建（SRS §3.5，领域模型 §6.5/§6.6/§6.8/§6.17）
@@ -289,6 +291,9 @@ COMMIT;
 | 用户取消 vs 改期（同一预约） | 同上，L1 串行化 | L1 先锁 Appointment |
 | 两个改期互为对方新/旧段 | 不死锁 | §4.0 规则 2：新旧合并后统一升序加锁 |
 | 创建 vs 改期抢同一空格 | 先到者占用，后到者锁后校验失败 → `SLOT_TAKEN` | 二者对 Slot 的加锁顺序一致（升序） |
+| **两事务并发 UPDATE / DELETE 同一 override** | 串行化：后到者等前者提交后**重读真实 `old_range`** 重算 `affected_range`；行已被删则 `OVERRIDE_NOT_FOUND` 回滚 | §4.7 步骤 1：L2.5 `SELECT ... FOR UPDATE` 锁自身行，**先于** L3 |
+| **override 变更 vs 改期 / 取消（同一时段）** | 串行化：二者都须锁该时段全部 Slot（含 `booked`），最终 `status` 由最后提交者按 §4.6 物化 | §4.7 步骤 4：L3 锁范围内全部 Slot |
+| 创建 / 修改范围不命中任何 Slot 的 override | 拒绝 `OVERRIDE_RANGE_EMPTY` | §4.7 步骤 3：无锁定载体的 override 会使冲突复检失去串行化基础 |
 
 ---
 
@@ -307,19 +312,44 @@ COMMIT;
 
 ### 4.7 AvailabilityOverride 变更事务（创建 / 修改 / 删除，统一冲突串行化）
 
-owner_admin 维护 `AvailabilityOverride`（领域模型 §6.9）时，其事务须（§4.0 锁顺序，本场景不触及 Company / Appointment，实际从 L3 起锁）。**与 v0.2 早前版本「先写 Override、再只锁未占用 Slot」不同，本流程改为「先读旧范围 → 统一锁范围内【全部】Slot（含 booked）→ 锁后复检冲突 → 无冲突才写 Override」**，以消除「override 已提交、但并发事务仍按旧 override 集合物化 Slot」的竞态窗口：
+owner_admin 维护 `AvailabilityOverride`（领域模型 §6.9）时，其事务须遵循 §4.0 锁顺序（本场景不触及 Company / Appointment，实际从 **L2.5** 起锁）。**与 v0.2 早前版本「先写 Override、再只锁未占用 Slot」不同，本流程改为「锁自身 override 行取真实旧范围（L2.5）→ 算 affected_range → 校验范围命中 Slot → 统一锁范围内【全部】Slot 含 booked（L3）→ 锁后复检冲突 → 无冲突才写 Override → 仅物化未占用 Slot」**，以同时消除两类竞态：① 「override 已提交、但并发事务仍按旧 override 集合物化 Slot」；② 「**同一 override 被两个事务并发 UPDATE/DELETE**，各自基于陈旧旧范围算出不同 Slot 锁集合而互不串行化」：
 
-1. **计算影响范围 `affected_range`**：
-   - **创建**：本次 `INSERT` 的 `[start_at, end_at)` 即 `affected_range`；
-   - **修改**：先 `SELECT` 旧行的 `[start_at, end_at)` 记为 `old_range`，与本次新 `[start_at, end_at)` 取并集 `affected_range = old_range ∪ new_range`；
-   - **删除**：`SELECT` 旧行的 `[start_at, end_at)` 即 `affected_range`。
-2. **按统一顺序锁范围内【全部】`AppointmentSlot`**：把 `affected_range` 覆盖到的 Slot 合并进 L3 锁集合，**按 `(start_at ASC, id ASC)` 一次性升序 `FOR UPDATE`**，且**包含 `booked` 格**——`booked` 格在此处**不物化、保持 `booked`**，但必须参与范围锁，使任何并发改期 / 取消 / 另一 override 变更被行锁串行化。
-3. **锁后复检冲突 `AvailabilityOverride`**：扫描与 `affected_range` 重叠、且**当前存在**的其他 `AvailabilityOverride`；**修改 / 删除时须排除自身 `id`**（`WHERE id <> :self_id`），避免把本次变更当成冲突。存在与本次意图冲突（同范围 `force_*` 覆盖）的其他 override → **ROLLBACK**，拒绝本次变更（领域模型 §6.9 的冲突约束在事务内以已加锁数据为准复核，不信任前端传入）。
-4. **无冲突才执行写 Override**：`INSERT` 创建 / `UPDATE` 修改 / `DELETE` 删除（删除即物理删除，模型无软删列）。
-5. **仅对 `appointment_id IS NULL` 的 Slot 重新物化**：对锁集合内 `appointment_id IS NULL` 的格调用 §4.6 重新物化 `status` 并**同事务写回**；`booked` 格（及其 `appointment_id` 指向的预约）**不动**，其状态在预约释放时由 §4.2 / §4.3 的重新物化决定。
-6. 提交；SSE 由 §5 的提交派生机制自然推送新状态（仅 `appointment_id IS NULL` 的格可见变化）。
+1. **L2.5：先锁 `AvailabilityOverride` 自身行，取得当前真实旧范围**（**必须早于任何 Slot 锁**）：
+   - **创建**：无既有行可锁，跳过本步（新行的行锁在第 5 步 `INSERT` 时自然获得）；
+   - **修改 / 删除**：
+     ```sql
+     -- L2.5：锁自身 override 行，读取【当前真实】旧范围
+     SELECT id, start_at, end_at, action
+       FROM AvailabilityOverride
+      WHERE id = :self_id
+        FOR UPDATE;              -- ★ 早于 L3 Slot 锁
+     ```
+     - **命中 0 行** → 该 override 已被并发事务删除 → **ROLLBACK**，返回冲突（`OVERRIDE_NOT_FOUND`）；
+     - **命中** → 以本次锁后读到的 `[start_at, end_at)` 作 `old_range`。**禁止**使用请求体携带的旧范围或事务外预读值——两个并发 UPDATE 若各自基于陈旧 `old_range` 计算 `affected_range`，会锁到不同的 Slot 集合，行锁无法串行化它们，最终物化结果与 override 真相源撕裂。
+2. **计算影响范围 `affected_range`**：
+   - **创建**：`affected_range = new_range`（本次 `INSERT` 的 `[start_at, end_at)`）；
+   - **修改**：`affected_range = old_range ∪ new_range`（`old_range` 取自第 1 步**锁后读到的真实值**）；
+   - **删除**：`affected_range = old_range`（同上）。
+   - 并集若不连续（新旧范围不相交）按**两段区间**处理；两段命中的 Slot 合并去重后，仍按统一 `(start_at ASC, id ASC)` **一次性**升序加锁，不得分两次加锁。
+3. **范围对齐与命中校验（仅 CREATE / UPDATE，强制）**：`[start_at, end_at)` 必须对齐现存 `AppointmentSlot` 的时段边界，且 `affected_range` 至少命中 1 个现存 Slot：
+   ```sql
+   SELECT count(*) FROM AppointmentSlot
+    WHERE start_at < :end_at AND end_at > :start_at;   -- 半开区间重叠
+   ```
+   **命中 0 个 → ROLLBACK，拒绝本次变更（`OVERRIDE_RANGE_EMPTY`），不得创建无锁定载体的 override。** 理由：本流程的并发正确性**完全依赖 Slot 行锁**做串行化；若某 override 的范围不命中任何 Slot，两个并发事务都锁不到任何行，第 4 步的冲突复检退化为可同时通过，能在同一时段并存两个相互冲突的 `force_*` override，直接违反领域模型 §6.9 的冲突约束。
+   > **DELETE 不适用本校验**——允许清理历史上因日历变动而失配的 override；但删除仍须完成第 1 步（锁自身行）与第 4 步（锁命中的 Slot，可能为空集）。
+4. **按统一顺序锁 `affected_range` 内【全部】`AppointmentSlot`**：把命中的 Slot 合并进 L3 锁集合，**按 `(start_at ASC, id ASC)` 一次性升序 `FOR UPDATE`**（不带 `status` 过滤，§4.0 规则 3），且**包含 `booked` 格**——`booked` 格在此处**不物化、保持 `booked`**，但必须参与范围锁，使任何并发改期 / 取消 / 另一 override 变更被行锁串行化。
+5. **锁后复检冲突 `AvailabilityOverride`**：在**已持有 L2.5 + L3 锁**的前提下，扫描与 `affected_range` 重叠、且**当前存在**的其他 `AvailabilityOverride`；**修改 / 删除时须排除自身 `id`**（`WHERE id <> :self_id`），避免把本次变更当成冲突。存在与本次意图冲突（同范围 `force_*` 覆盖）的其他 override → **ROLLBACK**，拒绝本次变更（领域模型 §6.9 的冲突约束在事务内以已加锁数据为准复核，不信任前端传入）。
+6. **无冲突才执行写 Override**：`INSERT` 创建 / `UPDATE` 修改 / `DELETE` 删除（删除即物理删除，模型无软删列）。
+7. **仅对 `appointment_id IS NULL` 的 Slot 重新物化**：对锁集合内 `appointment_id IS NULL` 的格调用 §4.6 重新物化 `status` 并**同事务写回**；`booked` 格（及其 `appointment_id` 指向的预约）**不动**，其状态在预约释放时由 §4.2 / §4.3 的重新物化决定。
+8. 提交；SSE 由 §5 的提交派生机制自然推送新状态（仅 `appointment_id IS NULL` 的格可见变化）。
 
-> **并发最终状态由 Slot 行锁串行化**：本流程在写 Override **之前**已对 `affected_range` 内全部 Slot（含 `booked`）持 `FOR UPDATE`，并发的改期 / 取消 / 另一 override 变更（也须锁这些 Slot）会被行锁串行化；且冲突复检在持锁后基于已锁数据完成，故**不存在「override 已生效但 Slot 仍显示旧状态」或「两个并发 override 各自读 stale 后都提交」的竞态窗口**。被预约占用的 `booked` 格不在此处变更，但因其已被锁定，任何依赖该格的并发写都会被串行化，不会与本次 override 产生状态撕裂。
+> **并发最终状态由「override 行锁 + Slot 行锁」双层串行化**：
+> - **同一 override 的并发变更**由 L2.5 行锁串行化：后到者必须等前者提交，然后**重新读到已更新的真实 `old_range`**（或读到 0 行而回滚），因此不可能出现两个 UPDATE 各自按不同旧范围锁到不相交 Slot 集合、彼此看不见的情形；
+> - **不同 override / 改期 / 取消之间**由 L3 Slot 行锁串行化：本流程在写 Override **之前**已对 `affected_range` 内全部 Slot（含 `booked`）持 `FOR UPDATE`，且冲突复检在持锁后基于已锁数据完成，故**不存在「override 已生效但 Slot 仍显示旧状态」或「两个并发 override 各自读 stale 后都提交」的竞态窗口**；
+> - 第 3 步的「范围必须命中 Slot」是上述第二层串行化成立的**前提条件**——无载体的 override 没有可锁的行，故在创建/修改时直接拒绝。
+>
+> 被预约占用的 `booked` 格不在此处变更，但因其已被锁定，任何依赖该格的并发写都会被串行化，不会与本次 override 产生状态撕裂。**本节的 L2.5 顺序、范围命中校验与锁后复检须由《测试计划》覆盖**：用例须模拟「两事务并发 UPDATE 同一 override 至不同新范围」→ 断言串行化、后到者基于新真实 `old_range` 重算范围；以及「创建不命中任何 Slot 的 override」→ 断言 `OVERRIDE_RANGE_EMPTY` 拒绝。
 
 ## 5. SSE 实时传播、一致性与恢复
 
@@ -498,13 +528,37 @@ SMTP / 飞书调用**返回后**，无论成功或失败，Worker 写回状态�
 ```sql
 -- Txn W：Worker 回执写回（成功 / 失败均走此路径）
 UPDATE NotificationDelivery
-   SET status   = :next,                 -- succeeded / failed
-       last_error = :err,               -- 失败原因；成功为 NULL
-       channel_metadata = :meta,        -- provider_message_id / smtp_accepted_at / feishu_record_id / response_code / bounce_*
-       version = version + 1
- WHERE id = :id AND status = 'sending'  -- ★ CAS 前置：仅当仍是 sending 才写
- RETURNING id;                          -- 命中返回 1 行；被回收则 0 行
+   SET status              = :next,                 -- succeeded / failed
+       last_error          = :err,                  -- 失败原因；成功为 NULL
+       provider_message_id = :provider_message_id,  -- ★ 独立列，不得塞进 channel_metadata
+       channel_metadata    =                        -- ★ JSONB 合并，不整体覆盖
+         COALESCE(channel_metadata, '{}'::jsonb) || :meta
+ WHERE id = :id AND status = 'sending'              -- ★ CAS 前置：仅当仍是 sending 才写
+ RETURNING id;                                      -- 命中返回 1 行；被回收则 0 行
 ```
+
+**逐字段核对已批准领域模型 v1.1.5 §6.12**（`NotificationDelivery` 全部列，Txn W 只允许写其中 4 列）：
+
+| 列 | v1.1.5 是否存在 | Txn W 写? | 说明 |
+|---|---|---|---|
+| `id` / `event_id` / `delivery_purpose` / `channel` | ✅ | 否 | 建行时确定，终身不变 |
+| `event_version` | ✅ | 否 | **事件版本，非乐观锁**；手动重发经其有意区分（§6.5），不由回执递增 |
+| `attempt_no` | ✅ | 否 | 重试 = 新建尝试行（`attempt_no+1`），不在原行自增 |
+| `status` | ✅ | **是** | `sending → succeeded / failed` |
+| `last_error` | ✅ | **是** | 失败原因；成功写 `NULL` |
+| `provider_message_id` | ✅（**独立列** `string NULL`） | **是** | **必须写独立列**；`§7` 退信按该列 + `channel='email'` + `event_version` 反查投递行，写进 JSONB 会使退信匹配失效 |
+| `channel_metadata` | ✅ `jsonb` | **是（合并）** | 见下方合并规则 |
+| `next_retry_at` | ✅ | 否 | 仅由 §6.4 Sweeper / 重试调度写 |
+| `created_at` | ✅ | 否 | 投递行创建时间（§6.3.2：非领取时刻） |
+| ~~`version`~~ | ❌ **不存在** | — | **v0.2 早前草案的 `version = version + 1` 是幻列，已删除**。领域模型中乐观锁 `version` 仅存在于 `Appointment` / `AppointmentSlot` / `KnowledgeDocument` / `KnowledgeIndexVersion`；本表的并发保护由 CAS 前置条件 `status='sending'` 承担，不需要也不存在版本列 |
+
+**`channel_metadata` 合并规则（禁止整体覆盖）**：
+
+- 写法固定为 `COALESCE(channel_metadata, '{}'::jsonb) || :meta`（PostgreSQL JSONB **顶层浅合并**，同名键以 `:meta` 为准，未出现的键原样保留）。整体覆盖（`channel_metadata = :meta`）会**抹掉 §7 退信处理已写入的 `bounced_at` / `bounce_reason`**——退信可能先于迟到回执落库，覆盖即造成退信证据丢失。
+- `:meta` 的**允许键**按通道判别联合（领域模型 §5 / §6.12）：
+  - `channel='email'` → 仅 `smtp_accepted_at`；
+  - `channel='feishu'` → 仅 `provider_request_id` / `feishu_record_id` / `response_code`。
+- **`bounced_at` / `bounce_reason` 仍只由 §7 退信处理回写**，Txn W **禁止**写入这两个键；`:meta` 中出现 bounce 键视为实现缺陷，须在集成测试中断言拒绝。§7 的幂等回写同样使用 JSONB 合并语义（`bounced_at` 仅在为空时写首次时间），与本处互不覆盖。
 
 - **命中 1 行**：本 Worker 仍是该尝试的拥有者，正常写回终态（`succeeded` / `failed`）。
 - **命中 0 行**：表示该 `sending` 行**已被 Sweeper 回收**（§6.4：租约超时 → `retry_scheduled` / `dead_letter`）。**迟到 Worker 不得覆盖** `retry_scheduled` / `dead_letter` / `next_retry_at` 等后续状态——它只记录一条「迟到回执」告警（含 `provider_message_id` / `attempt_no`），由 §6.5 幂等键在重投时消解可能的重复送达。
@@ -687,6 +741,7 @@ SELECT d.* FROM NotificationDelivery d
 ### 11.2 其他待定（不阻塞架构评审）
 - 飞书多维表格字段映射与是否提供幂等令牌（留《接口契约》+ 集成验证清单）。
 - 托管 PostgreSQL 的 `pgvector` 可用性确认（ADR-ARCH-002 验证项）。
+- **§4.7 两个拒绝语义的对外错误码命名待定（留 OpenAPI 阶段裁定）**：`OVERRIDE_NOT_FOUND`（并发已删）与 `OVERRIDE_RANGE_EMPTY`（范围不命中任何 Slot）在本文中为**架构内部占位名**，**不是已批准 SRS §8 的既有错误码**，本文不据此主张 SRS 已定义该二者。架构层只约束**行为**（两种情形必须 ROLLBACK 拒绝、不得放行），最终对外码值与文案由《接口契约（OpenAPI）》阶段统一裁定；若届时需新增 SRS 错误码，须走 Change Request，不在本轮架构评审内既成事实。
 
 ---
 
@@ -719,7 +774,7 @@ SELECT d.* FROM NotificationDelivery d
 | 15 | 正文预设「会话存 Redis/DB」「限频 Redis 令牌桶」「Bounce Webhook 接入」 | 越界预判安全设计 | §1.1/§9.1/§10 全部中性化，仅保留与实现无关的边界约束 |
 | 16 | ADR 仅列候选，无推荐 | 无法评审裁定 | §10 对部署形态/向量方案/SSE/Outbox 各给唯一推荐 + 理由 + 重裁触发 |
 
-### 12.3 v0.2 本轮补充修正（2026-08-09：3 项实现正确性 + 2 项并发竞态，仍 review）
+### 12.3 v0.2 本轮补充修正（2026-08-09：3 项实现正确性 + 2 项并发竞态 + 2 项 Schema/并发收口，仍 review）
 
 | # | 问题 | 修正 |
 |---|------|------|
@@ -728,6 +783,8 @@ SELECT d.* FROM NotificationDelivery d
 | 19 | §6.4 隐式租约未区分 `queued`（未发送）与 `sending`（结果未知）超时 | §6.4 按 `status` 分两类回收：`queued` 超时→`queued_lease_expired`（未发送，安全重投）；`sending` 超时→`sending_lease_expired_unknown`（结果未知，至少一次重投+登记重复风险）；外部调用超时须远小于 5min；原开放项 §11.2 与待办 §13.1/§13.2 已并入正文，§13 删除 |
 | 20 | §4.7 `AvailabilityOverride` 变更「先写 Override、再只锁未占用 Slot」存在竞态：override 提交的瞬间，并发事务仍可按旧 override 集合物化 Slot，产生「override 已生效但 Slot 显示旧状态」窗口 | §4.7 重写为「先读旧范围（更新/删除算 `old_range ∪ new_range`）→ 统一升序锁范围内**全部** `AppointmentSlot`（含 `booked`）→ 锁后复检冲突 override（更新排除自身 `id`）→ 冲突 ROLLBACK、无冲突才 `INSERT`/`UPDATE`/`DELETE` → 仅对 `appointment_id IS NULL` 的 Slot 重新物化（`booked` 保持 `booked` 但参与锁与冲突串行化）」 |
 | 21 | 投递 `created_at` 被当作真实领取时刻；`queued` 临近租约仍被领取致落入 `sending` 超时（结果未知）误重发；回执写回无 CAS，迟到 Worker 可覆盖 Sweeper 回收后的状态 | §6.3.2 明确 `created_at` 为创建时间（非领取时刻）、`Txn D` 仅领剩余租约足以覆盖「外呼超时+余量」的 `queued` 行（临近/超租约留 Sweeper 按未发送回收）；§6.4 重写租约锚点说明 + 新增 §6.4.1 `Txn W` 回执 CAS（`WHERE id=:id AND status='sending'`），命中 0 行=已被回收，迟到 Worker 仅记告警、不得覆盖 `retry_scheduled`/`dead_letter`；§6.7 两转换行同步 CAS 约束；CAS 迟到场景登记为《测试计划》待覆盖风险 |
+| 22 | §6.4.1 `Txn W` SQL **引用不存在的列** `NotificationDelivery.version`；`provider_message_id` 被写进 `channel_metadata`；`channel_metadata` 整体覆盖会抹掉 §7 已写入的退信键 | §6.4.1 SQL 改为：删除 `version = version + 1`（幻列，本表无乐观锁列，CAS 由 `status='sending'` 前置条件承担）；`provider_message_id = :provider_message_id` **写独立列**（否则 §7 按该列反查投递行失效）；`channel_metadata = COALESCE(channel_metadata,'{}'::jsonb) \|\| :meta` **JSONB 浅合并**；新增**逐字段核对表**（对齐 v1.1.5 §6.12 全 12 列，标明 Txn W 只写 4 列）与 `:meta` 允许键白名单；**`bounced_at`/`bounce_reason` 仍只由 §7 退信处理回写**，Txn W 禁写 |
+| 23 | §4.7 未处理**同一 override 的并发 UPDATE/DELETE**：旧范围来自事务外/前端，两个并发事务各自基于陈旧 `old_range` 算出不相交 Slot 锁集合，行锁串行化失效；且允许创建不命中任何 Slot 的 override（无锁定载体，冲突复检可并发通过） | §4.0 锁顺序新增 **L2.5 `AvailabilityOverride`（按 id，先于 L3）** 与强制规则 5；§4.7 重写为 8 步：① UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取**当前真实 `old_range`**（0 行→ROLLBACK），禁用前端传入旧值；② 据真实值算 `affected_range`（不相交则按两段一次性升序加锁）；③ **CREATE/UPDATE 范围须对齐并命中 ≥1 个现存 Slot，命中 0 → ROLLBACK 拒绝**（DELETE 豁免）；④–⑧ 沿用锁全部 Slot（含 `booked`）→ 锁后复检冲突（排除自身 id）→ 无冲突才写 → 仅物化 `appointment_id IS NULL`；§4.5 矩阵增 3 行；两个拒绝语义的**对外错误码命名登记为 §11.2 开放项**（占位名，非 SRS 既有码） |
 
 ### 12.4 模型边界结论
 本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.5 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。

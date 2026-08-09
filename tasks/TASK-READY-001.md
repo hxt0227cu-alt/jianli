@@ -53,18 +53,18 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`51ca872`（BLOCKED 准入评审快照）
+- 修改文件清单：`docs/reviews/development-readiness.md`、`tasks/TASK-READY-001.md`、`PROJECT_STATE.md`
+- 测试命令及结果：baseline 十项解析 → approved=6 / review=4，与评审表一致；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：development-readiness §1 门禁表、§2 批准内容包、§3 固定执行顺序
+- 变更预算实际值：3/3 文件；生产代码 0 行；测试代码 0 行
 - 未解决风险：四项工件待用户批准；技术栈 ADR 待 accepted
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
-- verified_commit：待回填
+- verified_commit：`51ca872`
 - 状态：Review / BLOCKED
 
 ## 关联

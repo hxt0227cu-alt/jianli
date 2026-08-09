@@ -38,6 +38,7 @@
 - **TASK-SRS-003**：**进行中（Review）**——SRS v1.2 错误语义收口；v1.1 approved 快照保留，v1.2 未批准，OpenAPI 前需用户评审。
 - **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 草案已启动；等待 SRS 1.2 与 security 0.1 批准后做 impact review。
 - **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 与冻结 TC 矩阵已产出；实际测试代码未实现，开发准入仍关闭。
+- **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 

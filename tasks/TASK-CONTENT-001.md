@@ -55,19 +55,19 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`a09fa5d`
+- 修改文件清单：docs/content/project-showcase.md / tasks/TASK-CONTENT-001.md / PROJECT_STATE.md
+- 测试命令及结果：事实来源、证据等级、禁止夸大边界复核 → pass；sleep202603-an 保持原有只读工作树状态
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：docs/content/project-showcase.md §1-§4
+- 变更预算实际值：max_files=3，实际 3 文件，未超预算
 - 未解决风险：jianli 的实现数字须在开发完成后按源码和测试更新
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`a09fa5d`
+- 状态：Closed（2026-08-09）
 
 ## 关联
 - 下游：页面二前端实现任务

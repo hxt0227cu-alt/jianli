@@ -54,18 +54,18 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`204c2b8`（测试计划 v0.1 review 草案）
+- 修改文件清单：`docs/test/test-plan.md`、`docs/baseline.yml`、`tasks/TASK-TEST-001.md`、`PROJECT_STATE.md`
+- 测试命令及结果：结构校验 → 69 个 TC 声明全部唯一；R1-R26 缺失 0；33 个 OpenAPI operationId 缺失映射 0；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：`docs/test/test-plan.md` §2 冻结用例矩阵、§3 需求与 operationId 映射、§5 开发准入判定
+- 变更预算实际值：4/4 文件；生产代码 0 行；测试代码 0 行
 - 未解决风险：上游三项 review，实际测试尚未实现
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
-- verified_commit：待回填
+- verified_commit：`204c2b8`
 - 状态：Review
 
 ## 关联

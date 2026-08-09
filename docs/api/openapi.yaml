@@ -2,6 +2,7 @@ openapi: 3.1.0
 info:
   title: AI 面试协作站 API
   version: 0.1.0-review
+  license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
     Review contract based on SRS 1.2 review, domain-model 1.1.5 approved,
     architecture 0.2 approved and security 0.1 review. Not approved for implementation.
@@ -9,16 +10,17 @@ servers:
   - url: /api/v1
 security: []
 tags:
-  - { name: Public }
-  - { name: Answer }
-  - { name: Auth }
-  - { name: Slots }
-  - { name: Appointments }
-  - { name: Admin }
+  - { name: Public, description: Public page content }
+  - { name: Answer, description: RAG answer and conversation APIs }
+  - { name: Auth, description: "Registration, session and account recovery" }
+  - { name: Slots, description: Appointment slot snapshot and live updates }
+  - { name: Appointments, description: Interviewer appointment workflow }
+  - { name: Admin, description: Owner administration APIs }
 paths:
   /pages/{page_key}:
     get:
       tags: [Public]
+      summary: Get public page content
       operationId: getPageContent
       parameters:
         - $ref: '#/components/parameters/PageKey'
@@ -32,6 +34,7 @@ paths:
   /pages/{page_key}/recommendations:
     get:
       tags: [Public]
+      summary: List cached recommended questions
       operationId: listRecommendedQuestions
       parameters:
         - $ref: '#/components/parameters/PageKey'
@@ -50,6 +53,7 @@ paths:
   /answers:stream:
     post:
       tags: [Answer]
+      summary: Stream a grounded answer
       operationId: streamAnswer
       description: SSE over fetch. Anonymous answers are not persisted. See docs/api/sse.md.
       requestBody:
@@ -68,6 +72,7 @@ paths:
   /conversations:
     get:
       tags: [Answer]
+      summary: List current user conversations
       operationId: listConversations
       security: [{ cookieSession: [] }]
       responses:
@@ -79,6 +84,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     post:
       tags: [Answer]
+      summary: Create a conversation
       operationId: createConversation
       security: [{ cookieSession: [] }]
       responses:
@@ -91,6 +97,7 @@ paths:
   /conversations/{conversation_id}/messages:
     get:
       tags: [Answer]
+      summary: List conversation messages
       operationId: listConversationMessages
       security: [{ cookieSession: [] }]
       parameters:
@@ -109,6 +116,7 @@ paths:
   /auth/register:
     post:
       tags: [Auth]
+      summary: Register an interviewer account
       operationId: registerInterviewer
       requestBody:
         required: true
@@ -122,6 +130,7 @@ paths:
   /auth/verify-email:
     post:
       tags: [Auth]
+      summary: Verify a registration email
       operationId: verifyEmail
       requestBody:
         required: true
@@ -134,6 +143,7 @@ paths:
   /auth/login:
     post:
       tags: [Auth]
+      summary: Create a login session
       operationId: login
       requestBody:
         required: true
@@ -150,6 +160,7 @@ paths:
   /auth/logout:
     post:
       tags: [Auth]
+      summary: Revoke the current session
       operationId: logout
       security: [{ cookieSession: [] }]
       parameters:
@@ -160,6 +171,7 @@ paths:
   /auth/password-reset/request:
     post:
       tags: [Auth]
+      summary: Request a password reset
       operationId: requestPasswordReset
       requestBody:
         required: true
@@ -172,6 +184,7 @@ paths:
   /auth/password-reset/confirm:
     post:
       tags: [Auth]
+      summary: Confirm a password reset
       operationId: confirmPasswordReset
       requestBody:
         required: true
@@ -190,6 +203,7 @@ paths:
   /auth/me:
     get:
       tags: [Auth]
+      summary: Get the current user
       operationId: getCurrentUser
       security: [{ cookieSession: [] }]
       responses:
@@ -202,6 +216,7 @@ paths:
   /slots/snapshot:
     get:
       tags: [Slots]
+      summary: Get a slot snapshot
       operationId: getSlotSnapshot
       security: [{ cookieSession: [] }]
       parameters:
@@ -221,6 +236,7 @@ paths:
   /slots/events:
     get:
       tags: [Slots]
+      summary: Stream slot state changes
       operationId: streamSlotEvents
       security: [{ cookieSession: [] }]
       responses:
@@ -234,6 +250,7 @@ paths:
   /appointment-confirmations:
     post:
       tags: [Appointments]
+      summary: Preview an appointment selection
       operationId: previewAppointment
       security: [{ cookieSession: [] }]
       parameters:
@@ -253,6 +270,7 @@ paths:
   /appointments:
     get:
       tags: [Appointments]
+      summary: List current user appointments
       operationId: listMyAppointments
       security: [{ cookieSession: [] }]
       responses:
@@ -268,6 +286,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     post:
       tags: [Appointments]
+      summary: Create an appointment
       operationId: createAppointment
       security: [{ cookieSession: [] }]
       parameters:
@@ -295,6 +314,7 @@ paths:
   /appointments/{appointment_id}:
     patch:
       tags: [Appointments]
+      summary: Update an appointment
       operationId: updateAppointment
       security: [{ cookieSession: [] }]
       parameters:
@@ -315,6 +335,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     delete:
       tags: [Appointments]
+      summary: Cancel an appointment
       operationId: cancelAppointment
       security: [{ cookieSession: [] }]
       parameters:
@@ -327,6 +348,7 @@ paths:
   /admin/appointments:
     get:
       tags: [Admin]
+      summary: List appointments for administration
       operationId: adminListAppointments
       security: [{ cookieSession: [] }]
       responses:
@@ -343,6 +365,7 @@ paths:
   /admin/appointments/{appointment_id}/force-cancel:
     post:
       tags: [Admin]
+      summary: Force-cancel an appointment
       operationId: forceCancelAppointment
       security: [{ cookieSession: [] }]
       parameters:
@@ -355,6 +378,7 @@ paths:
   /admin/availability-overrides:
     get:
       tags: [Admin]
+      summary: List availability overrides
       operationId: listAvailabilityOverrides
       security: [{ cookieSession: [] }]
       responses:
@@ -370,6 +394,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     post:
       tags: [Admin]
+      summary: Create an availability override
       operationId: createAvailabilityOverride
       security: [{ cookieSession: [] }]
       parameters:
@@ -389,6 +414,7 @@ paths:
   /admin/availability-overrides/{override_id}:
     patch:
       tags: [Admin]
+      summary: Update an availability override
       operationId: updateAvailabilityOverride
       security: [{ cookieSession: [] }]
       parameters:
@@ -408,6 +434,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     delete:
       tags: [Admin]
+      summary: Delete an availability override
       operationId: deleteAvailabilityOverride
       security: [{ cookieSession: [] }]
       parameters:
@@ -419,6 +446,7 @@ paths:
   /admin/notification-deliveries:
     get:
       tags: [Admin]
+      summary: List notification failures
       operationId: listNotificationFailures
       security: [{ cookieSession: [] }]
       parameters:
@@ -445,6 +473,7 @@ paths:
   /admin/notification-deliveries/{delivery_id}/resend:
     post:
       tags: [Admin]
+      summary: Resend a notification delivery
       operationId: resendNotificationDelivery
       security: [{ cookieSession: [] }]
       parameters:
@@ -458,6 +487,7 @@ paths:
   /admin/knowledge-documents:
     get:
       tags: [Admin]
+      summary: List knowledge documents
       operationId: listKnowledgeDocuments
       security: [{ cookieSession: [] }]
       responses:
@@ -473,6 +503,7 @@ paths:
         default: { $ref: '#/components/responses/Error' }
     post:
       tags: [Admin]
+      summary: Upload knowledge documents
       operationId: uploadKnowledgeDocuments
       security: [{ cookieSession: [] }]
       parameters:
@@ -495,6 +526,7 @@ paths:
   /admin/knowledge-documents/{document_id}:
     delete:
       tags: [Admin]
+      summary: Delete a knowledge document
       operationId: deleteKnowledgeDocument
       security: [{ cookieSession: [] }]
       parameters:
@@ -506,6 +538,7 @@ paths:
   /admin/announcements/current:
     put:
       tags: [Admin]
+      summary: Update the public announcement
       operationId: updateAnnouncement
       security: [{ cookieSession: [] }]
       parameters:
@@ -525,6 +558,7 @@ paths:
   /admin/company-booking-exceptions:
     post:
       tags: [Admin]
+      summary: Create a company booking exception
       operationId: createCompanyBookingException
       security: [{ cookieSession: [] }]
       parameters:

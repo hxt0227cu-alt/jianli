@@ -72,8 +72,8 @@
 
 ## 功能验收
 - **SSE**：正文不出现「Redis Pub/Sub 保证可靠/有序/可恢复」类表述；事件来源为已提交的数据库状态，不存在 commit 与 publish 的双写窗口；每个事件带单调资源版本 + 连接级连续序号；给出「先订阅 → 缓冲 → 拉快照 → 按版本重放」的竞态消除算法；断线 / 漏序 / 版本跳跃 / 心跳缺失 / 服务端 resync 五类触发强制重拉快照；满足 SRS §4.3 与 §5.1（≤2s）。
-- **事务**：给出唯一全局锁顺序（Company → Appointment → CompanyBookingException → AppointmentSlot 按 start_at 升序）；四条流程均"先加锁后校验"，`FOR UPDATE` 不带 status 过滤；创建校验数量/同日/连续性/available；例外在同一事务 `FOR UPDATE` 校验并消费并写 `dedupe_exception_id`；改期先锁 Appointment 校验 active/归属/version，再合并新旧 Slot 统一升序加锁，占新、释旧（按 §4.6 重新物化）、更新 Appointment、撤销旧提醒、写新 Outbox 同事务；用户取消释放格按 §4.6 重新物化（不再无条件 available）；owner 强制取消写 `owner_locked`；两流程均写通知事件（owner 另写 AuditLog）；`AvailabilityOverride` 创建/修改/删除事务须锁受影响 Slot 并重新物化（§4.7）。
-- **Outbox**：事件级原子领取（`FOR UPDATE SKIP LOCKED` + `uq_delivery_attempt` 二重互斥，仅防重复建行）；**新增投递级原子领取**（§6.3.2：`NotificationDelivery` `queued→sending` 短事务 `FOR UPDATE SKIP LOCKED` + RETURNING，提交后才调外部，`uq_delivery_attempt` 不防同一行重复发送）；隐式租约（非终态 + `created_at`，5min）超时回收，且**区分 `queued`（未发送，`queued_lease_expired`）/ `sending`（结果未知，`sending_lease_expired_unknown`）两类超时与不同 `last_error`**，外部调用超时须远小于 5min；明确至少一次语义；稳定幂等键**不含 attempt_no**、手动重发经 `event_version` 有意区分；`NotificationEvent`/`NotificationDelivery` 状态转换逐条对齐 SRS §6.2 与领域模型 §5，不新增状态。
+- **事务**：给出唯一全局锁顺序（Company → Appointment → CompanyBookingException → AppointmentSlot 按 start_at 升序）；四条流程均"先加锁后校验"，`FOR UPDATE` 不带 status 过滤；创建校验数量/同日/连续性/available；例外在同一事务 `FOR UPDATE` 校验并消费并写 `dedupe_exception_id`；改期先锁 Appointment 校验 active/归属/version，再合并新旧 Slot 统一升序加锁，占新、释旧（按 §4.6 重新物化）、更新 Appointment、撤销旧提醒、写新 Outbox 同事务；用户取消释放格按 §4.6 重新物化（不再无条件 available）；owner 强制取消写 `owner_locked`；两流程均写通知事件（owner 另写 AuditLog）；`AvailabilityOverride` 创建/修改/删除事务（§4.7 重写：先读旧范围 `old_range∪new_range`、统一锁范围内**全部** Slot 含 `booked`、锁后复检冲突排除自身 id、无冲突才写、仅对 `appointment_id IS NULL` 的 Slot 重新物化）。
+- **Outbox**：事件级原子领取（`FOR UPDATE SKIP LOCKED` + `uq_delivery_attempt` 二重互斥，仅防重复建行）；**新增投递级原子领取**（§6.3.2：`NotificationDelivery` `queued→sending` 短事务 `FOR UPDATE SKIP LOCKED` + RETURNING，提交后才调外部，`uq_delivery_attempt` 不防同一行重复发送）；**`created_at` 仅表投递行创建时间（非领取时刻）**，`Txn D` 仅领剩余租约足以覆盖「外呼超时+余量」的 `queued` 行（临近/超租约留 Sweeper 按未发送回收）；隐式租约（非终态 + `created_at`，5min）超时回收，且**区分 `queued`（未发送，`queued_lease_expired`）/ `sending`（结果未知，`sending_lease_expired_unknown`）两类超时与不同 `last_error`**，外部调用超时须远小于 5min；**`Txn W` 回执 CAS 写回**（§6.4.1：`WHERE id=:id AND status='sending'`，命中 0 行=已被 Sweeper 回收、迟到 Worker 不覆盖 `retry_scheduled`/`dead_letter`、仅记告警）；明确至少一次语义；稳定幂等键**不含 attempt_no**、手动重发经 `event_version` 有意区分；`NotificationEvent`/`NotificationDelivery` 状态转换逐条对齐 SRS §6.2 与领域模型 §5，不新增状态。
 - **ADR**：部署形态 / 向量方案 / SSE 传播 / Outbox 消费四项各给出**唯一推荐 + 理由 + 重裁触发条件**；向量方案只选一个 MVP 主方案，不并存。
 - **退信入口**：标记为公网不可信入口；架构层规定幂等回写、未知消息拒绝、回调不得直接改变预约状态与 `DeliveryStatus`；验签/防重放/来源校验/密钥轮换列为《安全设计》必答项。
 - **不批准**：`docs/baseline.yml` 中 `architecture.status` 仍为 `review`。
@@ -117,6 +117,7 @@
 ## 交付证据（review 草案升版，**不关闭**）
 - commit / PR：ef671228c02b3c099e8b17c2026eb6de9d3fa5dd（G1 快照，v0.2 初版 review）
 - 补充修正（2026-08-09 三项实现正确性）：1e0d9ed（docs/design/architecture.md 单文件；§6.3.2 投递级原子领取 + §6.3 澄清 uq_delivery_attempt 边界 + §4.6/§4.7 Slot 释放重新物化 + §6.4 两类超时区分 + 删除 §13；仍 review 不批准）
+- 并发竞态修正（2026-08-09 续，两项）：12dcd2d（docs/design/architecture.md 单文件；① 重写 §4.7 `AvailabilityOverride` 变更事务：先读旧范围 `old_range∪new_range`、统一锁范围内全部 Slot 含 `booked`、锁后复检冲突排除自身 id、无冲突才写、仅 `appointment_id IS NULL` 重新物化；② 修正 `created_at` 语义（仅创建时间非领取时刻）+ §6.3.2 `Txn D` 仅领剩余租约充足 queued 行 + 新增 §6.4.1 `Txn W` 回执 CAS（命中 0 行=已被 Sweeper 回收、迟到 Worker 不覆盖 retry_scheduled/dead_letter）；同步 §6.4/§6.7 与测试计划待覆盖风险；仍 review 不批准）
 - 修改文件清单（G1 初版）：docs/design/architecture.md / tasks/TASK-ARCH-002.md / tasks/TASK-ARCH-001.md / docs/baseline.yml / PROJECT_STATE.md（5 个路径，与「允许修改路径」逐一对照一致）；本轮补充修正（1e0d9ed）仅 docs/design/architecture.md 1 个路径。
 - 测试命令及结果：
   1. `grep "Redis" architecture.md` → 仅出现「MVP SSE 路径不使用消息中间件」与「v0.1 错误记录」两处表述，无「Redis 保证一致/有序/可恢复」类断言（pass）；
@@ -124,6 +125,7 @@
   3. 逐条比对 §4 事务用到的表/列/索引（Company / Appointment / CompanyBookingException / AppointmentSlot + 既有索引 uq_active_company / uq_appointment_exception / uq_delivery_attempt）与领域模型 §6.5–§6.17，无新增结构（pass）；
   4. `grep "architecture:" baseline.yml` → `version: "0.2", status: review`，未变为 approved（pass）。
 - 5. `grep -n "worker_lease_expired" architecture.md` → 无匹配（已被 `queued_lease_expired` / `sending_lease_expired_unknown` 取代，pass）；`grep -n "queued_lease_expired\|sending_lease_expired_unknown" architecture.md` → 均出现（§6.4，pass）。
+- 6. 两项并发竞态修正一致性：`grep -n "Txn W" architecture.md` → 出现于 §6.4.1（pass）；`grep -n "§6.4.1" architecture.md` → 出现（pass）；`grep -n "affected_range\|old_range" architecture.md` → 出现于 §4.7（pass，旧「先写 Override、再只锁未占用 Slot」流程已删除，仅作删除说明引用）；`grep -n "claim_horizon" architecture.md` → 出现于 §6.3.2 与 §6.4（pass）；`grep -n "投递行创建时间" architecture.md` → 出现 `created_at` 语义说明（pass）。
 - lint / typecheck：不适用（设计任务）
 - DB 迁移验证：无
 - 验收证据：architecture.md v0.2（§1–§12）覆盖六项强制要求：§5 SSE 改 commit-derived 轮询消除双写窗口、§4 统一锁顺序 L0→L3、§6 Outbox `FOR UPDATE SKIP LOCKED`+隐式租约+至少一次、§7 退信入口边界、§10 四项 ADR 唯一推荐；§12 含 16 项 v0.1→v0.2 变更记录；§6.10 模型边界声明（零扩模型）。
@@ -131,10 +133,11 @@
 - 未解决风险：
   1. **残留重复投递风险（转《测试计划》）**：Outbox 至少一次语义下，若外部发送成功但 `NotificationDelivery` 状态提交失败（进程崩溃/网络分区），服务商侧已发邮件而 DB 未落库 → Sweeper 回收后重发 → 用户可能收到重复邮件。已用稳定幂等键（不含 attempt_no）+ §6.3.2 投递级原子领取（提交后才调外部）+ §6.4 `sending` 超时的「结果未知」口径与告警尽力降低，但不保证跨崩溃端到端去重；须由《测试计划》覆盖重发幂等验证（尤其 `sending_lease_expired_unknown` 场景）与业务可接受性评估。
   2. **开放项待用户裁定**：ADR-005/006/007/008 留《安全设计》；`AUTH_EXPIRED` 语义冲突（SRS §3.3 关联限频 vs §8 定义登录过期）仍留作 OpenAPI 前阻塞项。**§11.2 取消释放目标状态已在本轮裁定并并入 §4.6（按 AvailabilityOverride 与日历规则重新物化），§13 待办已删除，正文与验收一致。**
+  3. **回执 CAS 与迟到 Worker 竞态（转《测试计划》）**：§6.4.1 规定 Worker 回执须经 `Txn W` CAS（`WHERE id=:id AND status='sending'`）写回，命中 0 行即表示该 `sending` 行已被 Sweeper 回收，迟到 Worker 不得覆盖 `retry_scheduled`/`dead_letter`，仅记告警。该「正常回执 vs 崩溃回收」的仲裁语义是至少一次投递在进程崩溃下的正确收口，须由《测试计划》覆盖：模拟「Worker A 发送后崩溃被 Sweeper 回收 → Worker B 迟到回执」→ 断言命中 0 行、回收后状态不被覆盖、仅产生迟到告警。
 - 是否偏离 TASK：否（仅做六项强制修正；未处理历史措辞、未建 TASK-GOV-*、未扩模型、未批准架构、未进入下游阶段）。
 - 规范影响结论：none（与上方「规范影响评估」一致）
 - spec_sync：clean（上游 SRS v1.1 / 领域模型 v1.1.4 / UI 线框 v1.0 均 approved 且 based_on 未变）
-- verified_commit：1e0d9ed（2026-08-09 三项实现正确性修正，最新 review 草案快照；仍 review 不批准，非自指）
+- verified_commit：12dcd2d（2026-08-09 续两项并发竞态修正，最新 review 草案快照；含 1e0d9ed 三项修正；仍 review 不批准，非自指）
 - **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响已处理（none）；③ spec_sync = clean；④ verified_commit 已记录真实 sha。
   **本任务与 TASK-ARCH-001 均保持 review，待用户独立评审批准 architecture v0.2 后方可关闭。AI 不得代签 approved。**
 

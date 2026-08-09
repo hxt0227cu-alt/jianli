@@ -58,18 +58,18 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：OpenAPI YAML 解析待回填
+- commit / PR：`1f7eb3d`（OpenAPI/SSE v0.1 review 草案快照）
+- 修改文件清单：docs/api/openapi.yaml / docs/api/sse.md / docs/baseline.yml / tasks/TASK-API-001.md / PROJECT_STATE.md
+- 测试命令及结果：33 个 operationId 唯一；33 个唯一本地 `$ref` 均可解析；`git diff --check` pass
+- lint / typecheck：Redocly 首次下载受网络阻塞未完成；已执行本地结构校验，正式批准前仍需标准 OpenAPI lint
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：docs/api/openapi.yaml + docs/api/sse.md
+- 变更预算实际值：max_files=5，实际 5 文件，未超预算
 - 未解决风险：SRS 1.2 与 security 0.1 尚未批准
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
-- verified_commit：待回填
+- verified_commit：`1f7eb3d`
 - 状态：Review
 
 ## 关联

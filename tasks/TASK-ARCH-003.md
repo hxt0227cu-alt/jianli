@@ -66,7 +66,7 @@
 
 ## 交付证据
 - approval_commit：`da3f6fc`
-- verified_commit：待回填（指向包含三份任务关闭与 PROJECT_STATE 同步的收口快照）
+- verified_commit：`d1043af`（包含三份任务关闭与 PROJECT_STATE 同步的收口快照）
 - 修改文件清单：docs/baseline.yml / tasks/TASK-ARCH-001.md / tasks/TASK-ARCH-002.md / tasks/TASK-ARCH-003.md / PROJECT_STATE.md
 - 测试命令及结果：baseline=architecture 0.2/approved；批准提交仅含 docs/baseline.yml；TASK-ARCH-001/002 均 Closed；工作树校验待提交后执行
 - lint / typecheck：不适用
@@ -76,7 +76,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- 状态：Closed（2026-08-09；verified_commit 在纯证据回填提交中补齐）
+- 状态：Closed（2026-08-09）
 
 ## 关联
 - 上游：TASK-ARCH-001 / TASK-ARCH-002

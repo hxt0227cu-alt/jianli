@@ -16,14 +16,14 @@ SESSION_COOKIE = "__Host-session"
 CSRF_COOKIE = "__Host-csrf"
 
 
-def problem_response(error: AuthError) -> JSONResponse:
+def problem_response(error: AuthError, trace_id: str | None = None) -> JSONResponse:
     body: dict[str, object] = {
         "type": f"urn:jianli:error:{error.code.lower()}",
         "title": error.title,
         "status": error.status,
         "code": error.code,
         "detail": error.detail,
-        "trace_id": str(uuid4()),
+        "trace_id": trace_id or str(uuid4()),
     }
     headers: dict[str, str] = {}
     if error.retry_after_seconds is not None:
@@ -78,6 +78,8 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
     @router.post("/login", status_code=204, operation_id="login")
     def login(payload: LoginRequest, request: Request, response: Response) -> None:
         _require_same_origin(request, runtime)
+        request_id = str(uuid4())
+        request.state.auth_request_id = request_id
         ip = request.client.host if request.client else "unknown"
         grant = runtime.service.login(
             payload.email,
@@ -85,6 +87,8 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
             payload.remember_me,
             ip,
             request.headers.get("user-agent"),
+            _session_token(request),
+            request_id,
         )
         response.set_cookie(
             SESSION_COOKIE,

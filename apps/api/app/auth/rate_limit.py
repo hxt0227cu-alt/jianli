@@ -11,7 +11,9 @@ from .errors import AuthError
 
 _CONSUME_SCRIPT = """
 local current = redis.call('INCR', KEYS[1])
-if current == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
+if current == 1 or current == tonumber(ARGV[2]) then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
 local ttl = redis.call('TTL', KEYS[1])
 return {current, ttl}
 """
@@ -44,8 +46,10 @@ class LoginRateLimiter:
         self._hmac_key = key
 
     def _account_key(self, email: str) -> str:
-        digest = hmac.new(self._hmac_key, email.encode("utf-8"), hashlib.sha256).hexdigest()
-        return f"auth:login:account:{digest}"
+        return f"auth:login:account:{self.account_tag(email)}"
+
+    def account_tag(self, email: str) -> str:
+        return hmac.new(self._hmac_key, email.encode("utf-8"), hashlib.sha256).hexdigest()
 
     @staticmethod
     def _ip_key(ip: str) -> str:
@@ -54,7 +58,7 @@ class LoginRateLimiter:
 
     def _consume(self, key: str, block_at: int, window_seconds: int) -> RateDecision:
         try:
-            current, ttl = self._client.eval(_CONSUME_SCRIPT, 1, key, window_seconds)
+            current, ttl = self._client.eval(_CONSUME_SCRIPT, 1, key, window_seconds, block_at)
         except Exception as error:
             raise AuthError(
                 "RATE_LIMITED",

@@ -38,8 +38,17 @@ class AuthRepository:
         expires_at: datetime,
         device: str | None,
         ip: str | None,
+        previous_token_hash: str | None = None,
     ) -> None:
         with self._engine.begin() as connection:
+            if previous_token_hash:
+                connection.execute(
+                    text(
+                        "UPDATE auth_sessions SET revoked_at=now() "
+                        "WHERE session_token_hash=:token_hash AND revoked_at IS NULL"
+                    ),
+                    {"token_hash": previous_token_hash},
+                )
             connection.execute(
                 text(
                     "INSERT INTO auth_sessions "

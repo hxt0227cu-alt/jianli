@@ -34,9 +34,10 @@ class MemoryRedis:
         self.values: dict[str, int] = {}
         self.keys_seen: list[str] = []
 
-    def eval(self, _script: str, _numkeys: int, key: str, window: int = 900) -> list[int]:
+    def eval(self, _script: str, _numkeys: int, key: str, *args: int) -> list[int]:
         if self.fail:
             raise ConnectionError("injected Redis outage")
+        window = args[0] if args else 900
         self.keys_seen.append(key)
         if "redis.call('GET'" in _script:
             return [self.values.get(key, 0), window]
@@ -69,6 +70,7 @@ class MemoryRepository:
         expires_at: datetime,
         _device: str | None,
         _ip: str | None,
+        previous_token_hash: str | None = None,
     ) -> None:
         assert self.user and self.user["id"] == user_id
         principal = Principal(
@@ -78,6 +80,9 @@ class MemoryRepository:
             verified=self.user["verified"],
         )
         self.sessions[token_hash] = (principal, expires_at, False)
+        if previous_token_hash in self.sessions:
+            previous = self.sessions[previous_token_hash]
+            self.sessions[previous_token_hash] = (previous[0], previous[1], True)
         self.created_lifetimes.append((expires_at - datetime.now(UTC)).total_seconds())
 
     def find_principal(self, token_hash: str, now: datetime) -> Principal | None:
@@ -250,9 +255,9 @@ def test_service_creates_12h_and_14d_sessions_and_enforces_rbac(passwords: Passw
     assert 43190 <= repository.created_lifetimes[0] <= 43200
     assert 1209590 <= repository.created_lifetimes[1] <= 1209600
     principal = runtime.service.authenticate(normal.token)
-    assert AuthService.require_role(principal, "interviewer") == principal
+    assert runtime.service.require_role(principal, "interviewer") == principal
     with pytest.raises(AuthError) as denied:
-        AuthService.require_role(principal, "owner_admin")
+        runtime.service.require_role(principal, "owner_admin")
     assert denied.value.code == "PERM_DENIED"
     runtime.service.logout(normal.token)
     with pytest.raises(AuthError) as expired:
@@ -315,6 +320,22 @@ async def test_auth_http_cookie_csrf_origin_and_logout(passwords: PasswordHasher
             item.startswith(f"{CSRF_COOKIE}=") and "HttpOnly" not in item for item in set_cookie
         )
         csrf = login.headers["X-CSRF-Token"]
+        old_token = client.cookies[SESSION_COOKIE]
+
+        rotated = await client.post(
+            "/auth/login",
+            headers={"Origin": ORIGIN},
+            json={
+                "email": "person@example.invalid",
+                "password": "correct-password",
+                "remember_me": False,
+            },
+        )
+        assert rotated.status_code == 204
+        assert client.cookies[SESSION_COOKIE] != old_token
+        with pytest.raises(AuthError):
+            runtime.service.authenticate(old_token)
+        csrf = rotated.headers["X-CSRF-Token"]
 
         me = await client.get("/auth/me")
         assert me.status_code == 200
@@ -340,7 +361,37 @@ async def test_auth_http_cookie_csrf_origin_and_logout(passwords: PasswordHasher
 
 
 @pytest.mark.asyncio
-async def test_login_rejects_missing_origin_and_73_byte_password(passwords: PasswordHasher) -> None:
+async def test_cors_allows_only_configured_credentials_origin(passwords: PasswordHasher) -> None:
+    runtime, _, _ = build_memory_runtime(passwords)
+    app = create_app(Settings(), runtime)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
+        allowed = await client.options(
+            "/auth/login",
+            headers={
+                "Origin": ORIGIN,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert allowed.status_code == 200
+        assert allowed.headers["access-control-allow-origin"] == ORIGIN
+        assert allowed.headers["access-control-allow-credentials"] == "true"
+
+        rejected = await client.options(
+            "/auth/login",
+            headers={
+                "Origin": "https://evil.invalid",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert rejected.status_code == 400
+        assert "access-control-allow-origin" not in rejected.headers
+
+
+@pytest.mark.asyncio
+async def test_login_rejects_missing_origin_and_73_byte_password(
+    passwords: PasswordHasher, caplog: pytest.LogCaptureFixture
+) -> None:
     runtime, _, _ = build_memory_runtime(passwords)
     app = create_app(Settings(), runtime)
     async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
@@ -365,6 +416,29 @@ async def test_login_rejects_missing_origin_and_73_byte_password(passwords: Pass
             json={"email": "person@example.invalid", "password": "密" * 25, "remember_me": False},
         )
         assert multibyte_overlong.status_code == 422
+        invalid = await client.post(
+            "/auth/login",
+            headers={"Origin": ORIGIN},
+            json={
+                "email": "person@example.invalid",
+                "password": "wrong-password",
+                "remember_me": False,
+            },
+        )
+        assert invalid.status_code == 401
+        event = next(
+            record.getMessage()
+            for record in reversed(caplog.records)
+            if record.name == "jianli.security.auth"
+            and '"event":"auth_account_failure"' in record.getMessage()
+        )
+        assert '"event":"auth_account_failure"' in event
+        assert '"account_id":"unknown"' not in event
+        assert "person@example.invalid" not in event
+
+        client.cookies.set(SESSION_COOKIE, "not-a-valid-session")
+        malformed = await client.get("/auth/me")
+        assert malformed.status_code == 401
 
 
 DATABASE_URL = os.environ.get("JIANLI_AUTH_TEST_DATABASE_URL")
@@ -466,7 +540,7 @@ async def test_real_postgresql_and_redis_auth_flow(passwords: PasswordHasher) ->
             )
             assert limited.status_code == 429
             assert limited.json()["code"] == "RATE_LIMITED"
-            assert int(limited.headers["Retry-After"]) >= 1
+            assert int(limited.headers["Retry-After"]) >= 895
     finally:
         runtime.close()
         redis_client.close()

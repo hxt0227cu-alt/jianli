@@ -6,7 +6,7 @@ import os
 from collections.abc import Mapping
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
@@ -22,6 +22,25 @@ class Settings(BaseModel):
     log_level: LogLevel = "INFO"
     api_host: str = Field(default="127.0.0.1", min_length=1)
     api_port: int = Field(default=8000, ge=1, le=65535)
+    database_url: str | None = None
+    redis_url: str | None = None
+    csrf_hmac_key: SecretStr | None = None
+    rate_limit_hmac_key: SecretStr | None = None
+    allowed_origins: tuple[str, ...] = ()
+
+    @property
+    def auth_configured(self) -> bool:
+        """Return whether every security-critical auth setting is present."""
+
+        return all(
+            (
+                self.database_url,
+                self.redis_url,
+                self.csrf_hmac_key,
+                self.rate_limit_hmac_key,
+                self.allowed_origins,
+            )
+        )
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
@@ -35,10 +54,22 @@ class Settings(BaseModel):
             "log_level": "JIANLI_LOG_LEVEL",
             "api_host": "JIANLI_API_HOST",
             "api_port": "JIANLI_API_PORT",
+            "database_url": "JIANLI_DATABASE_URL",
+            "redis_url": "JIANLI_REDIS_URL",
+            "csrf_hmac_key": "JIANLI_CSRF_HMAC_KEY",
+            "rate_limit_hmac_key": "JIANLI_RATE_LIMIT_HMAC_KEY",
+            "allowed_origins": "JIANLI_ALLOWED_ORIGINS",
         }
-        values: dict[str, str] = {}
+        values: dict[str, object] = {}
         for field_name, env_name in fields.items():
             value = source.get(env_name)
             if value is not None:
-                values[field_name] = value.upper() if field_name == "log_level" else value
+                if field_name == "log_level":
+                    values[field_name] = value.upper()
+                elif field_name == "allowed_origins":
+                    values[field_name] = tuple(
+                        item.strip() for item in value.split(",") if item.strip()
+                    )
+                else:
+                    values[field_name] = value
         return cls.model_validate(values)

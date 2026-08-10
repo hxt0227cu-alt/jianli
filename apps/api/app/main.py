@@ -8,7 +8,6 @@ from .config import Settings
 from .factory import create_app
 from .logging_config import configure_logging
 
-
 settings = Settings.from_env()
 configure_logging(settings.log_level)
 app = create_app(settings)

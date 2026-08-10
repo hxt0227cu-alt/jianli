@@ -7,7 +7,6 @@ import logging
 from .config import Settings
 from .logging_config import configure_logging
 
-
 LOGGER = logging.getLogger("jianli.worker")
 
 

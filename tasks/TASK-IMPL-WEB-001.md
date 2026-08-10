@@ -105,7 +105,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待最终实现提交 SHA 回填
+- verified_commit：`9473369`
 - 实现证据：`pnpm lint` PASS；`pnpm typecheck` PASS；`pnpm test --run` PASS（1 test）；`pnpm build` PASS；Playwright 待浏览器安装完成复核。
 - 修改文件：`apps/web/index.html`、`apps/web/main.tsx`、`apps/web/styles.css`、`package.json`、`pnpm-lock.yaml`、`vite.config.ts`、`tsconfig.json`、`playwright.config.ts`、`tests/web-shell/shell.test.ts`、`tests/web-shell/shell.spec.ts`。
 - 预算实际值：10 个文件；生产代码约 220 行；测试代码约 28 行；未超预算。数据库迁移：无。

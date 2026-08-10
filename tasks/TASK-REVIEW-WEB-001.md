@@ -44,7 +44,7 @@
 - `git revert` 审查报告提交。
 
 ## 交付证据
-- commit / PR：`f6f863b`（实现快照）；审查报告待本任务提交
+- commit / PR：`9473369`（最终实现快照）；审查报告提交 `fd5341d`
 - 修改文件清单：`docs/reviews/web-shell-review.md`、本任务单
 - 测试命令及结果：`pnpm test --run` → 1 passed；`pnpm exec playwright test tests/web-shell` → 2 blocked（Chromium executable missing）
 - lint / typecheck：`pnpm lint` → pass；`pnpm typecheck` → pass；`pnpm build` → pass
@@ -55,5 +55,5 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`f6f863b`（被审查实现快照；审查提交 SHA 待回填）
+- verified_commit：`9473369`（被审查最终实现快照）
 - 状态：Closed（审查无 P0/P1；保留 Chromium 环境风险）

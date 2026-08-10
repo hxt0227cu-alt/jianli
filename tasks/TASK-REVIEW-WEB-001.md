@@ -44,16 +44,16 @@
 - `git revert` 审查报告提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`f6f863b`（实现快照）；审查报告待本任务提交
+- 修改文件清单：`docs/reviews/web-shell-review.md`、本任务单
+- 测试命令及结果：`pnpm test --run` → 1 passed；`pnpm exec playwright test tests/web-shell` → 2 blocked（Chromium executable missing）
+- lint / typecheck：`pnpm lint` → pass；`pnpm typecheck` → pass；`pnpm build` → pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待审查
+- 验收证据：见 `docs/reviews/web-shell-review.md`
+- 变更预算实际值：2 个审查文件，未超 `max_files=3`
+- 未解决风险：Chromium 运行时缺失，Playwright 浏览器断言待补跑
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`f6f863b`（被审查实现快照；审查提交 SHA 待回填）
+- 状态：Closed（审查无 P0/P1；保留 Chromium 环境风险）

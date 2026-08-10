@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -40,6 +40,25 @@ def _log_auth_rejection(request: Request, result: str, request_id: str) -> None:
     )
 
 
+def _validated_origins(origins: frozenset[str]) -> frozenset[str]:
+    normalized: set[str] = set()
+    for origin in origins:
+        parsed = urlsplit(origin)
+        if (
+            origin == "*"
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("allowed origins must be explicit HTTP(S) origins without paths")
+        normalized.add(f"{parsed.scheme}://{parsed.netloc}")
+    return frozenset(normalized)
+
+
 def create_app(
     settings: Settings | None = None,
     auth_runtime: AuthRuntime | None = None,
@@ -49,9 +68,11 @@ def create_app(
     config = settings or Settings.from_env()
     app = FastAPI(title=config.app_title, version=config.app_version)
     runtime = auth_runtime or (build_auth_runtime(config) if config.auth_configured else None)
-    allowed_origins = (
+    allowed_origins = _validated_origins(
         runtime.allowed_origins if runtime is not None else frozenset(config.allowed_origins)
     )
+    if runtime is not None:
+        runtime.allowed_origins = allowed_origins
     if allowed_origins:
         app.add_middleware(
             CORSMiddleware,
@@ -76,6 +97,10 @@ def create_app(
     ) -> JSONResponse:
         if request.url.path.startswith("/auth/"):
             _log_auth_rejection(request, "VALIDATION_FAILED", str(uuid4()))
-        return await request_validation_exception_handler(request, error)
+        details = [
+            {key: item[key] for key in ("type", "loc", "msg") if key in item}
+            for item in error.errors()
+        ]
+        return JSONResponse({"detail": details}, status_code=422)
 
     return app

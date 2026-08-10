@@ -387,6 +387,11 @@ async def test_cors_allows_only_configured_credentials_origin(passwords: Passwor
         assert rejected.status_code == 400
         assert "access-control-allow-origin" not in rejected.headers
 
+    wildcard_runtime, _, _ = build_memory_runtime(passwords)
+    wildcard_runtime.allowed_origins = frozenset({"*"})
+    with pytest.raises(ValueError, match="explicit HTTP"):
+        create_app(Settings(), wildcard_runtime)
+
 
 @pytest.mark.asyncio
 async def test_login_rejects_missing_origin_and_73_byte_password(
@@ -404,12 +409,18 @@ async def test_login_rejects_missing_origin_and_73_byte_password(
             },
         )
         assert missing_origin.status_code == 403
+        overlong_password = "sensitive-" + "a" * 64
         overlong = await client.post(
             "/auth/login",
             headers={"Origin": ORIGIN},
-            json={"email": "person@example.invalid", "password": "a" * 73, "remember_me": False},
+            json={
+                "email": "person@example.invalid",
+                "password": overlong_password,
+                "remember_me": False,
+            },
         )
         assert overlong.status_code == 422
+        assert overlong_password not in overlong.text
         multibyte_overlong = await client.post(
             "/auth/login",
             headers={"Origin": ORIGIN},

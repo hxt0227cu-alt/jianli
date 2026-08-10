@@ -1,7 +1,7 @@
 # 软件需求规格（SRS）v1.2 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
-> **文档状态**：v1.2 · `status = review`（v1.1 已于 `00e125c` approved；本版仅收口 OpenAPI 前错误语义，旧批准快照不重写；经用户独立评审通过后方可置 `approved`）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。上游版本未变；v1.2 只修正错误语义，当前保持 review，v1.1 approved 快照继续作为现行行为基线直至本版获批。
+> **文档状态**：v1.2 · `status = approved`（用户于 2026-08-10 批准，批准锚点 `ab4b94e`；v1.1 历史批准快照 `00e125c` 保留不重写）。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.2 仅修正错误语义，现为行为唯一源。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）与「禁止 LLM 自动写预约」硬规则（PRD §8.4#14）为 SRS 边界，正文仅可引用、不可扩展。
@@ -11,8 +11,8 @@
 ## 1. 引言
 
 ### 1.1 目的与范围
-本文档将已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.5）吸收，待 approved 后成为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。review 阶段本文仅作为候选行为基线，不参与 `docs/baseline.yml` 的 precedence 裁决。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
-**状态机所有权迁移（ownership transition）**：review 阶段状态枚举暂以 PRD §8.10 / 领域模型 §5 为输入引用；SRS approved 后，状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）即归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
+本文档吸收已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.5），现为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+**状态机所有权迁移（ownership transition）**：状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）现归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
 
 ### 1.2 定义、首字母缩写、缩略语
 沿用 PRD §8.3 术语表（动态面试表页 / 一家公司一时段 / 飞书多维表格日常视图 / 后台只读应急视图 / 双通道提醒 / 抢占式并发 / 知识库热更新 / 会话历史持久化 / 人格层 L1 / RAG / 内容护栏）。新增：
@@ -243,7 +243,7 @@
 - 问答与知识库：`Conversation` / `Message` / `KnowledgeDocument` / `KnowledgeIndexVersion` / `RecommendedQuestionCache`
 - 字段、关系、索引、并发约束一律见领域模型文档，本文不重复维护。
 
-### 6.2 状态模型（review 阶段引用 PRD §8.10 / 领域模型 §5；SRS approved 后本文为状态行为唯一规范源）
+### 6.2 状态模型（SRS v1.2 approved；本文为状态行为唯一规范源，PRD §8.10 / 领域模型 §5 保留为输入与历史依据）
 - **SlotStatus**：`available` / `booked` / `owner_locked` / `unavailable`（黄格不属此枚举，为前端临时态）。
 - **AppointmentStatus**：`active` / `cancelled` / `completed`（提交即 active；改期 active→active 原子；无 pending/draft）。
 - **DeliveryStatus**：`queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter`（通道无关；手动重发=新建尝试记录）；退信(Bounce) 不属本枚举，仅邮件通道于 `channel_metadata.bounced_at`/`bounce_reason` 记录（见 §3.8/§4.3；领域模型 v1.1.5 §5）。
@@ -395,6 +395,6 @@
 
 > **v1.1 修订说明（缺陷修正，2026-08-08）**：SRS v1.0（approved @ `26ae844`）声称吸收 PRD/用例规约，但遗漏了退信(Bounce) 用户可观察行为——PRD §4.6 / R26 与 UC-21 已明确要求记录退信、后台展示/筛选、告警、手动重发且不回滚预约。本 v1.1 仅补充该遗漏（§3.8 / §3.9 / §4.3 / §6.2 / §9 / §10），不新增产品功能、不修改 v1.0 已批准快照、不改 domain_model（退信字段已在 v1.1.4 §5 `channel_metadata`）。v1.1 待用户独立评审批准后方可置 `approved`。
 
-> **v1.2 修订说明（错误语义收口，2026-08-09）**：修正 §3.3 将 `AUTH_EXPIRED` 误用于限频的内部冲突，新增统一 `RATE_LIMITED`；把 architecture v0.2 §4.7 已规定的两类回滚拒绝映射为 `OVERRIDE_NOT_FOUND` / `OVERRIDE_RANGE_EMPTY`。成功路径、阈值、权限和产品能力均不变。
+> **v1.2 修订说明（错误语义收口，2026-08-09）**：修正 §3.3 将 `AUTH_EXPIRED` 误用于限频的内部冲突，新增统一 `RATE_LIMITED`；把 architecture v0.2 §4.7 已规定的两类回滚拒绝映射为 `OVERRIDE_NOT_FOUND` / `OVERRIDE_RANGE_EMPTY`。成功路径、阈值、权限和产品能力均不变。用户于 2026-08-10 批准本版。
 
-> **文档结束** · SRS v1.2 · status=review · v1.1 approved @ `00e125c` · 本版经用户独立评审通过后方可置 approved。
+> **文档结束** · SRS v1.2 · status=approved · approval_commit=`ab4b94e` · v1.1 approved @ `00e125c`（历史快照）。

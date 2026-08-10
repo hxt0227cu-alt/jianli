@@ -4,7 +4,7 @@
 - documentation
 
 ## 基线版本与基线 commit
-- SRS 1.1 / architecture 0.2（approved）；security 0.1（review）
+- SRS 1.2 / architecture 0.2 / security 0.1（approved）
 - 基线 commit：`40e0b7d`
 
 ## 精确规范引用
@@ -15,7 +15,7 @@
 - OpenAPI 前阻塞：AUTH_EXPIRED 语义冲突；架构中两个 Override 拒绝语义尚无 SRS 错误码。
 
 ## 目标
-- 产出 SRS v1.2 review 草案，统一限频、会话过期与 Override 拒绝错误语义。
+- 产出并批准 SRS v1.2，统一限频、会话过期与 Override 拒绝错误语义。
 
 ## 非目标
 - 不改变限频阈值、认证流程、预约行为或权限；不定义 URL/Schema；不批准 SRS。
@@ -40,7 +40,7 @@
 ## 验收
 - AUTH_EXPIRED 只用于会话过期；所有限频统一 RATE_LIMITED。
 - OVERRIDE_NOT_FOUND / OVERRIDE_RANGE_EMPTY 与 architecture §4.7 行为一致。
-- SRS 保持 review，旧 v1.1 approved 快照不重写。
+- 旧 v1.1 approved 快照不重写；v1.2 获批后成为行为唯一源。
 
 ## 变更预算
 - max_files：4
@@ -54,19 +54,19 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`b162c0a`（SRS v1.2 review 草案快照）
+- commit / PR：`b162c0a`（SRS v1.2 review 草案）→ `ab4b94e`（approval_commit）
 - 修改文件清单：docs/requirements/SRS.md / docs/baseline.yml / tasks/TASK-SRS-003.md / PROJECT_STATE.md
-- 测试命令及结果：错误码全文一致性与 baseline srs=1.2/review 检查 → pass
+- 测试命令及结果：错误码全文一致性与 baseline srs=1.2/approved 检查 → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
 - 验收证据：SRS §3.3 / §3.9 / §8 / v1.2 修订说明
 - 变更预算实际值：max_files=4，实际 4 文件，未超预算
-- 未解决风险：需用户独立批准 SRS v1.2
+- 未解决风险：无；下游 OpenAPI/security/test-plan impact review 已完成
 - 是否偏离 TASK：否
 - 规范影响结论：updated
-- spec_sync：dirty（待批准与 OpenAPI impact review）
-- verified_commit：`b162c0a`
-- 状态：Review
+- spec_sync：clean
+- verified_commit：待回填关闭快照
+- 状态：Closed
 
 ## 关联
 - 下游：OpenAPI/SSE 契约

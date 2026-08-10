@@ -37,7 +37,7 @@
 - **TASK-ARCH-003**：**已关闭（Closed，2026-08-09）**——承载用户明确批准后的单一用途状态推进与架构阶段收口。
 - **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=`010e3e1`，spec_sync=clean。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
-- **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
+- **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`，verified_commit=待回填。
 - **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
 - **TASK-TEST-001**：**已关闭（Closed，2026-08-10）**——上游 impact review 完成，spec_sync=clean，approval_commit=`60b56b2`，verified_commit=`ebe6c1a`；实际测试代码由下游测试任务实现。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。

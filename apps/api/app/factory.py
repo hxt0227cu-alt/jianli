@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -95,8 +96,9 @@ def create_app(
     async def handle_validation_error(
         request: Request, error: RequestValidationError
     ) -> JSONResponse:
-        if request.url.path.startswith("/auth/"):
-            _log_auth_rejection(request, "VALIDATION_FAILED", str(uuid4()))
+        if not request.url.path.startswith("/auth/"):
+            return await request_validation_exception_handler(request, error)
+        _log_auth_rejection(request, "VALIDATION_FAILED", str(uuid4()))
         details = [
             {key: item[key] for key in ("type", "loc", "msg") if key in item}
             for item in error.errors()

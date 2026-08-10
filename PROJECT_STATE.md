@@ -46,6 +46,7 @@
 - **TASK-REVIEW-WEB-001**：**Open**——独立审查 WEB-001 的越界、隐私、冻结 TC 和证据真实性。
 - **TASK-BE-001**：**已关闭（Closed，2026-08-11）**——FastAPI 应用工厂、环境配置、结构化日志、API/Worker 独立入口与 Python 工程门禁已交付；verified_commit=`de91826`；无业务路由、数据库、鉴权、加密、通知或 LLM。
 - **TASK-REVIEW-BE-001**：**已关闭（Closed，2026-08-11）**——首轮 Ruff/锁文件/API 入口测试阻塞已向前修正；最终 pytest 5 passed、Ruff/mypy/真实 API 与 Worker smoke 全通过，无 P0/P1 遗留。
+- **TASK-DB-001**：**Awaiting Human Approval（2026-08-11）**——已建立迁移基础设施 + 身份域首批 6 表的内容评审包；具体 DDL、依赖与测试库方案获用户批准前，不生成/执行 migration，不连接数据库。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。

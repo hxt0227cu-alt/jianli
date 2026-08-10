@@ -37,7 +37,7 @@
 - **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=`010e3e1`，spec_sync=clean。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
-- **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=待回填。
+- **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
 - **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 的 69 个冻结 TC 保持不变；现执行 approved OpenAPI/SSE impact review，实际测试代码尚未实现。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
 - **TASK-READY-001**：**进行中（Review / BLOCKED）**——SRS/security 已 approved；OpenAPI/test_plan 仍待 impact review、批准与 `spec_sync=clean`，ADR-IMPL-001 已获用户接受，十项门禁尚未全部满足。
@@ -86,5 +86,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **架构批准锚点**：`da3f6fc` — 用户明确批准 architecture v0.2；被批准内容快照=`3a18b7f`，批准提交仅推进 baseline 状态。
 - **架构阶段关闭验证锚点（当前有效）**：`d1043af` — architecture v0.2 approved + TASK-ARCH-001/002/003 Closed + PROJECT_STATE 同步。
 - **最新验证锚点（security 阶段）**：`010e3e1` — security v0.1 approved + TASK-SEC-001 Closed + SRS v1.2 impact-sync，后续纯证据回填不改变该验证快照。
+- **最新验证锚点（OpenAPI/SSE 阶段）**：`3e2b58b` — OpenAPI/SSE v0.1 approved + TASK-API-001 Closed + SRS/security impact-sync + Redocly 0 error / 0 warning。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

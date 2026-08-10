@@ -54,7 +54,7 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待本提交回填
+- commit / PR：`474e541`
 - 修改文件清单：`apps/web/main.tsx`、`apps/web/appointment.css`、`tests/web-shell/shell.spec.ts`、`tests/web-shell/shell.test.ts`、本任务单
 - 测试命令及结果：`pnpm test --run` → 1 passed；`pnpm exec playwright test tests/web-shell` → 2 passed；`pnpm build` → pass
 - lint / typecheck：`pnpm lint` → pass；`pnpm typecheck` → pass
@@ -65,5 +65,5 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待本提交 SHA 回填
+- verified_commit：`474e541`
 - 状态：Closed（静态预约工作区与跨页入口验收通过）

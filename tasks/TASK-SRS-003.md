@@ -65,7 +65,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean
-- verified_commit：待回填关闭快照
+- verified_commit：`1c443eb`
 - 状态：Closed
 
 ## 关联

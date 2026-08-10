@@ -16,6 +16,7 @@
 - **UI 线框 v1.0（TASK-UI-001 / ui-wireframe.md）**：UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=`38b102a`，baseline.status=`approved`）；影响评审（TASK-UI-IMPACT-001）结论=基本可沿用 + 1 处缺口；内容缺口由 TASK-UI-002 执行并闭合（A6/A7 失败三态 + 退信），8 项后续内容修正由 **TASK-UI-003** 一次性修正并闭合（对齐 SRS v1.1、消除误导实现表述）；TASK-UI-001 已关闭。下游进入架构/ADR 阶段。
 - **架构设计 v0.2 已批准**：内容快照=`3a18b7f`，approval_commit=`da3f6fc`；TASK-ARCH-001/002/003 与 TASK-ARCH-IMPACT-001 已收口，正文已同步 SRS v1.2。
 - **安全设计 v0.1 已批准**（TASK-SEC-001 已关闭）：SRS v1.2 impact-sync=`151509f`，approval_commit=`c2f08f2`，BCrypt/会话/Redis 限频/IMAP 退信/AES-256-GCM/RBAC/LLM 与上传边界开始约束下游实现。
+- **OpenAPI/SSE v0.1 已批准**（TASK-API-001 已关闭）：安全契约修正快照=`fd9747c`，approval_commit=`2c8cede`；显式 401/403、CSRF、匿名/登录 AI SSE 分支与密码 UTF-8 字节语义已通过 Redocly 0 error / 0 warning。
 
 ---
 
@@ -36,8 +37,8 @@
 - **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=`010e3e1`，spec_sync=clean。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
-- **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 已完成标准 lint 与上游待办修正，现执行 SRS v1.2/security v0.1 impact review。
-- **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 与冻结 TC 矩阵已产出；实际测试代码未实现，开发准入仍关闭。
+- **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=待回填。
+- **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 的 69 个冻结 TC 保持不变；现执行 approved OpenAPI/SSE impact review，实际测试代码尚未实现。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
 - **TASK-READY-001**：**进行中（Review / BLOCKED）**——SRS/security 已 approved；OpenAPI/test_plan 仍待 impact review、批准与 `spec_sync=clean`，ADR-IMPL-001 已获用户接受，十项门禁尚未全部满足。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。

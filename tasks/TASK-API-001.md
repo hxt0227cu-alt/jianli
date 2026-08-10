@@ -58,10 +58,10 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`1f7eb3d`（初始草案）→ `4fb0d01`（标准 lint 修正后的当前 review 快照）
+- commit / PR：`1f7eb3d`（初始草案）→ `4fb0d01`（首次标准 lint 修正）→ `fd9747c`（SRS/security impact-sync 与安全契约修正）→ `2c8cede`（approval_commit）
 - 修改文件清单：docs/api/openapi.yaml / docs/api/sse.md / docs/baseline.yml / tasks/TASK-API-001.md / PROJECT_STATE.md
-- 测试命令及结果：33 个 operationId 唯一；33 个唯一本地 `$ref` 均可解析；`git diff --check` pass
-- lint / typecheck：Redocly recommended lint → exit 0，0 error / 26 warning；warning 均为已有统一 `default` 错误体但未逐操作展开显式 4xx，不影响契约有效性
+- 测试命令及结果：33 个 operationId 唯一；Cookie 保护操作缺失 401/403=0；`createConversation` CSRF=true；`streamAnswer` 条件鉴权=true；UTF-8 字节规则=3 处；`git diff --check` pass
+- lint / typecheck：Redocly recommended lint → exit 0，0 error / 0 warning
 - DB 迁移验证：无
 - 验收证据：docs/api/openapi.yaml + docs/api/sse.md
 - 变更预算实际值：max_files=5，实际 5 文件，未超预算
@@ -69,8 +69,8 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`4fb0d01`
-- 状态：Review（待批准）
+- verified_commit：待回填关闭快照
+- 状态：Closed
 
 ## 关联
 - 上游：TASK-SRS-003 / TASK-SEC-001

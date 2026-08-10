@@ -22,7 +22,7 @@ artifacts:
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: approved }  # 用户于 2026-08-10 明确批准 security v0.1；批准锚点为本状态推进提交；BCrypt/会话/Redis/IMAP/AES-GCM 等方案开始约束实现
   openapi:          { version: "0.1",   status: approved }  # 用户于 2026-08-10 授权在修正 401/403、CSRF、条件鉴权与 UTF-8 密码字节语义并完成 impact review 后批准；批准锚点为本状态推进提交
-  test_plan:        { version: "0.1",   status: review }    # TASK-TEST-001 review 草案；上游 SRS/security/OpenAPI 尚未批准，spec_sync=dirty
+  test_plan:        { version: "0.1",   status: approved }  # 用户于 2026-08-10 授权在上游 impact review 完成且冻结 TC 不降低后批准；批准锚点为本状态推进提交；69 个 TC 内容快照冻结于 204c2b8
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── 规范优先级（冲突裁决，高者胜）──

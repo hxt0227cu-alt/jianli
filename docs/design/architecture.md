@@ -1,7 +1,7 @@
-# 架构设计与 ADR（review 草案 v0.2）
+# 架构设计与 ADR（v0.2）
 
-> **文档状态**：v0.2 · `status = review`（尚未 approved，不计入 `docs/baseline.yml` 的 precedence 裁决约束；经用户独立评审通过后方可置 `approved`）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.1** / UI 线框 **v1.0** / AI 治理 1.0.1。
+> **文档状态**：v0.2 · `status = approved`（用户于 2026-08-09 明确批准；批准锚点 `da3f6fc`，内容快照 `3a18b7f`）。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.2** / UI 线框 **v1.0** / AI 治理 1.0.1。
 > **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态；**2026-08-09（续二）两项 Schema/并发收口**：⑥ §6.4.1 `Txn W` SQL 删除幻列 `version`、`provider_message_id` 写独立列、`channel_metadata` 改 JSONB 合并（bounce 键仍只由 §7 回写），并附逐字段核对表对齐领域模型 v1.1.5 §6.12；⑦ §4.7 补齐同一 override 的并发更新——新增锁层级 **L2.5**（UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取真实 `old_range`，先于 L3）、CREATE/UPDATE 范围须命中现存 Slot 否则拒绝。逐项差异见 §12.3 条目 20–23。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
@@ -733,22 +733,22 @@ SELECT d.* FROM NotificationDelivery d
 
 ## 11. 开放问题与遗留裁定
 
-### 11.1 `AUTH_EXPIRED` 语义冲突（**OpenAPI 设计前必须裁定**）
-- **冲突事实**：SRS §8 错误码表定义 `AUTH_EXPIRED` = **登录过期**（处理 = 重新登录）；但 SRS §3.3 异常流把限频提示写为 `AUTH_EXPIRED`/`EMAIL_UNVERIFIED`，即把 `AUTH_EXPIRED` 关联到了限频场景。
-- **本阶段处理**：架构**不裁定、不新增错误码、不修改 SRS**。登记为「OpenAPI 设计前必须裁定」开放项，须由 Change Request 明确（§3.3 限频改用语，或 §8 增补限频错误码）；裁定完成前不得据此实现登录/限频错误映射。
-- **架构影响**：登录鉴权失败统一走 `AUTH_EXPIRED`（仅会话过期）；凭证错误与限频按普通错误提示呈现（与 UI 线框 v1.0 U4 一致）。
+### 11.1 `AUTH_EXPIRED` / `RATE_LIMITED` 语义（已由 SRS v1.2 裁定）
+- `AUTH_EXPIRED` 仅表示登录会话过期，处理为重新登录。
+- 所有限频场景统一使用 `RATE_LIMITED`，并遵守 SRS §5.6 的独立阈值与 `Retry-After` 约定。
+- 架构不再保留 v1.1 的冲突假设；OpenAPI 实现不得将 `AUTH_EXPIRED` 用作限频错误。
 
 ### 11.2 其他待定（不阻塞架构评审）
 - 飞书多维表格字段映射与是否提供幂等令牌（留《接口契约》+ 集成验证清单）。
 - 托管 PostgreSQL 的 `pgvector` 可用性确认（ADR-ARCH-002 验证项）。
-- **§4.7 两个拒绝语义的对外错误码命名待定（留 OpenAPI 阶段裁定）**：`OVERRIDE_NOT_FOUND`（并发已删）与 `OVERRIDE_RANGE_EMPTY`（范围不命中任何 Slot）在本文中为**架构内部占位名**，**不是已批准 SRS §8 的既有错误码**，本文不据此主张 SRS 已定义该二者。架构层只约束**行为**（两种情形必须 ROLLBACK 拒绝、不得放行），最终对外码值与文案由《接口契约（OpenAPI）》阶段统一裁定；若届时需新增 SRS 错误码，须走 Change Request，不在本轮架构评审内既成事实。
+- `OVERRIDE_NOT_FOUND`（并发已删）与 `OVERRIDE_RANGE_EMPTY`（范围不命中任何 Slot）现已由 SRS v1.2 §8 正式定义；架构层继续约束两种情形必须 ROLLBACK 拒绝、不得放行，OpenAPI 负责映射统一错误体。
 
 ---
 
 ## 12. 与基线/下游关系 + v0.1 → v0.2 变更记录
 
 ### 12.1 基线关系
-- 本文档 based_on SRS v1.1 / 领域模型 v1.1.5 / UI 线框 v1.0（均 approved）。
+- 本文档 based_on SRS v1.2 / 领域模型 v1.1.5 / UI 线框 v1.0（均 approved）。
 - 密码哈希算法**显式不在本阶段选择**；退信接入方式、会话存储、限频实现**显式不在本阶段假定**。
 - 下游：《安全设计》→《接口契约（OpenAPI/SSE）》→《测试计划》→ 开发准入评审。
 - 本文档 approved 前，下游不得据此锁定物理端点；SRS §8 错误码表为唯一权威。
@@ -784,7 +784,7 @@ SELECT d.* FROM NotificationDelivery d
 | 20 | §4.7 `AvailabilityOverride` 变更「先写 Override、再只锁未占用 Slot」存在竞态：override 提交的瞬间，并发事务仍可按旧 override 集合物化 Slot，产生「override 已生效但 Slot 显示旧状态」窗口 | §4.7 重写为「先读旧范围（更新/删除算 `old_range ∪ new_range`）→ 统一升序锁范围内**全部** `AppointmentSlot`（含 `booked`）→ 锁后复检冲突 override（更新排除自身 `id`）→ 冲突 ROLLBACK、无冲突才 `INSERT`/`UPDATE`/`DELETE` → 仅对 `appointment_id IS NULL` 的 Slot 重新物化（`booked` 保持 `booked` 但参与锁与冲突串行化）」 |
 | 21 | 投递 `created_at` 被当作真实领取时刻；`queued` 临近租约仍被领取致落入 `sending` 超时（结果未知）误重发；回执写回无 CAS，迟到 Worker 可覆盖 Sweeper 回收后的状态 | §6.3.2 明确 `created_at` 为创建时间（非领取时刻）、`Txn D` 仅领剩余租约足以覆盖「外呼超时+余量」的 `queued` 行（临近/超租约留 Sweeper 按未发送回收）；§6.4 重写租约锚点说明 + 新增 §6.4.1 `Txn W` 回执 CAS（`WHERE id=:id AND status='sending'`），命中 0 行=已被回收，迟到 Worker 仅记告警、不得覆盖 `retry_scheduled`/`dead_letter`；§6.7 两转换行同步 CAS 约束；CAS 迟到场景登记为《测试计划》待覆盖风险 |
 | 22 | §6.4.1 `Txn W` SQL **引用不存在的列** `NotificationDelivery.version`；`provider_message_id` 被写进 `channel_metadata`；`channel_metadata` 整体覆盖会抹掉 §7 已写入的退信键 | §6.4.1 SQL 改为：删除 `version = version + 1`（幻列，本表无乐观锁列，CAS 由 `status='sending'` 前置条件承担）；`provider_message_id = :provider_message_id` **写独立列**（否则 §7 按该列反查投递行失效）；`channel_metadata = COALESCE(channel_metadata,'{}'::jsonb) \|\| :meta` **JSONB 浅合并**；新增**逐字段核对表**（对齐 v1.1.5 §6.12 全 12 列，标明 Txn W 只写 4 列）与 `:meta` 允许键白名单；**`bounced_at`/`bounce_reason` 仍只由 §7 退信处理回写**，Txn W 禁写 |
-| 23 | §4.7 未处理**同一 override 的并发 UPDATE/DELETE**：旧范围来自事务外/前端，两个并发事务各自基于陈旧 `old_range` 算出不相交 Slot 锁集合，行锁串行化失效；且允许创建不命中任何 Slot 的 override（无锁定载体，冲突复检可并发通过） | §4.0 锁顺序新增 **L2.5 `AvailabilityOverride`（按 id，先于 L3）** 与强制规则 5；§4.7 重写为 8 步：① UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取**当前真实 `old_range`**（0 行→ROLLBACK），禁用前端传入旧值；② 据真实值算 `affected_range`（不相交则按两段一次性升序加锁）；③ **CREATE/UPDATE 范围须对齐并命中 ≥1 个现存 Slot，命中 0 → ROLLBACK 拒绝**（DELETE 豁免）；④–⑧ 沿用锁全部 Slot（含 `booked`）→ 锁后复检冲突（排除自身 id）→ 无冲突才写 → 仅物化 `appointment_id IS NULL`；§4.5 矩阵增 3 行；两个拒绝语义的**对外错误码命名登记为 §11.2 开放项**（占位名，非 SRS 既有码） |
+| 23 | §4.7 未处理**同一 override 的并发 UPDATE/DELETE**：旧范围来自事务外/前端，两个并发事务各自基于陈旧 `old_range` 算出不相交 Slot 锁集合，行锁串行化失效；且允许创建不命中任何 Slot 的 override（无锁定载体，冲突复检可并发通过） | §4.0 锁顺序新增 **L2.5 `AvailabilityOverride`（按 id，先于 L3）** 与强制规则 5；§4.7 重写为 8 步：① UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取**当前真实 `old_range`**（0 行→ROLLBACK），禁用前端传入旧值；② 据真实值算 `affected_range`（不相交则按两段一次性升序加锁）；③ **CREATE/UPDATE 范围须对齐并命中 ≥1 个现存 Slot，命中 0 → ROLLBACK 拒绝**（DELETE 豁免）；④–⑧ 沿用锁全部 Slot（含 `booked`）→ 锁后复检冲突（排除自身 id）→ 无冲突才写 → 仅物化 `appointment_id IS NULL`；§4.5 矩阵增 3 行；两个拒绝语义曾在评审阶段作为占位名，现已由 SRS v1.2 §8 正式定义 |
 
 ### 12.4 模型边界结论
 本次修正**未新增**任何领域实体、表、字段、索引或外部依赖，全部方案落在领域模型 v1.1.5 已批准范围内 → **未触发 Stop & Report**。已识别但明确放弃的扩模型方案（事件日志表、`updated_at` 增量列、租约列、CDC 复制槽）记录于 §5.6 与 §10，将来采纳须先走 Change Request。
@@ -793,4 +793,4 @@ SELECT d.* FROM NotificationDelivery d
 
 ---
 
-> **文档结束** · 架构 v0.2（review 草案） · based_on SRS v1.1 / 领域模型 v1.1.5 / UI 线框 v1.0 · **未批准，待用户独立评审**。
+> **文档结束** · 架构 v0.2（approved） · based_on SRS v1.2 / 领域模型 v1.1.5 / UI 线框 v1.0 · approval_commit=`da3f6fc`。

@@ -71,16 +71,16 @@
 - 需要新增/修改 error code、公开 schema、依赖、DB 或超过预算时停止并走 Change Request/拆任务。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`72cdb9a`（主要审查修正）→ `4fcb316`（422 脱敏/CORS 通配拒绝）→ `e796ebe`（脱敏处理器限于 auth 路由）
+- 修改文件清单：`app/auth/rate_limit.py`、`app/auth/repository.py`、`app/auth/router.py`、`app/auth/service.py`、`app/factory.py`、`tests/auth/test_auth.py`、本任务单，共 7 路径
+- 测试命令及结果：真实 PostgreSQL/Redis 环境 `python -m pytest -q -ra` → 27 passed / 0 failed / 0 skipped；AUTH 切片 → 15 passed
+- lint / typecheck：Ruff check/format pass；mypy pass；pip check pass
 - DB 迁移验证：无迁移
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：错误契约缺口待 Change Request
-- 是否偏离 TASK：待回填
-- 规范影响结论：none（错误码变更未在本任务执行）
-- spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- 验收证据：第 5 次失败真实 Redis `Retry-After>=895`；锁定期正确密码被拒；CORS 精确 origin/credentials 与 wildcard fail-fast；旧会话与新会话同事务旋转；422 不回显密码；安全事件仅含 HMAC 标识/请求 ID/结果/截断 IP。
+- 变更预算实际值：7/7 文件；生产增量 152/220 行；测试增量 91/300 行，未超预算
+- 未解决风险：approved SRS/OpenAPI 没有凭证错误与请求校验错误码；实现仍被迫借用 `AUTH_EXPIRED`，且 422 尚非 Problem envelope，须先经 Change Request 裁定
+- 是否偏离 TASK：否；已在强制停止点停止契约修改
+- 规范影响结论：change_request_required
+- spec_sync：dirty
+- verified_commit：`e796ebe`
+- 状态：Blocked（等待错误契约 Change Request 获人工批准；不得关闭 AUTH-001 或进入 DB-002）

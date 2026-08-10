@@ -94,6 +94,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（SRS v1.2 阶段）**：`1c443eb` — SRS v1.2 approved + TASK-SRS-003 Closed + SRS 正文状态同步 + 错误语义 impact review 收口。
 - **最新验证锚点（实现栈阶段）**：`0a86a96` — ADR-IMPL-001 accepted；implementation 依赖边界已获用户接受，未安装依赖或写代码。
 - **最新验证锚点（实现栈收口）**：`99678dc` — TASK-ADR-001 Closed + ADR-IMPL-001 accepted + 依赖边界验证。
-- **最新验证锚点（开发准入）**：`8378f14` — baseline 十项 approved、ADR accepted、TASK-IMPL-WEB-001 与 TASK-REVIEW-WEB-001 已建立，开发准入 PASS。
+- **最新验证锚点（开发准入）**：`fa57b64` — baseline 十项 approved、ADR accepted、TASK-IMPL-WEB-001 与 TASK-REVIEW-WEB-001 已纳入 Git，开发准入 PASS。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

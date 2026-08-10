@@ -54,9 +54,9 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`204c2b8`（测试计划 v0.1 review 草案）
+- commit / PR：`204c2b8`（冻结 TC 内容快照）→ `c4e76f4`（上游 impact-sync）→ `60b56b2`（approval_commit）
 - 修改文件清单：`docs/test/test-plan.md`、`docs/baseline.yml`、`tasks/TASK-TEST-001.md`、`PROJECT_STATE.md`
-- 测试命令及结果：结构校验 → 69 个 TC 声明全部唯一；R1-R26 缺失 0；33 个 OpenAPI operationId 缺失映射 0；`git diff --check` 通过
+- 测试命令及结果：69 个 TC 唯一；R1-R26 缺失 0；33 个 operationId 缺失映射 0；冻结 TC 行自 `204c2b8` 差异 0；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：无
 - 验收证据：`docs/test/test-plan.md` §2 冻结用例矩阵、§3 需求与 operationId 映射、§5 开发准入判定
@@ -65,8 +65,8 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`204c2b8`
-- 状态：Review（待批准）
+- verified_commit：待回填关闭快照
+- 状态：Closed
 
 ## 关联
 - 上游：TASK-SRS-003 / TASK-SEC-001 / TASK-API-001

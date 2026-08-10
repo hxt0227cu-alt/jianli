@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { ArrowUpRight, BrainCircuit, CalendarDays, CheckCircle2, ChevronRight, GitBranch, LockKeyhole, Menu, MessageSquare, ShieldCheck, Sparkles, X } from 'lucide-react';
 import './styles.css';
 const Github = GitBranch;
@@ -21,3 +22,4 @@ function Projects() { const [selected,setSelected]=useState<keyof typeof project
 function Interview() { return <main className="interview page"><div className="interview-box"><div className="icon-circle"><CalendarDays/></div><p className="eyebrow">INTERVIEW / 03</p><h1>把讨论留给真正值得的问题。</h1><p>预约能力将在后续版本接入。当前先通过项目页了解工程取舍，避免展示未经验证的可用时段。</p><button className="primary" disabled><MessageSquare size={17}/> 预约功能即将开放</button><span className="muted">不会伪造可用时间或提交真实预约</span></div></main> }
 function App(){ const [page,setPage]=useState<Page>('home'); return <><Shell page={page} setPage={setPage}/><div className="desktop-gate"><div><LockKeyhole size={24}/><h2>请使用桌面端访问</h2><p>为保证项目架构与证据布局完整，本展示在 1024px 以下暂不开放。</p></div></div><div className="app-content">{page==='home'?<Home setPage={setPage}/>:page==='projects'?<Projects/>:<Interview/>}</div><footer><span>Jianli · AI 全栈开发工程师</span><span>基于已批准设计基线构建</span></footer></> }
 export default App;
+createRoot(document.getElementById('root')!).render(<App />);

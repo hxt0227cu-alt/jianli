@@ -1,0 +1,73 @@
+.heading-actions,
+.project-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.project-actions {
+  flex-direction: column;
+}
+
+.appointment-cta {
+  border: 0;
+  border-radius: 6px;
+  background: #315f43;
+  color: #f3faef;
+  padding: 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.appointment-cta:hover { background: #254e35; }
+
+.booking-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid #d7e2da;
+  border-radius: 8px;
+  background: #fff;
+  margin-bottom: 20px;
+}
+
+.booking-step {
+  padding: 17px;
+  display: flex;
+  gap: 12px;
+  border-right: 1px solid #e1e8e3;
+  color: #78877f;
+}
+
+.booking-step:last-child { border-right: 0; }
+.booking-step.active { background: #f1f7f0; color: #315e42; }
+.step-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 7px; background: #edf1ee; flex: none; }
+.booking-step.active .step-icon { background: #d9ebd6; }
+.booking-step div { display: grid; }
+.booking-step small { font-size: 9px; letter-spacing: .1em; }
+.booking-step b { font-size: 13px; margin: 2px 0; }
+.booking-step p { font-size: 10px; margin: 0; line-height: 1.5; }
+
+.booking-board { display: grid; grid-template-columns: 1fr 260px; gap: 18px; }
+.booking-calendar,
+.booking-summary { background: #fff; border: 1px solid #d7e2da; border-radius: 8px; }
+.calendar-head { height: 52px; border-bottom: 1px solid #e2e9e3; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; font-size: 12px; }
+.calendar-head span { display: flex; align-items: center; gap: 7px; }
+.empty-calendar { min-height: 430px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #819087; padding: 30px; }
+.empty-calendar svg { color: #73927c; }
+.empty-calendar h2 { font-size: 18px; color: #506359; margin: 15px 0 7px; }
+.empty-calendar p { font-size: 11px; max-width: 310px; line-height: 1.7; }
+.empty-calendar button { border: 0; border-radius: 5px; background: #e1e7e2; color: #9ca8a0; padding: 9px 14px; margin-top: 15px; }
+.booking-summary { padding: 23px; }
+.booking-summary h2 { font-size: 20px; margin: 8px 0 22px; }
+.booking-summary dl { margin: 0; display: grid; gap: 15px; }
+.booking-summary dl div { border-bottom: 1px solid #e7ece8; padding-bottom: 12px; }
+.booking-summary dt { font-size: 10px; color: #91a097; }
+.booking-summary dd { font-size: 12px; color: #43564b; margin: 3px 0 0; }
+.booking-note { display: flex; gap: 8px; background: #f4f7f4; color: #718078; border-radius: 6px; padding: 11px; margin-top: 25px; }
+.booking-note svg { flex: none; margin-top: 2px; }
+.booking-note p { font-size: 10px; line-height: 1.6; margin: 0; }

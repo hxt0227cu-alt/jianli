@@ -7,6 +7,7 @@ describe('web shell acceptance surface', () => {
   it('keeps the three static destinations and evidence boundaries', () => {
     expect(source).toContain("'resume' | 'projects'");
     expect(source).toContain('PDF 简历将在这里显示');
+    expect(source).toContain('暂无可展示的真实时段');
     expect(source).toContain('AI 面试协作站');
     expect(source).toContain('Sleep AIoT Agent');
     expect(source).toContain('不会发送真实请求');

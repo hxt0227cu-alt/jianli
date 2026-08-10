@@ -40,8 +40,9 @@
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`，verified_commit=`1c443eb`，spec_sync=clean。
 - **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
 - **TASK-TEST-001**：**已关闭（Closed，2026-08-10）**——上游 impact review 完成，spec_sync=clean，approval_commit=`60b56b2`，verified_commit=`ebe6c1a`；实际测试代码由下游测试任务实现。
+- **TASK-ADR-001**：**已关闭（Closed，2026-08-10）**——ADR-IMPL-001 已由用户接受（`accepted`），唯一推荐栈开始约束 implementation TASK；未安装依赖、未写代码。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
-- **TASK-READY-001**：**进行中（复核）**——十项 baseline 工件现均 approved；待 ADR-IMPL-001 accepted 状态落位、实现/独立 review TASK 建立并完成最终机器复核后开放编码。
+- **TASK-READY-001**：**进行中（最终复核）**——十项 baseline 工件现均 approved，ADR-IMPL-001 已 accepted；待建立 implementation TASK 与独立 review TASK，完成最终机器复核后开放编码。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
@@ -90,5 +91,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（OpenAPI/SSE 阶段）**：`3e2b58b` — OpenAPI/SSE v0.1 approved + TASK-API-001 Closed + SRS/security impact-sync + Redocly 0 error / 0 warning。
 - **最新验证锚点（测试计划阶段）**：`ebe6c1a` — test-plan v0.1 approved + TASK-TEST-001 Closed + 69 个冻结 TC / R1-R26 / 33 operationId 覆盖复核。
 - **最新验证锚点（SRS v1.2 阶段）**：`1c443eb` — SRS v1.2 approved + TASK-SRS-003 Closed + SRS 正文状态同步 + 错误语义 impact review 收口。
+- **最新验证锚点（实现栈阶段）**：`0a86a96` — ADR-IMPL-001 accepted；implementation 依赖边界已获用户接受，未安装依赖或写代码。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

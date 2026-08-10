@@ -53,19 +53,19 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`a059263`（ADR proposed 快照）
+- commit / PR：`a059263`（ADR proposed 快照）→ `0a86a96`（用户接受 ADR）
 - 修改文件清单：`docs/adr/ADR-IMPL-001.md`、`tasks/TASK-ADR-001.md`、`PROJECT_STATE.md`
 - 测试命令及结果：`git diff --check` 通过；明确排除 LangGraph/MCP/Mem0/Celery/Kafka/RabbitMQ/Kubernetes，未将其列为采纳依赖
 - lint / typecheck：不适用
 - DB 迁移验证：无
 - 验收证据：ADR §1 唯一推荐、§4 明确不采用、§5 人工批准边界
 - 变更预算实际值：3/3 文件；生产代码 0 行；测试代码 0 行
-- 未解决风险：ADR 待用户接受；生产入口与云资源待上线前确认
+- 未解决风险：生产入口与云资源待上线前确认；具体依赖安装须在 implementation TASK 中执行
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`a059263`
-- 状态：Review
+- verified_commit：待回填关闭快照
+- 状态：Closed
 
 ## 关联
 - 下游：开发准入评审、implementation TASK

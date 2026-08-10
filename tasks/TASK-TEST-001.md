@@ -65,7 +65,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填关闭快照
+- verified_commit：`ebe6c1a`
 - 状态：Closed
 
 ## 关联

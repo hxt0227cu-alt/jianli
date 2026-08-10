@@ -1,9 +1,9 @@
 # ADR-IMPL-001：MVP 实现技术栈
 
-- 状态：proposed
+- 状态：accepted
 - 日期：2026-08-09
-- 决策者：用户（AI 不代签 accepted）
-- 依据：architecture 0.2 approved / security 0.1 review / OpenAPI-SSE 0.1 review / test-plan 0.1 review
+- 决策者：用户于 2026-08-10 明确接受
+- 依据：architecture 0.2 / security 0.1 / OpenAPI-SSE 0.1 / test-plan 0.1（均 approved）
 
 ## 1. 决策
 

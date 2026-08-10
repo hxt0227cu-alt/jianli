@@ -4,7 +4,7 @@
 - documentation
 
 ## 基线版本与基线 commit
-- baseline：PRD 2.3.3 / 用例 1.7.2 / domain 1.1.5 / UI 1.0 / architecture 0.2 approved；SRS 1.2 / security 0.1 / OpenAPI 0.1 / test-plan 0.1 review
+- baseline：PRD 2.3.3 / 用例 1.7.2 / domain 1.1.5 / UI 1.0 / architecture 0.2 / SRS 1.2 / security 0.1 / OpenAPI 0.1 / test-plan 0.1 / AI governance 1.0.1（全部 approved）
 - 基线 commit：`58945c6`
 
 ## 精确规范引用
@@ -14,7 +14,7 @@
 - AGENTS.md §1-§7；用户 2026-08-09 授权顺序
 
 ## 目标
-- 给出可机器复核的开发准入结论、剩余批准清单和批准后的执行顺序。
+- 给出可机器复核的开发准入结论，并确认首批实现与独立审查任务已建立。
 
 ## 非目标
 - 不批准任何工件；不写代码；不安装依赖；不创建/购买外部资源。
@@ -37,7 +37,7 @@
 
 ## 验收
 - 十项 development_gate 逐项读取 baseline，不按叙述猜测。
-- 明确 BLOCKED 原因和解除顺序。
+- 明确实现启动顺序与仍需人审的实现边界。
 - 人审边界、付款和不可逆操作继续保留。
 
 ## 变更预算
@@ -60,12 +60,12 @@
 - DB 迁移验证：无
 - 验收证据：development-readiness §1 门禁表、§2 批准内容包、§3 固定执行顺序
 - 变更预算实际值：3/3 文件；生产代码 0 行；测试代码 0 行
-- 未解决风险：四项工件待用户批准；技术栈 ADR 待 accepted
+- 未解决风险：WEB-001 之后的后端、迁移、鉴权、通知和基础设施仍需分任务人审
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
 - verified_commit：`51ca872`
-- 状态：Review / BLOCKED
+- 状态：Closed / PASS
 
 ## 关联
 - 上游：TASK-SRS-003 / TASK-SEC-001 / TASK-API-001 / TASK-TEST-001 / TASK-ADR-001

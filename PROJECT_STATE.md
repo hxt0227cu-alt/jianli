@@ -9,7 +9,7 @@
 
 ## 当前阶段
 
-分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。
+编码准入已开放，首个实现任务为 `TASK-IMPL-WEB-001`；仍受各实现任务的人审和冻结 TC 门禁约束。
 
 - **领域模型 v1.1.5 / status=approved**（TASK-DM-003 已关闭，2026-08-08 末用户批准，独立批准锚点 `f412c7d`）：已完成 SRS、UI、architecture 下游同步；architecture v0.2 当前已 approved，正文 based_on 已同步 SRS v1.2。
 - **SRS v1.2 / status=approved**（v1.1 历史快照 `00e125c` 保留；v1.2 用户于 2026-08-10 批准，独立批准锚点 `ab4b94e`）：统一 `AUTH_EXPIRED`/`RATE_LIMITED` 语义并正式定义 `OVERRIDE_NOT_FOUND`/`OVERRIDE_RANGE_EMPTY`；SRS 仍为行为唯一源，`based_on` 与 domain-model v1.1.5 对齐。
@@ -41,8 +41,9 @@
 - **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
 - **TASK-TEST-001**：**已关闭（Closed，2026-08-10）**——上游 impact review 完成，spec_sync=clean，approval_commit=`60b56b2`，verified_commit=`ebe6c1a`；实际测试代码由下游测试任务实现。
 - **TASK-ADR-001**：**已关闭（Closed，2026-08-10）**——ADR-IMPL-001 已由用户接受（`accepted`），唯一推荐栈开始约束 implementation TASK；verified_commit=`99678dc`；未安装依赖、未写代码。
-- **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
-- **TASK-READY-001**：**进行中（最终复核）**——十项 baseline 工件现均 approved，ADR-IMPL-001 已 accepted；待建立 implementation TASK 与独立 review TASK，完成最终机器复核后开放编码。
+- **TASK-READY-001**：**已关闭（Closed / PASS，2026-08-10）**——十项 baseline 工件均 approved，ADR-IMPL-001 已 accepted；WEB-001 实现任务与独立 REVIEW-WEB-001 已建立。
+- **TASK-IMPL-WEB-001**：**Open**——首个实现任务，仅负责前端展示壳、页面一/二和静态导航；不含后端、鉴权、迁移、通知或基础设施。
+- **TASK-REVIEW-WEB-001**：**Open**——独立审查 WEB-001 的越界、隐私、冻结 TC 和证据真实性。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
@@ -62,13 +63,13 @@
 SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同 → 测试计划 → 开发准入评审 → 功能编码
 ```
 
-> 注：当前门禁顺序（**2026-08-08 第三轮修正 + 本回合 SRS 收口，①②③④ 已完成，现处 ⑤**）——
+> 注：当前门禁顺序（**2026-08-10 收口，设计门禁已完成，现进入首个实现任务**）——
 > ① ✅ 用户批准 **domain_model v1.1.4** → baseline `domain_model.status: review→approved`，独立批准锚点 `f537296`（**不复用 `f64b6de`**）；
 > ② ✅ **TASK-SRS-001 执行 SRS impact review**（`srs.based_on.domain_model`→1.1.4 + 修正 SRS §6.3 过期的 Argon2id 描述；结论 = "需文字同步、不改变用户可观察行为"，**非 none**）→ TASK-SRS-001 `spec_sync` 转 clean；
 > ③ ✅ **TASK-DM-002 `spec_sync` 转 clean + 关闭**（verified_commit=`94bedb5`，approval_commit=`f537296` 即 domain_model v1.1.4 独立批准锚点；对齐 TASK-TEMPLATE 关闭门禁：`spec_sync=dirty` 不得关闭，故必须在 ② 之后）；
 > ④ ✅ 用户独立评审批准 **SRS v1.0**（AI 不代签，独立批准锚点 `26ae844`，不复用 `173cf9b6`）→ 关闭 TASK-SRS-001（verified_commit 见 S3 回填）、用例规约冻结为历史输入、SRS 成为行为唯一源；
 > ⑤ ✅ **UI 线框影响评审（TASK-UI-IMPACT-001）**：结论=基本可沿用（SRS `26ae844` + 领域模型 1.1.4 与现有线框对齐；仅 A6 通知失败中心状态枚举轻微缺口）→ 内容缺口由 **TASK-UI-002** 承载；`ui_wireframe.status` 仍 pending，待用户评审实际线框。
-> ⑤b ✅ 用户批准 UI 线框 v1.0 → ⑥ ✅ 领域模型修订并批准 v1.1.5 → ⑦ ✅ 用户批准 architecture v0.2（内容快照=`3a18b7f`，approval_commit=`da3f6fc`）→ **当前进入安全设计** → OpenAPI/SSE → 测试计划 → 开发准入评审 → 功能编码。
+> ⑤b ✅ 用户批准 UI 线框 v1.0 → ⑥ ✅ 领域模型修订并批准 v1.1.5 → ⑦ ✅ architecture v0.2 → ⑧ ✅ SRS v1.2 / security v0.1 / OpenAPI-SSE v0.1 / test-plan v0.1 全部 approved → ⑨ ✅ ADR-IMPL-001 accepted + TASK-READY-001 PASS → **当前执行 TASK-IMPL-WEB-001**。
 > `development_gate` 全 10 项 approved 前不得进入编码。
 
 ---

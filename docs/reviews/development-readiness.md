@@ -2,7 +2,7 @@
 
 ## 结论
 
-**BLOCKED：当前 6/10 项 approved，4/10 项 review。** 设计链已经完整，尚差人工批准与下游 `spec_sync` 收口；不是内容未产出，也不是代码或环境故障。
+**PASS：10/10 项 approved。** SRS、安全、OpenAPI/SSE、测试计划均已完成 impact review、批准与 `spec_sync=clean`；实现栈 ADR 已 accepted，且实现任务与独立审查任务已建立。
 
 ## 1. development_gate 实际状态
 
@@ -11,12 +11,12 @@
 | PRD | 2.3.3 | approved | PASS |
 | use_cases | 1.7.2 | approved | PASS |
 | domain_model | 1.1.5 | approved | PASS |
-| SRS | 1.2 | review | BLOCK |
+| SRS | 1.2 | approved | PASS |
 | ui_wireframe | 1.0 | approved | PASS |
 | architecture | 0.2 | approved | PASS |
-| security | 0.1 | review | BLOCK |
-| openapi | 0.1 | review | BLOCK |
-| test_plan | 0.1 | review | BLOCK |
+| security | 0.1 | approved | PASS |
+| openapi | 0.1 | approved | PASS |
+| test_plan | 0.1 | approved | PASS |
 | ai_governance | 1.0.1 | approved | PASS |
 
 唯一判定源为 `docs/baseline.yml`。任何汇报、TASK 或提交信息都不能替代这里的状态。
@@ -25,23 +25,20 @@
 
 | 决定 | 当前内容快照 | 需要确认的实质 |
 |---|---|---|
-| 批准 SRS 1.2 | `b162c0a` | `AUTH_EXPIRED` 仅会话过期；限频=`RATE_LIMITED`；Override 两个回滚错误码 |
-| 批准 security 0.1 | `119d35f` | BCrypt cost 12；PostgreSQL 不透明会话；Redis 限频；IMAP 退信；AES-256-GCM/HMAC 与密钥轮换 |
-| 批准 OpenAPI/SSE 0.1 | `4fb0d01` + `1f7eb3d` | 33 个操作、Cookie/CSRF/RBAC/429、Slot/AI SSE 恢复；Redocly 0 error |
-| 批准 test-plan 0.1 | `204c2b8` | 69 个冻结 TC；R1-R26 与 33 operationId 全覆盖；真实 PostgreSQL/Redis 并发与安全门禁 |
-| 接受 ADR-IMPL-001 | `a059263` | React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker 的依赖边界 |
+| 批准 SRS 1.2 | `ab4b94e` / `1c443eb` | `AUTH_EXPIRED` 仅会话过期；限频=`RATE_LIMITED`；Override 两个回滚错误码 |
+| 批准 security 0.1 | `c2f08f2` / `010e3e1` | BCrypt cost 12；PostgreSQL 不透明会话；Redis 限频；IMAP 退信；AES-256-GCM/HMAC 与密钥轮换 |
+| 批准 OpenAPI/SSE 0.1 | `2c8cede` / `3e2b58b` | 33 个操作、显式 401/403、CSRF、条件鉴权、密码字节规则；Redocly 0 error / 0 warning |
+| 批准 test-plan 0.1 | `60b56b2` / `ebe6c1a` | 69 个冻结 TC；R1-R26 与 33 operationId 全覆盖；真实 PostgreSQL/Redis 并发与安全门禁 |
+| 接受 ADR-IMPL-001 | `0a86a96` / `99678dc` | React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker 的依赖边界 |
 
 批准安全设计仍不等于批准具体鉴权、加密、外部通知或 migration 实现。它们必须在各自代码 TASK 中给出实际 diff、测试和回滚，由用户另行审查。
 
 ## 3. 批准后的固定执行顺序
 
-1. 生成 SRS 与 security 的独立批准锚点。
-2. 对 OpenAPI/SSE 做一次上游 impact review；确认错误码、安全头、Cookie/CSRF 与限频契约一致后批准。
-3. 对 test-plan 做一次 impact review；确认冻结 TC 未降级后批准。
-4. 将 ADR-IMPL-001 从 `proposed` 推进为 `accepted`。
-5. 回填各 TASK 的 `approval_commit` / `verified_commit`，把 `spec_sync` 转为 clean。
-6. 重新读取 baseline；十项全部 approved 才把本准入结论改为 PASS。
-7. 建立独立 implementation TASK 和独立审查任务；开发任务只写获批范围，当前任务负责监督与验收。
+1. SRS/security/OpenAPI/test_plan 已完成独立批准与 `spec_sync=clean` 收口。
+2. ADR-IMPL-001 已从 `proposed` 推进为 `accepted`。
+3. `TASK-IMPL-WEB-001` 与 `TASK-REVIEW-WEB-001` 已建立，开发任务只写获批范围，当前任务负责监督与验收。
+4. 当前复核通过后允许启动独立开发窗口。
 
 ## 4. 首批开发拆分
 
@@ -56,7 +53,7 @@
 | 7 | ADMIN-001 | Override、公告、知识库、应急只读、例外 | RBAC/IDOR、上传解析和审计 |
 | 8 | RELEASE-001 | Compose、staging、域名/HTTPS/备份/监控 | 付款、云资源、域名和不可逆操作先确认 |
 
-WEB-SHELL 可以最先形成视觉成果，但按仓库规则仍须等十项门禁通过和 ADR accepted 后才能写入；不能用“只是前端”绕过准入。
+WEB-SHELL 是首个获准实现任务，可先形成今晚可展示的视觉成果；后端、鉴权、迁移、通知和基础设施仍必须拆分为独立任务并接受相应人审。
 
 ## 5. 外部阻塞与可并行事项
 

@@ -1,0 +1,13 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const source = readFileSync(resolve(process.cwd(), 'apps/web/main.tsx'), 'utf8');
+describe('web shell acceptance surface', () => {
+  it('keeps the three static destinations and evidence boundaries', () => {
+    expect(source).toContain("'home' | 'projects' | 'interview'");
+    expect(source).toContain('AI 面试协作站');
+    expect(source).toContain('Sleep AIoT Agent');
+    expect(source).toContain('不会发送真实请求');
+  });
+});

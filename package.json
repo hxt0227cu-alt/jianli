@@ -1,0 +1,16 @@
+{
+  "name": "jianli-web-shell",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --root . run tests/web-shell/shell.test.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": { "react": "latest", "react-dom": "latest", "lucide-react": "latest" },
+  "devDependencies": { "@vitejs/plugin-react": "latest", "vite": "latest", "typescript": "latest", "@types/react": "latest", "@types/react-dom": "latest", "vitest": "latest", "@playwright/test": "latest" }
+}

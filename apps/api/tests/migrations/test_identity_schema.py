@@ -10,7 +10,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 DATABASE_URL = os.environ.get("JIANLI_TEST_DATABASE_URL")
@@ -32,20 +32,6 @@ def _alembic_config() -> Config:
     return config
 
 
-def _enum_exists(engine: Engine) -> bool:
-    with engine.connect() as connection:
-        return bool(
-            connection.scalar(
-                text(
-                    "SELECT EXISTS ("
-                    "SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace "
-                    "WHERE n.nspname=current_schema() AND t.typname='user_role'"
-                    ")"
-                )
-            )
-        )
-
-
 def _enum_labels(engine: Engine) -> list[str]:
     with engine.connect() as connection:
         return list(
@@ -61,6 +47,7 @@ def _enum_labels(engine: Engine) -> list[str]:
 @pytest.fixture(scope="session")
 def migrated_engine() -> Iterator[Engine]:
     assert DATABASE_URL is not None
+    assert make_url(DATABASE_URL).database == "jianli_tc_ops_002_db"
     previous_url = os.environ.get("JIANLI_DATABASE_URL")
     os.environ["JIANLI_DATABASE_URL"] = DATABASE_URL
     config = _alembic_config()
@@ -68,11 +55,11 @@ def migrated_engine() -> Iterator[Engine]:
     try:
         command.upgrade(config, "head")
         assert set(inspect(engine).get_table_names()) >= DOMAIN_TABLES
-        assert _enum_exists(engine)
+        assert _enum_labels(engine) == ["interviewer", "owner_admin"]
 
         command.downgrade(config, "base")
         assert DOMAIN_TABLES.isdisjoint(inspect(engine).get_table_names())
-        assert not _enum_exists(engine)
+        assert not _enum_labels(engine)
         with engine.connect() as connection:
             assert connection.scalar(text("SELECT count(*) FROM alembic_version")) == 0
 
@@ -94,8 +81,12 @@ def clean_identity_data(migrated_engine: Engine) -> Iterator[None]:
 
 
 def _column_shape(inspector: Any, table: str) -> dict[str, tuple[str, bool]]:
+    def type_name(column: Any) -> str:
+        name = type(column["type"]).__name__.lower()
+        return "timestamptz" if name == "timestamp" and column["type"].timezone else name
+
     return {
-        column["name"]: (type(column["type"]).__name__.lower(), column["nullable"])
+        column["name"]: (type_name(column), column["nullable"])
         for column in inspector.get_columns(table)
     }
 
@@ -116,7 +107,7 @@ def _insert_user(connection: Any, *, role: str = "interviewer") -> tuple[object,
 def test_identity_schema_shape(migrated_engine: Engine) -> None:
     inspector = inspect(migrated_engine)
     assert set(inspector.get_table_names()) == DOMAIN_TABLES | {"alembic_version"}
-    assert _enum_exists(migrated_engine)
+    assert _enum_labels(migrated_engine) == ["interviewer", "owner_admin"]
 
     expected_columns: dict[str, dict[str, tuple[str, bool]]] = {
         "users": {
@@ -125,9 +116,9 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
             "password_hash": ("text", False),
             "role": ("enum", False),
             "verified": ("boolean", False),
-            "deletion_requested_at": ("timestamp", True),
-            "deleted_at": ("timestamp", True),
-            "purge_after": ("timestamp", True),
+            "deletion_requested_at": ("timestamptz", True),
+            "deleted_at": ("timestamptz", True),
+            "purge_after": ("timestamptz", True),
         },
         "auth_sessions": {
             "id": ("uuid", False),
@@ -135,8 +126,8 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
             "session_token_hash": ("text", False),
             "device": ("text", True),
             "ip": ("inet", True),
-            "expires_at": ("timestamp", False),
-            "revoked_at": ("timestamp", True),
+            "expires_at": ("timestamptz", False),
+            "revoked_at": ("timestamptz", True),
         },
         "interviewer_profiles": {"user_id": ("uuid", False), "display_name": ("text", True)},
         "owner_contact_configs": {
@@ -144,27 +135,26 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
             "user_id": ("uuid", False),
             "candidate_phone_ciphertext": ("bytea", True),
             "candidate_feishu_open_id_ciphertext": ("bytea", True),
-            "updated_at": ("timestamp", False),
+            "updated_at": ("timestamptz", False),
         },
         "email_verification_tokens": {
             "id": ("uuid", False),
             "user_id": ("uuid", False),
             "token_hash": ("text", False),
-            "expires_at": ("timestamp", False),
-            "consumed_at": ("timestamp", True),
+            "expires_at": ("timestamptz", False),
+            "consumed_at": ("timestamptz", True),
         },
         "password_reset_tokens": {
             "id": ("uuid", False),
             "user_id": ("uuid", False),
             "token_hash": ("text", False),
-            "expires_at": ("timestamp", False),
-            "consumed_at": ("timestamp", True),
+            "expires_at": ("timestamptz", False),
+            "consumed_at": ("timestamptz", True),
         },
     }
     for table, columns in expected_columns.items():
         assert _column_shape(inspector, table) == columns
 
-    assert _enum_labels(migrated_engine) == ["interviewer", "owner_admin"]
     config = _column_shape(inspector, "owner_contact_configs")
     assert "candidate_phone" not in config
     assert "candidate_feishu_open_id" not in config
@@ -176,19 +166,24 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
     assert {index["name"] for index in inspector.get_indexes("users")} == {"uq_active_owner_admin"}
     owner_index = inspector.get_indexes("users")[0]
     assert owner_index["unique"] is True
+    assert owner_index["column_names"] == ["role"]
     assert "role = 'owner_admin'" in str(owner_index["dialect_options"]["postgresql_where"])
     assert "deleted_at IS NULL" in str(owner_index["dialect_options"]["postgresql_where"])
-    assert {item["name"] for item in inspector.get_unique_constraints("users")} == {
-        "uq_users_email"
-    }
-    assert {item["name"] for item in inspector.get_unique_constraints("owner_contact_configs")} == {
-        "uq_owner_contact_configs_user_id"
-    }
-    assert {index["name"] for index in inspector.get_indexes("auth_sessions")} == {
-        "ix_auth_sessions_user_id"
-    }
+    user_unique = inspector.get_unique_constraints("users")[0]
+    assert (user_unique["name"], user_unique["column_names"]) == ("uq_users_email", ["email"])
+    owner_unique = inspector.get_unique_constraints("owner_contact_configs")[0]
+    assert (owner_unique["name"], owner_unique["column_names"]) == (
+        "uq_owner_contact_configs_user_id",
+        ["user_id"],
+    )
+    auth_index = inspector.get_indexes("auth_sessions")[0]
+    assert (auth_index["name"], auth_index["column_names"]) == (
+        "ix_auth_sessions_user_id",
+        ["user_id"],
+    )
     for table in ("email_verification_tokens", "password_reset_tokens"):
-        assert {index["name"] for index in inspector.get_indexes(table)} == {f"ix_{table}_user_id"}
+        index = inspector.get_indexes(table)[0]
+        assert (index["name"], index["column_names"]) == (f"ix_{table}_user_id", ["user_id"])
     for table in DOMAIN_TABLES - {"users"}:
         foreign_keys = inspector.get_foreign_keys(table)
         assert len(foreign_keys) == 1

@@ -46,6 +46,18 @@ def _enum_exists(engine: Engine) -> bool:
         )
 
 
+def _enum_labels(engine: Engine) -> list[str]:
+    with engine.connect() as connection:
+        return list(
+            connection.scalars(
+                text(
+                    "SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid "
+                    "WHERE t.typname='user_role' ORDER BY e.enumsortorder"
+                )
+            )
+        )
+
+
 @pytest.fixture(scope="session")
 def migrated_engine() -> Iterator[Engine]:
     assert DATABASE_URL is not None
@@ -106,64 +118,66 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
     assert set(inspector.get_table_names()) == DOMAIN_TABLES | {"alembic_version"}
     assert _enum_exists(migrated_engine)
 
-    expected_columns = {
+    expected_columns: dict[str, dict[str, tuple[str, bool]]] = {
         "users": {
-            "id",
-            "email",
-            "password_hash",
-            "role",
-            "verified",
-            "deletion_requested_at",
-            "deleted_at",
-            "purge_after",
+            "id": ("uuid", False),
+            "email": ("text", False),
+            "password_hash": ("text", False),
+            "role": ("enum", False),
+            "verified": ("boolean", False),
+            "deletion_requested_at": ("timestamp", True),
+            "deleted_at": ("timestamp", True),
+            "purge_after": ("timestamp", True),
         },
         "auth_sessions": {
-            "id",
-            "user_id",
-            "session_token_hash",
-            "device",
-            "ip",
-            "expires_at",
-            "revoked_at",
+            "id": ("uuid", False),
+            "user_id": ("uuid", False),
+            "session_token_hash": ("text", False),
+            "device": ("text", True),
+            "ip": ("inet", True),
+            "expires_at": ("timestamp", False),
+            "revoked_at": ("timestamp", True),
         },
-        "interviewer_profiles": {"user_id", "display_name"},
+        "interviewer_profiles": {"user_id": ("uuid", False), "display_name": ("text", True)},
         "owner_contact_configs": {
-            "id",
-            "user_id",
-            "candidate_phone_ciphertext",
-            "candidate_feishu_open_id_ciphertext",
-            "updated_at",
+            "id": ("uuid", False),
+            "user_id": ("uuid", False),
+            "candidate_phone_ciphertext": ("bytea", True),
+            "candidate_feishu_open_id_ciphertext": ("bytea", True),
+            "updated_at": ("timestamp", False),
         },
         "email_verification_tokens": {
-            "id",
-            "user_id",
-            "token_hash",
-            "expires_at",
-            "consumed_at",
+            "id": ("uuid", False),
+            "user_id": ("uuid", False),
+            "token_hash": ("text", False),
+            "expires_at": ("timestamp", False),
+            "consumed_at": ("timestamp", True),
         },
         "password_reset_tokens": {
-            "id",
-            "user_id",
-            "token_hash",
-            "expires_at",
-            "consumed_at",
+            "id": ("uuid", False),
+            "user_id": ("uuid", False),
+            "token_hash": ("text", False),
+            "expires_at": ("timestamp", False),
+            "consumed_at": ("timestamp", True),
         },
     }
     for table, columns in expected_columns.items():
-        assert set(_column_shape(inspector, table)) == columns
+        assert _column_shape(inspector, table) == columns
 
-    users = _column_shape(inspector, "users")
-    assert users["email"][1] is False
-    assert users["password_hash"][1] is False
-    assert users["role"][1] is False
-    assert users["verified"][1] is False
+    assert _enum_labels(migrated_engine) == ["interviewer", "owner_admin"]
     config = _column_shape(inspector, "owner_contact_configs")
-    assert config["candidate_phone_ciphertext"][0] == "bytea"
-    assert config["candidate_feishu_open_id_ciphertext"][0] == "bytea"
     assert "candidate_phone" not in config
     assert "candidate_feishu_open_id" not in config
 
+    for table in DOMAIN_TABLES - {"interviewer_profiles"}:
+        assert inspector.get_pk_constraint(table)["constrained_columns"] == ["id"]
+    assert inspector.get_pk_constraint("interviewer_profiles")["constrained_columns"] == ["user_id"]
+
     assert {index["name"] for index in inspector.get_indexes("users")} == {"uq_active_owner_admin"}
+    owner_index = inspector.get_indexes("users")[0]
+    assert owner_index["unique"] is True
+    assert "role = 'owner_admin'" in str(owner_index["dialect_options"]["postgresql_where"])
+    assert "deleted_at IS NULL" in str(owner_index["dialect_options"]["postgresql_where"])
     assert {item["name"] for item in inspector.get_unique_constraints("users")} == {
         "uq_users_email"
     }
@@ -178,6 +192,7 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
     for table in DOMAIN_TABLES - {"users"}:
         foreign_keys = inspector.get_foreign_keys(table)
         assert len(foreign_keys) == 1
+        assert foreign_keys[0]["constrained_columns"] == ["user_id"]
         assert foreign_keys[0]["referred_table"] == "users"
         assert foreign_keys[0]["options"] == {}
 

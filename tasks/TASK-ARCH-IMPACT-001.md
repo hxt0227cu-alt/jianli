@@ -52,19 +52,19 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`501d657`（architecture impact-sync 快照）
+- 修改文件清单：`docs/design/architecture.md`、`tasks/TASK-ARCH-IMPACT-001.md`、`PROJECT_STATE.md`
+- 测试命令及结果：旧 `review/未批准/SRS v1.1 based_on` 当前态 Grep=0；四个错误码在 §11 与 SRS v1.2 对齐；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：architecture 文档头、§11.1、§11.2、§12.1、§12.3 与文档尾
+- 变更预算实际值：3/3 文件；生产代码 0 行；测试代码 0 行
 - 未解决风险：无；下游 security/OpenAPI/test-plan 仍按各自任务推进
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Review
+- verified_commit：`501d657`
+- 状态：Closed
 
 ## 关联
 - 上游：TASK-SRS-003

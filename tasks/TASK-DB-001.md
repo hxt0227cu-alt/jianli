@@ -4,8 +4,8 @@
 - migration
 
 ## 当前阶段
-- 状态：Awaiting Human Approval
-- 本阶段只产出迁移设计评审包；用户批准具体 DDL、依赖和回滚方案后，方可进入实现。
+- 状态：In Progress
+- 用户已于 2026-08-11 明确批准 `docs/reviews/db-001-migration-plan.md` 中的首批范围、物理决策、索引范围、依赖与测试方案；开始实现。迁移 SQL 仍只在一次性测试库验证，不执行生产迁移。
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.5 / architecture 0.2 / security 0.1 / test_plan 0.1（均 approved）
@@ -49,7 +49,7 @@
 
 ## 已批准的 DB / API / 依赖变更
 
-> 当前以下条目均为**待用户批准提案**，不是已获批准事实。用户批准前不得实现。
+> 用户已于 2026-08-11 批准以下范围与决策；仅限本任务，不扩展到后续业务表。
 
 - DB：新增 `user_role` enum；新增 `users`、`auth_sessions`、`interviewer_profiles`、`owner_contact_configs`、`email_verification_tokens`、`password_reset_tokens` 6 张表。
 - DB：新增唯一约束 `users.email`、`owner_contact_configs.user_id`；新增部分唯一索引 `uq_active_owner_admin`；新增全部 §6.1–§6.4 FK 与 NOT NULL 约束。
@@ -111,7 +111,7 @@
 - 修改文件清单：待批准后回填
 - 测试命令及结果：待批准后回填
 - lint / typecheck：待批准后回填
-- DB 迁移验证：未执行，等待用户批准具体 SQL
+- DB 迁移验证：待执行一次性 PostgreSQL 测试库 `up/down/up`
 - 验收证据：`docs/reviews/db-001-migration-plan.md`
 - 变更预算实际值：当前设计阶段 3 个治理/评审文件；实现预算待执行核对
 - 未解决风险：DDL 物理决策与本地 PostgreSQL 测试方式待用户批准
@@ -119,9 +119,8 @@
 - 规范影响结论：none
 - spec_sync：clean
 - verified_commit：待实现并验证后回填
-- 状态：Awaiting Human Approval
+- 状态：In Progress
 
 ## 关联
 - 冻结验收：TC-OPS-002
 - 后续：预约核心表迁移、通知 Outbox 迁移、对话/知识库迁移分别建 TASK
-

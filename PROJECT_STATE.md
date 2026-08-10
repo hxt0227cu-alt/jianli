@@ -40,7 +40,7 @@
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`，verified_commit=`1c443eb`，spec_sync=clean。
 - **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
 - **TASK-TEST-001**：**已关闭（Closed，2026-08-10）**——上游 impact review 完成，spec_sync=clean，approval_commit=`60b56b2`，verified_commit=`ebe6c1a`；实际测试代码由下游测试任务实现。
-- **TASK-ADR-001**：**已关闭（Closed，2026-08-10）**——ADR-IMPL-001 已由用户接受（`accepted`），唯一推荐栈开始约束 implementation TASK；未安装依赖、未写代码。
+- **TASK-ADR-001**：**已关闭（Closed，2026-08-10）**——ADR-IMPL-001 已由用户接受（`accepted`），唯一推荐栈开始约束 implementation TASK；verified_commit=`99678dc`；未安装依赖、未写代码。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
 - **TASK-READY-001**：**进行中（最终复核）**——十项 baseline 工件现均 approved，ADR-IMPL-001 已 accepted；待建立 implementation TASK 与独立 review TASK，完成最终机器复核后开放编码。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
@@ -92,5 +92,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（测试计划阶段）**：`ebe6c1a` — test-plan v0.1 approved + TASK-TEST-001 Closed + 69 个冻结 TC / R1-R26 / 33 operationId 覆盖复核。
 - **最新验证锚点（SRS v1.2 阶段）**：`1c443eb` — SRS v1.2 approved + TASK-SRS-003 Closed + SRS 正文状态同步 + 错误语义 impact review 收口。
 - **最新验证锚点（实现栈阶段）**：`0a86a96` — ADR-IMPL-001 accepted；implementation 依赖边界已获用户接受，未安装依赖或写代码。
+- **最新验证锚点（实现栈收口）**：`99678dc` — TASK-ADR-001 Closed + ADR-IMPL-001 accepted + 依赖边界验证。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

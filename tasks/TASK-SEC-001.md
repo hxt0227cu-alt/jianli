@@ -65,7 +65,7 @@
 - 需要新增未列明表/字段/API/依赖；与 SRS/架构冲突；将 security 标为 approved；开始编码。
 
 ## 交付证据
-- commit / PR：`119d35f`（review 草案）→ `151509f`（SRS v1.2 impact-sync）→ `c2f08f2`（security approval_commit）
+- commit / PR：`119d35f`（review 草案）→ `151509f`（SRS v1.2 impact-sync）→ `c2f08f2`（security approval_commit）→ `010e3e1`（关闭快照）
 - 修改文件清单：docs/design/security.md / docs/baseline.yml / tasks/TASK-SEC-001.md / PROJECT_STATE.md
 - 测试命令及结果：四项 ADR、敏感词/密钥边界、baseline security=0.1/approved、未新增 Schema/API 检查 → pass
 - lint / typecheck：不适用
@@ -76,7 +76,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`119d35f`
+- verified_commit：`010e3e1`
 - 状态：Closed
 
 ## 关联

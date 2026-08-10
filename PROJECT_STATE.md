@@ -33,7 +33,7 @@
 - **TASK-SRS-002**：**已关闭（Closed，2026-08-08）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；approval_commit=`00e125c`（SRS v1.1 批准锚点）；verified_commit=`b38febd`（下游 UI 同步验证快照）；spec_sync=clean。SRS v1.1 现已 approved。
 - **TASK-ARCH-001 / TASK-ARCH-002**：**已关闭（Closed，2026-08-09）**——architecture v0.2 内容快照=`3a18b7f`，approval_commit=`da3f6fc`，spec_sync=clean。
 - **TASK-ARCH-003**：**已关闭（Closed，2026-08-09）**——承载用户明确批准后的单一用途状态推进与架构阶段收口。
-- **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=待回填。
+- **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=`010e3e1`，spec_sync=clean。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
 - **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 已完成标准 lint 与上游待办修正，现执行 SRS v1.2/security v0.1 impact review。
@@ -84,5 +84,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **架构 review 草案最新修订锚点（当前有效，仍 review，非批准）**：`3a18b7f` — 2026-08-09（续二）两项 Schema/并发收口：① §6.4.1 `Txn W` SQL 删除幻列 `NotificationDelivery.version`（逐字段核对领域模型 v1.1.5 §6.12 全 12 列）、`provider_message_id` 写独立列、`channel_metadata` 改 JSONB 合并不整体覆盖、`:meta` 通道白名单、`bounced_at`/`bounce_reason` 仍只由 §7 退信处理回写；② §4.0 新增 `L2.5 AvailabilityOverride` 锁层级（先于 L3）+ 强制规则 5，§4.7 补齐同一 override 的并发 UPDATE/DELETE（先 `SELECT ... FOR UPDATE` 锁自身行取真实 `old_range`，禁用前端传入旧值）与「CREATE/UPDATE 范围须命中现存 Slot 否则拒绝」，§4.5 并发矩阵增 3 行。新增开放项登记于 §11.2（`OVERRIDE_NOT_FOUND`/`OVERRIDE_RANGE_EMPTY` 为架构内部占位名，**非已批准 SRS §8 错误码**，码值留 OpenAPI 裁定，需新增须走 Change Request）。前两个修订锚点 `1e0d9ed` / `12dcd2d` 均已并入。供本轮评审，待用户独立批准 architecture v0.2。
 - **架构批准锚点**：`da3f6fc` — 用户明确批准 architecture v0.2；被批准内容快照=`3a18b7f`，批准提交仅推进 baseline 状态。
 - **架构阶段关闭验证锚点（当前有效）**：`d1043af` — architecture v0.2 approved + TASK-ARCH-001/002/003 Closed + PROJECT_STATE 同步。
+- **最新验证锚点（security 阶段）**：`010e3e1` — security v0.1 approved + TASK-SEC-001 Closed + SRS v1.2 impact-sync，后续纯证据回填不改变该验证快照。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

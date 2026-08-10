@@ -4,7 +4,7 @@
 - migration
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 用户已于 2026-08-11 明确批准 `docs/reviews/db-001-migration-plan.md` 中的首批范围、物理决策、索引范围、依赖与测试方案；开始实现。迁移 SQL 仍只在一次性测试库验证，不执行生产迁移。
 
 ## 基线版本与基线 commit
@@ -55,7 +55,7 @@
 - DB：新增唯一约束 `users.email`、`owner_contact_configs.user_id`；新增部分唯一索引 `uq_active_owner_admin`；新增全部 §6.1–§6.4 FK 与 NOT NULL 约束。
 - DB：迁移采用应用生成 UUID、`timestamptz`、`bytea` 密文字段、无级联删除、显式可逆 downgrade；不设置业务字段的隐式 server default。
 - API/SSE：无。
-- 直接依赖：SQLAlchemy 2、Alembic、psycopg 3（binary extra 仅用于本地/CI 是否采用，见评审包待审批）；pgvector 本任务不安装，留知识库迁移任务。
+- 直接依赖：SQLAlchemy 2、Alembic、psycopg 3；`psycopg-binary` 仅列入 dev optional 供本地/CI 使用，生产驱动打包留基础设施任务审批；pgvector 本任务不安装，留知识库迁移任务。
 - 所有直接与传递依赖必须精确锁定，并与实际隔离环境安装集合一致。
 
 ## 规范影响评估
@@ -107,20 +107,22 @@
 - 超出 `max_files` 或代码行预算。
 
 ## 交付证据
-- commit / PR：`da8dc7f0e5c0be5ec81a23e114b9dcd6e915a234`
+- commit / PR：`da8dc7f0e5c0be5ec81a23e114b9dcd6e915a234`（原实现快照，历史保留）→ `7e05978` → `50f483d` → `34c528f` → `2179821`（最终验证快照）
 - 修改文件清单：`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/alembic.ini`、`apps/api/migrations/env.py`、`apps/api/migrations/script.py.mako`、`apps/api/migrations/versions/0001_identity_schema.py`、`apps/api/tests/migrations/test_identity_schema.py`
-- 测试命令及结果：`python -m ruff check .` → pass；`python -m ruff format --check .` → 13 files formatted；`python -m mypy app` → 0 issues；`python -m pytest` → 5 passed / 2 skipped（缺 `JIANLI_TEST_DATABASE_URL`）；`alembic upgrade head --sql` → pass；`pip check` → pass
+- 测试命令及结果：Python 3.12.13 全新隔离环境按 `requirements.lock` 安装；`pip check` → pass；`python -m pytest tests/migrations -q -ra` → **10 passed / 0 skipped**；`python -m ruff check .` → pass；`python -m ruff format --check .` → 13 files already formatted；`python -m mypy app` → 0 issues
 - lint / typecheck：Ruff check/format 与 mypy 均通过
-- DB 迁移验证：**未完成**；本机无 PostgreSQL、Docker 或 `psql`，因此真实 `upgrade head` / `downgrade base` / 再 upgrade 与 TC-OPS-002 约束测试未执行
-- 验收证据：offline DDL 生成包含 6 表、`user_role`、`uq_active_owner_admin`、FK/UK/索引；无生产连接或敏感值输出
-- 变更预算实际值：7 个实现文件；迁移生产代码 255 行；迁移测试代码 80 行；未超 `12 / 450 / 260`
-- 未解决风险：必须在一次性 PostgreSQL 测试库完成 TC-OPS-002；在此之前不得关闭任务、执行生产迁移或开始依赖该 schema 的业务实现
+- DB 迁移验证：PostgreSQL 17.6 一次性空库真实 `upgrade head → downgrade base → upgrade head` 通过；降级后 6 张业务表、`user_role`、部分索引均不存在，`alembic_version` 为 0 行；最终升级后 revision=`0001_identity_schema` 且 6 张表恢复
+- 验收证据：TC-OPS-002 通过；精确核对列/type/nullable、PK/FK/UK/index/部分索引谓词与 enum labels；重复 email、第二个活跃 owner、非法 role、5 类缺失 FK 均被拒绝；owner soft-delete 后可创建新 owner；重复 upgrade 保留合法基线数据
+- 独立审查：审查窗口对 `da8dc7f..2179821` 复审通过，无 P1/P2；确认 DDL 自 `da8dc7f` 未变、测试未降低断言、`psycopg-binary` 仅在 dev optional
+- 变更预算实际值：从任务基线起共 11 个仓库路径；迁移生产代码 255 行；迁移测试相对原快照净新增 253 行；未超 `12 / 450 / 260`
+- 临时环境清理：PostgreSQL 进程、PID 与监听端口均为 0；下载归档、解压目录、venv、口令文件、日志和 data 根目录均已删除（详见 TASK-INFRA-LOCAL-001）
+- 未解决风险：无；生产迁移与生产驱动打包仍须独立人工审批，不属于本任务
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`da8dc7f0e5c0be5ec81a23e114b9dcd6e915a234`（实现快照，非关闭快照）
-- 状态：Open（等待 PostgreSQL 集成验证）
-- 关闭结论：未关闭。静态门禁通过，但测试条件①尚未满足；不得以 skipped 测试代替 TC-OPS-002。
+- verified_commit：`2179821`（最终实现与冻结验收对象；关闭证据回填提交不自指）
+- 状态：Closed
+- 关闭结论：四项门禁满足：冻结测试通过、规范影响 none、spec_sync=clean、verified_commit 为真实最终实现快照。DB-001 已关闭，未执行任何生产迁移。
 
 ## 关联
 - 冻结验收：TC-OPS-002

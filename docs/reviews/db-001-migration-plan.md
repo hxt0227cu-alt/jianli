@@ -106,8 +106,9 @@
 
 ## 实现后审查
 
-- 实现范围：仅任务单允许的 7 个代码/迁移文件，未改 API、前端、规范或基础设施。
-- 静态门禁：Ruff check/format、mypy、`pip check` 通过；Alembic offline SQL 生成通过。
-- 锁文件：新增 SQLAlchemy/Alembic/psycopg 及其实际传递依赖均精确记录。
-- 阻塞：本机没有 PostgreSQL、Docker 或 `psql`，`tests/migrations` 的 2 项集成测试因缺少 `JIANLI_TEST_DATABASE_URL` skipped。该状态不满足 TC-OPS-002，任务保持 Open。
-- 禁止事项复核：未启用 pgvector；未实现 ORM 业务模型、鉴权、加密、Repository 或业务 API；未连接生产或外部服务。
+- 实现范围：仅任务单允许的代码、迁移、测试与证据路径，未改 API、前端或已批准规范；迁移 DDL 自 `da8dc7f` 起未变。
+- 独立审查：最终对象 `da8dc7f..2179821` 无 P1/P2；测试强化属于冻结验收补全，不是降低断言。
+- 真实门禁：PostgreSQL 17.6 一次性空库 `upgrade → downgrade → upgrade`、精确 schema/约束/重复升级测试通过；pytest 10 passed / 0 skipped；Ruff/format、mypy、`pip check` 通过。
+- 依赖边界：基础依赖使用 `psycopg`；`psycopg-binary` 仅在 dev optional 供本地/CI 使用，生产打包继续留基础设施任务审批。
+- 清理：临时 PostgreSQL 已停止，进程和监听为 0；下载、解压、venv、口令与 data 目录全部删除。
+- 禁止事项复核：未启用 pgvector；未实现 ORM 业务模型、鉴权、加密、Repository 或业务 API；未连接生产或外部服务；TC-OPS-002 已通过，TASK-DB-001 可关闭。

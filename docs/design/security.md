@@ -1,6 +1,6 @@
 # 安全设计与 ADR（review 草案 v0.1）
 
-> 状态：`review`。依据 PRD 2.3.3 / SRS 1.1 / domain-model 1.1.5 / architecture 0.2（均 approved）。本草案须经用户正式批准后才约束实现。
+> 状态：`review`。依据 PRD 2.3.3 / SRS 1.2 / domain-model 1.1.5 / architecture 0.2（均 approved）。本轮仅完成 SRS v1.2 文字级 impact review；待批准锚点提交后约束实现。
 
 ## 1. 安全目标与信任边界
 

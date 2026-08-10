@@ -6,7 +6,7 @@
 - design
 
 ## 基线版本与基线 commit
-- baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.5 / SRS 1.1 / UI 1.0 / architecture 0.2（均 approved）
+- baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.5 / SRS 1.2 / UI 1.0 / architecture 0.2（均 approved）
 - architecture approval_commit：`da3f6fc`
 
 ## 精确规范引用
@@ -72,7 +72,7 @@
 - DB 迁移验证：无
 - 验收证据：docs/design/security.md §1-§13
 - 变更预算实际值：max_files=4，实际 4 文件，未超预算
-- 未解决风险：外部 SMTP/IMAP、飞书、DeepSeek 与云 Secret Manager 配置待上线确认
+- 未解决风险：外部 SMTP/IMAP、飞书、DeepSeek 与云 Secret Manager 配置待上线确认；security approval 尚未生成
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean

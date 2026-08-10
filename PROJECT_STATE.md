@@ -33,7 +33,7 @@
 - **TASK-SRS-002**：**已关闭（Closed，2026-08-08）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；approval_commit=`00e125c`（SRS v1.1 批准锚点）；verified_commit=`b38febd`（下游 UI 同步验证快照）；spec_sync=clean。SRS v1.1 现已 approved。
 - **TASK-ARCH-001 / TASK-ARCH-002**：**已关闭（Closed，2026-08-09）**——architecture v0.2 内容快照=`3a18b7f`，approval_commit=`da3f6fc`，spec_sync=clean。
 - **TASK-ARCH-003**：**已关闭（Closed，2026-08-09）**——承载用户明确批准后的单一用途状态推进与架构阶段收口。
-- **TASK-SEC-001**：**进行中（Review）**——安全设计 v0.1 草案，未批准、未关闭。
+- **TASK-SEC-001**：**进行中（Review / impact clean）**——安全设计 v0.1 已完成 SRS v1.2 文字级 impact review；待生成独立批准锚点后收口，未写代码。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
 - **TASK-SRS-003**：**进行中（Review）**——SRS v1.2 错误语义收口；v1.1 approved 快照保留，v1.2 未批准，OpenAPI 前需用户评审。
 - **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 草案已启动；等待 SRS 1.2 与 security 0.1 批准后做 impact review。

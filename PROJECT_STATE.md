@@ -38,7 +38,7 @@
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
 - **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
 - **TASK-API-001**：**已关闭（Closed，2026-08-10）**——SRS v1.2/security v0.1 impact review 完成，spec_sync=clean，approval_commit=`2c8cede`，verified_commit=`3e2b58b`。
-- **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 的 69 个冻结 TC 保持不变；现执行 approved OpenAPI/SSE impact review，实际测试代码尚未实现。
+- **TASK-TEST-001**：**进行中（Review / spec_sync=clean）**——approved SRS/security/OpenAPI impact review 已完成，69 个冻结 TC 保持不变；待独立批准锚点，实际测试代码尚未实现。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
 - **TASK-READY-001**：**进行中（Review / BLOCKED）**——SRS/security 已 approved；OpenAPI/test_plan 仍待 impact review、批准与 `spec_sync=clean`，ADR-IMPL-001 已获用户接受，十项门禁尚未全部满足。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。

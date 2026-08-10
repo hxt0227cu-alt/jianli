@@ -5,7 +5,7 @@
 
 ## 基线版本与基线 commit
 - domain-model 1.1.5 / UI 1.0 / architecture 0.2（approved）
-- SRS 1.2 / security 0.1 / OpenAPI-SSE 0.1（review）
+- SRS 1.2 / security 0.1 / OpenAPI-SSE 0.1（approved）
 - 基线 commit：`7916e8a`
 
 ## 精确规范引用
@@ -61,12 +61,12 @@
 - DB 迁移验证：无
 - 验收证据：`docs/test/test-plan.md` §2 冻结用例矩阵、§3 需求与 operationId 映射、§5 开发准入判定
 - 变更预算实际值：4/4 文件；生产代码 0 行；测试代码 0 行
-- 未解决风险：上游三项 review，实际测试尚未实现
+- 未解决风险：实际测试代码尚未实现；冻结 TC 不得由 implementation TASK 修改
 - 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：dirty
+- spec_sync：clean
 - verified_commit：`204c2b8`
-- 状态：Review
+- 状态：Review（待批准）
 
 ## 关联
 - 上游：TASK-SRS-003 / TASK-SEC-001 / TASK-API-001

@@ -1,6 +1,6 @@
 # 测试计划（review 草案 v0.1）
 
-> based_on：SRS 1.2 review / domain-model 1.1.5 approved / UI 1.0 approved / architecture 0.2 approved / security 0.1 review / OpenAPI-SSE 0.1 review。当前 `spec_sync=dirty`，不得作为编码准入通过依据。
+> based_on：SRS 1.2 / domain-model 1.1.5 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.1（均 approved）。当前 69 个 TC 的断言与阈值冻结于内容快照 `204c2b8`；实现任务不得删除、skip、放宽或降级真实依赖级别。本轮 impact review 未修改任何 TC，`spec_sync=clean`。
 
 ## 1. 证据等级与门禁
 
@@ -172,4 +172,4 @@
 
 ## 5. 开发准入判定
 
-正式编码前必须满足：baseline 十项全部 approved；SRS/security/OpenAPI/test_plan 的 approval_commit 可解析；OpenAPI 标准 lint 通过；冻结 TC 文件已落地且实现任务禁止修改；DB/API/依赖在任务中逐项列明；独立审查任务已建立。当前上述条件未满足，结论仍为 **BLOCKED**。
+正式编码前必须满足：baseline 十项全部 approved；SRS/security/OpenAPI/test_plan 的 approval_commit 可解析；OpenAPI 标准 lint 通过；冻结 TC 文件已落地且实现任务禁止修改；DB/API/依赖在任务中逐项列明；独立审查任务已建立。本测试计划 impact review 已通过，待 test_plan 独立批准锚点与开发准入复核。

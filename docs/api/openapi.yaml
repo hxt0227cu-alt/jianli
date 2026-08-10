@@ -1,11 +1,11 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.1.0-review
+  version: 0.1.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
-    Review contract based on SRS 1.2 review, domain-model 1.1.5 approved,
-    architecture 0.2 approved and security 0.1 review. Not approved for implementation.
+    Approved contract based on SRS 1.2, domain-model 1.1.5, architecture 0.2
+    and security 0.1. Implementation remains gated by the development_gate.
 servers:
   - url: /api/v1
 security: []
@@ -25,6 +25,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageKey'
       responses:
+        '400': { $ref: '#/components/responses/Error' }
         '200':
           description: Page content
           content:
@@ -39,6 +40,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageKey'
       responses:
+        '400': { $ref: '#/components/responses/Error' }
         '200':
           description: Cached or fixed fallback questions
           content:
@@ -55,13 +57,22 @@ paths:
       tags: [Answer]
       summary: Stream a grounded answer
       operationId: streamAnswer
-      description: SSE over fetch. Anonymous answers are not persisted. See docs/api/sse.md.
+      security: [{}, { cookieSession: [] }]
+      description: >-
+        SSE over fetch. Anonymous calls omit the session cookie and are not persisted.
+        Calls carrying a valid session cookie persist the conversation and must include
+        same-origin Origin/Referer and X-CSRF-Token; an invalid or expired cookie returns
+        401. See docs/api/sse.md.
+      parameters:
+        - $ref: '#/components/parameters/OptionalCsrfToken'
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/AnswerRequest' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: answer.started/delta/citations/completed SSE stream
           content:
@@ -76,6 +87,8 @@ paths:
       operationId: listConversations
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Current user's persisted conversations
           content:
@@ -87,7 +100,11 @@ paths:
       summary: Create a conversation
       operationId: createConversation
       security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '201':
           description: Created
           content:
@@ -103,6 +120,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ConversationId'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Owner-only message history
           content:
@@ -138,6 +157,7 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/TokenRequest' }
       responses:
+        '400': { $ref: '#/components/responses/Error' }
         '204': { description: Verified }
         default: { $ref: '#/components/responses/Error' }
   /auth/login:
@@ -166,6 +186,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/CsrfToken'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Session revoked }
         default: { $ref: '#/components/responses/Error' }
   /auth/password-reset/request:
@@ -196,8 +218,13 @@ paths:
                 - type: object
                   required: [new_password]
                   properties:
-                    new_password: { type: string, minLength: 10, maxLength: 72 }
+                    new_password:
+                      type: string
+                      minLength: 10
+                      maxLength: 72
+                      description: UTF-8 byte length must be 10-72; server rejects values over 72 bytes and never silently truncates.
       responses:
+        '400': { $ref: '#/components/responses/Error' }
         '204': { description: Password changed and all sessions revoked }
         default: { $ref: '#/components/responses/Error' }
   /auth/me:
@@ -207,6 +234,8 @@ paths:
       operationId: getCurrentUser
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Current user
           content:
@@ -227,6 +256,8 @@ paths:
           in: query
           schema: { type: integer, minimum: 0 }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Two-week slot snapshot with privacy-safe ownership
           content:
@@ -240,6 +271,8 @@ paths:
       operationId: streamSlotEvents
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: SSE stream; see docs/api/sse.md
           content:
@@ -261,6 +294,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AppointmentDraft' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Three-minute signed confirmation bound to the submitted payload
           content:
@@ -274,6 +309,8 @@ paths:
       operationId: listMyAppointments
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Current interviewer's appointments
           content:
@@ -303,6 +340,8 @@ paths:
                 confirmation_token: { type: string }
                 appointment: { $ref: '#/components/schemas/AppointmentDraft' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '201':
           description: Appointment committed; notifications are asynchronous
           content:
@@ -327,6 +366,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AppointmentUpdate' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Atomically rescheduled or details updated
           content:
@@ -343,6 +384,8 @@ paths:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Cancelled; slot status rematerialized }
         default: { $ref: '#/components/responses/Error' }
   /admin/appointments:
@@ -352,6 +395,8 @@ paths:
       operationId: adminListAppointments
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Owner-only decrypted emergency read view
           content:
@@ -373,6 +418,8 @@ paths:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Cancelled and affected slots owner_locked }
         default: { $ref: '#/components/responses/Error' }
   /admin/availability-overrides:
@@ -382,6 +429,8 @@ paths:
       operationId: listAvailabilityOverrides
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Overrides
           content:
@@ -405,6 +454,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AvailabilityOverrideInput' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '201':
           description: Created and slots rematerialized
           content:
@@ -426,6 +477,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/AvailabilityOverrideInput' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Updated
           content:
@@ -441,6 +494,8 @@ paths:
         - $ref: '#/components/parameters/OverrideId'
         - $ref: '#/components/parameters/CsrfToken'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Deleted and slots rematerialized }
         default: { $ref: '#/components/responses/Error' }
   /admin/notification-deliveries:
@@ -460,6 +515,8 @@ paths:
           in: query
           schema: { type: boolean }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Failure center rows
           content:
@@ -481,6 +538,8 @@ paths:
         - $ref: '#/components/parameters/CsrfToken'
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '202': { description: New attempt created with incremented event_version }
         '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Error' }
@@ -491,6 +550,8 @@ paths:
       operationId: listKnowledgeDocuments
       security: [{ cookieSession: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '200':
           description: Documents
           content:
@@ -521,6 +582,8 @@ paths:
                   maxItems: 20
                   items: { type: string, format: binary }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '202': { description: Accepted for indexing }
         default: { $ref: '#/components/responses/Error' }
   /admin/knowledge-documents/{document_id}:
@@ -533,6 +596,8 @@ paths:
         - $ref: '#/components/parameters/DocumentId'
         - $ref: '#/components/parameters/CsrfToken'
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Immediately disabled from retrieval }
         default: { $ref: '#/components/responses/Error' }
   /admin/announcements/current:
@@ -553,6 +618,8 @@ paths:
               properties:
                 content: { type: string, maxLength: 1000 }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Updated }
         default: { $ref: '#/components/responses/Error' }
   /admin/company-booking-exceptions:
@@ -569,6 +636,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CompanyBookingExceptionInput' }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '201': { description: One-time exception created }
         default: { $ref: '#/components/responses/Error' }
 components:
@@ -613,6 +682,12 @@ components:
       in: header
       required: true
       schema: { type: string, minLength: 32 }
+    OptionalCsrfToken:
+      name: X-CSRF-Token
+      in: header
+      required: false
+      description: Required when a valid session cookie is supplied; omitted for anonymous answers.
+      schema: { type: string, minLength: 32 }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -628,6 +703,16 @@ components:
       description: Rate limited
       headers:
         Retry-After: { schema: { type: integer, minimum: 1 } }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Missing, invalid, or expired session
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Authenticated principal lacks the required role or resource access
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -687,7 +772,11 @@ components:
       required: [email, password]
       properties:
         email: { type: string, format: email }
-        password: { type: string, minLength: 10, maxLength: 72 }
+        password:
+          type: string
+          minLength: 10
+          maxLength: 72
+          description: UTF-8 byte length must be 10-72; server rejects values over 72 bytes and never silently truncates.
     EmailRequest:
       type: object
       required: [email]
@@ -703,7 +792,11 @@ components:
       required: [email, password, remember_me]
       properties:
         email: { type: string, format: email }
-        password: { type: string, minLength: 1, maxLength: 72 }
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+          description: UTF-8 byte length is checked server-side; BCrypt inputs over 72 bytes are rejected, never silently truncated.
         remember_me: { type: boolean }
     UserSummary:
       type: object

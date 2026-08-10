@@ -1,6 +1,6 @@
-# SSE 契约（review 草案 v0.1）
+# SSE 契约（v0.1）
 
-> based_on：SRS 1.2 review / architecture 0.2 approved / security 0.1 review。上游未全部批准，当前 `spec_sync=dirty`。
+> based_on：SRS 1.2 / architecture 0.2 / security 0.1（均 approved）；本轮已完成 CSRF/会话与断线恢复 impact review，`spec_sync=clean`。
 
 ## 1. 通用帧
 
@@ -50,7 +50,12 @@ data: <single-line JSON>
 
 ## 3. AI 回答流
 
-端点：`POST /api/v1/answers:stream`，使用 fetch 流读取 SSE；公开可调用，登录用户可传 `conversation_id` 持久化，匿名内容不持久化。
+端点：`POST /api/v1/answers:stream`，使用 fetch 流读取 SSE，存在两种互斥调用方式：
+
+- **匿名调用**：不携带 session Cookie、`X-CSRF-Token` 或 `conversation_id`，回答不持久化；仍受公开问答限频和生产 CORS/Origin 白名单约束。
+- **登录调用**：携带有效 session Cookie，可传 `conversation_id` 持久化；作为 Cookie 鉴权 POST，必须同时通过同源 `Origin`/`Referer` 与 `X-CSRF-Token` 校验。Cookie 缺失/无效/过期返回 401；已登录但 CSRF、角色或资源归属校验失败返回 403。
+
+服务端不得因为请求携带无效 Cookie 而静默降级为匿名调用；匿名请求携带 `conversation_id` 必须拒绝，不得读取或写入他人会话。
 
 事件顺序：
 

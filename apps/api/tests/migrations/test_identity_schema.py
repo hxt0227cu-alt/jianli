@@ -163,19 +163,23 @@ def test_identity_schema_shape(migrated_engine: Engine) -> None:
         assert inspector.get_pk_constraint(table)["constrained_columns"] == ["id"]
     assert inspector.get_pk_constraint("interviewer_profiles")["constrained_columns"] == ["user_id"]
 
-    assert {index["name"] for index in inspector.get_indexes("users")} == {"uq_active_owner_admin"}
-    owner_index = inspector.get_indexes("users")[0]
+    user_indexes = {index["name"]: index for index in inspector.get_indexes("users")}
+    assert set(user_indexes) == {"uq_active_owner_admin", "uq_users_email"}
+    owner_index = user_indexes["uq_active_owner_admin"]
     assert owner_index["unique"] is True
     assert owner_index["column_names"] == ["role"]
     assert "role = 'owner_admin'" in str(owner_index["dialect_options"]["postgresql_where"])
     assert "deleted_at IS NULL" in str(owner_index["dialect_options"]["postgresql_where"])
     user_unique = inspector.get_unique_constraints("users")[0]
     assert (user_unique["name"], user_unique["column_names"]) == ("uq_users_email", ["email"])
+    assert user_indexes["uq_users_email"]["column_names"] == ["email"]
     owner_unique = inspector.get_unique_constraints("owner_contact_configs")[0]
     assert (owner_unique["name"], owner_unique["column_names"]) == (
         "uq_owner_contact_configs_user_id",
         ["user_id"],
     )
+    config_indexes = inspector.get_indexes("owner_contact_configs")
+    assert config_indexes[0]["column_names"] == ["user_id"]
     auth_index = inspector.get_indexes("auth_sessions")[0]
     assert (auth_index["name"], auth_index["column_names"]) == (
         "ix_auth_sessions_user_id",

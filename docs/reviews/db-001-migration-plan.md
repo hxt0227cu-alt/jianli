@@ -4,7 +4,7 @@
 
 建议批准“迁移基础设施 + 身份域首批 6 张表”，不把领域模型全部 20 张表塞入一个初始 migration。预约并发、通知 Outbox、对话/知识库具有不同风险和验收方式，应拆成后续独立任务。
 
-本文件是审批输入，不是 migration；用户批准前不生成或执行 DDL。
+本文件最初为审批输入；用户已于 2026-08-11 批准四项决策，当前实现快照为 `da8dc7f`。真实 PostgreSQL 集成验证仍是关闭前置条件。
 
 ## 本批对象
 
@@ -104,3 +104,10 @@
 3. 索引范围：领域唯一索引 + 3 类高频 user_id FK 索引，不给 1:1 FK 重复建索引。
 4. 依赖与测试：SQLAlchemy/Alembic/psycopg 3；本批不装 pgvector；真实 PostgreSQL 测试库方案在执行前明确。
 
+## 实现后审查
+
+- 实现范围：仅任务单允许的 7 个代码/迁移文件，未改 API、前端、规范或基础设施。
+- 静态门禁：Ruff check/format、mypy、`pip check` 通过；Alembic offline SQL 生成通过。
+- 锁文件：新增 SQLAlchemy/Alembic/psycopg 及其实际传递依赖均精确记录。
+- 阻塞：本机没有 PostgreSQL、Docker 或 `psql`，`tests/migrations` 的 2 项集成测试因缺少 `JIANLI_TEST_DATABASE_URL` skipped。该状态不满足 TC-OPS-002，任务保持 Open。
+- 禁止事项复核：未启用 pgvector；未实现 ORM 业务模型、鉴权、加密、Repository 或业务 API；未连接生产或外部服务。

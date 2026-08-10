@@ -107,19 +107,20 @@
 - 超出 `max_files` 或代码行预算。
 
 ## 交付证据
-- commit / PR：待批准后回填
-- 修改文件清单：待批准后回填
-- 测试命令及结果：待批准后回填
-- lint / typecheck：待批准后回填
-- DB 迁移验证：待执行一次性 PostgreSQL 测试库 `up/down/up`
-- 验收证据：`docs/reviews/db-001-migration-plan.md`
-- 变更预算实际值：当前设计阶段 3 个治理/评审文件；实现预算待执行核对
-- 未解决风险：DDL 物理决策与本地 PostgreSQL 测试方式待用户批准
+- commit / PR：`da8dc7f0e5c0be5ec81a23e114b9dcd6e915a234`
+- 修改文件清单：`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/alembic.ini`、`apps/api/migrations/env.py`、`apps/api/migrations/script.py.mako`、`apps/api/migrations/versions/0001_identity_schema.py`、`apps/api/tests/migrations/test_identity_schema.py`
+- 测试命令及结果：`python -m ruff check .` → pass；`python -m ruff format --check .` → 13 files formatted；`python -m mypy app` → 0 issues；`python -m pytest` → 5 passed / 2 skipped（缺 `JIANLI_TEST_DATABASE_URL`）；`alembic upgrade head --sql` → pass；`pip check` → pass
+- lint / typecheck：Ruff check/format 与 mypy 均通过
+- DB 迁移验证：**未完成**；本机无 PostgreSQL、Docker 或 `psql`，因此真实 `upgrade head` / `downgrade base` / 再 upgrade 与 TC-OPS-002 约束测试未执行
+- 验收证据：offline DDL 生成包含 6 表、`user_role`、`uq_active_owner_admin`、FK/UK/索引；无生产连接或敏感值输出
+- 变更预算实际值：7 个实现文件；迁移生产代码 255 行；迁移测试代码 80 行；未超 `12 / 450 / 260`
+- 未解决风险：必须在一次性 PostgreSQL 测试库完成 TC-OPS-002；在此之前不得关闭任务、执行生产迁移或开始依赖该 schema 的业务实现
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待实现并验证后回填
-- 状态：In Progress
+- verified_commit：`da8dc7f0e5c0be5ec81a23e114b9dcd6e915a234`（实现快照，非关闭快照）
+- 状态：Open（等待 PostgreSQL 集成验证）
+- 关闭结论：未关闭。静态门禁通过，但测试条件①尚未满足；不得以 skipped 测试代替 TC-OPS-002。
 
 ## 关联
 - 冻结验收：TC-OPS-002

@@ -24,6 +24,10 @@ def configure_logging(level: str) -> None:
     """Configure the application logger without changing unrelated library loggers."""
 
     logger = logging.getLogger("jianli")
+    logger.disabled = False
+    for name, registered_logger in logging.root.manager.loggerDict.items():
+        if name.startswith("jianli.") and isinstance(registered_logger, logging.Logger):
+            registered_logger.disabled = False
     logger.handlers.clear()
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())

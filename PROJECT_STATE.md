@@ -9,7 +9,7 @@
 
 ## 当前阶段
 
-编码准入已开放，首个实现任务为 `TASK-IMPL-WEB-001`；仍受各实现任务的人审和冻结 TC 门禁约束。
+编码准入已开放；前端展示壳与 FastAPI 后端骨架已交付，后续实现仍受独立审查、冻结 TC 与人工审批边界约束。
 
 - **领域模型 v1.1.5 / status=approved**（TASK-DM-003 已关闭，2026-08-08 末用户批准，独立批准锚点 `f412c7d`）：已完成 SRS、UI、architecture 下游同步；architecture v0.2 当前已 approved，正文 based_on 已同步 SRS v1.2。
 - **SRS v1.2 / status=approved**（v1.1 历史快照 `00e125c` 保留；v1.2 用户于 2026-08-10 批准，独立批准锚点 `ab4b94e`）：统一 `AUTH_EXPIRED`/`RATE_LIMITED` 语义并正式定义 `OVERRIDE_NOT_FOUND`/`OVERRIDE_RANGE_EMPTY`；SRS 仍为行为唯一源，`based_on` 与 domain-model v1.1.5 对齐。
@@ -44,6 +44,8 @@
 - **TASK-READY-001**：**已关闭（Closed / PASS，2026-08-10）**——十项 baseline 工件均 approved，ADR-IMPL-001 已 accepted；WEB-001 实现任务与独立 REVIEW-WEB-001 已建立。
 - **TASK-IMPL-WEB-001**：**Open**——首个实现任务，仅负责前端展示壳、页面一/二和静态导航；不含后端、鉴权、迁移、通知或基础设施。
 - **TASK-REVIEW-WEB-001**：**Open**——独立审查 WEB-001 的越界、隐私、冻结 TC 和证据真实性。
+- **TASK-BE-001**：**已关闭（Closed，2026-08-11）**——FastAPI 应用工厂、环境配置、结构化日志、API/Worker 独立入口与 Python 工程门禁已交付；verified_commit=`de91826`；无业务路由、数据库、鉴权、加密、通知或 LLM。
+- **TASK-REVIEW-BE-001**：**已关闭（Closed，2026-08-11）**——首轮 Ruff/锁文件/API 入口测试阻塞已向前修正；最终 pytest 5 passed、Ruff/mypy/真实 API 与 Worker smoke 全通过，无 P0/P1 遗留。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
@@ -70,6 +72,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 > ④ ✅ 用户独立评审批准 **SRS v1.0**（AI 不代签，独立批准锚点 `26ae844`，不复用 `173cf9b6`）→ 关闭 TASK-SRS-001（verified_commit 见 S3 回填）、用例规约冻结为历史输入、SRS 成为行为唯一源；
 > ⑤ ✅ **UI 线框影响评审（TASK-UI-IMPACT-001）**：结论=基本可沿用（SRS `26ae844` + 领域模型 1.1.4 与现有线框对齐；仅 A6 通知失败中心状态枚举轻微缺口）→ 内容缺口由 **TASK-UI-002** 承载；`ui_wireframe.status` 仍 pending，待用户评审实际线框。
 > ⑤b ✅ 用户批准 UI 线框 v1.0 → ⑥ ✅ 领域模型修订并批准 v1.1.5 → ⑦ ✅ architecture v0.2 → ⑧ ✅ SRS v1.2 / security v0.1 / OpenAPI-SSE v0.1 / test-plan v0.1 全部 approved → ⑨ ✅ ADR-IMPL-001 accepted + TASK-READY-001 PASS → **当前执行 TASK-IMPL-WEB-001**。
+> ⑩ ✅ TASK-BE-001 + TASK-REVIEW-BE-001 关闭；下一后端主线为独立 DB/migration 任务，实际 SQL 须先经用户审批。
 > `development_gate` 全 10 项 approved 前不得进入编码。
 
 ---
@@ -95,5 +98,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（实现栈阶段）**：`0a86a96` — ADR-IMPL-001 accepted；implementation 依赖边界已获用户接受，未安装依赖或写代码。
 - **最新验证锚点（实现栈收口）**：`99678dc` — TASK-ADR-001 Closed + ADR-IMPL-001 accepted + 依赖边界验证。
 - **最新验证锚点（开发准入）**：`fa57b64` — baseline 十项 approved、ADR accepted、TASK-IMPL-WEB-001 与 TASK-REVIEW-WEB-001 已纳入 Git，开发准入 PASS。
+- **最新验证锚点（BE-001 后端骨架）**：`de9182638e7bbd609e562295887041c3ce548add`（`de91826`）— FastAPI/Worker 骨架最终实现；pytest 5 passed、Ruff/mypy/真实 API 与 Worker smoke 通过；TASK-BE-001 与独立审查以本快照为验证对象。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

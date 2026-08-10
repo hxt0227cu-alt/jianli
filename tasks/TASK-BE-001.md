@@ -101,21 +101,21 @@
 - 超出 `max_files` 或代码行数预算。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`c53988e`（骨架实现）→ `de91826`（锁文件、Ruff 与 API 入口测试修正后的最终实现快照）
+- 修改文件清单：`apps/api/README.md`、`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/app/__init__.py`、`apps/api/app/config.py`、`apps/api/app/factory.py`、`apps/api/app/logging_config.py`、`apps/api/app/main.py`、`apps/api/app/worker.py`、`apps/api/tests/test_app.py`、`apps/api/tests/test_config.py`、`apps/api/tests/test_worker.py`
+- 测试命令及结果：隔离 Python 3.12.13 环境按 `requirements.lock` 安装成功；`python -m pytest` → 5 passed；真实 Uvicorn smoke → `GET /openapi.json` 200 且 `paths=0`；`python -m app.worker` → exit 0 且单条 JSON 日志；`pip check` → pass；锁文件 30 包与实际安装集合一致
+- lint / typecheck：`python -m ruff check .` → pass；`python -m ruff format --check .` → 10 files already formatted；`python -m mypy app` → 6 source files / 0 issues
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：FastAPI title/version 来自配置；测试确认无项目自定义公开 path；API 与 Worker 入口均完成真实 smoke；未知敏感环境变量不进入配置表示或 Worker 日志
+- 变更预算实际值：12 文件；生产代码 95 行；测试代码 59 行；未超 `18 / 350 / 180`
 - 未解决风险：公开健康检查契约与 TC-OPS-003 完整覆盖留后续 OpenAPI/部署任务。
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`de9182638e7bbd609e562295887041c3ce548add`
+- 状态：Closed
+- 关闭结论：测试通过；规范影响为 none；`spec_sync=clean`；`verified_commit` 为真实最终实现快照。四项关闭门禁均满足。
 
 ## 关联
 - 独立审查：TASK-REVIEW-BE-001
 - 后续任务：数据库基础与 migration（须单独人审）；业务模块实现任务。
-

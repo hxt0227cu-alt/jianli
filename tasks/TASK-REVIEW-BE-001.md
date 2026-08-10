@@ -49,17 +49,17 @@
 - `git revert` 审查报告提交；不涉及实现或外部状态回滚。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：被审查最终实现 `de91826`；审查结论见 `docs/reviews/backend-scaffold-review.md`
+- 修改文件清单：`docs/reviews/backend-scaffold-review.md`、`tasks/TASK-REVIEW-BE-001.md`、`PROJECT_STATE.md`
+- 测试命令及结果：`python -m pytest` → 5 passed；真实 Uvicorn smoke → 200 / `paths=0`；Worker smoke → exit 0；`pip check` → pass；锁文件与实际 30 包集合一致
+- lint / typecheck：Ruff check / format → pass；mypy → 6 source files / 0 issues
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
+- 验收证据：见 `docs/reviews/backend-scaffold-review.md`；首轮 P1 已保留记录并在最终实现中消除
+- 变更预算实际值：3 个审查/状态文件，未超 `max_files=3`
+- 未解决风险：TC-OPS-003 完整部署/健康检查覆盖留后续契约与部署任务
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
-
+- verified_commit：`de9182638e7bbd609e562295887041c3ce548add`
+- 状态：Closed
+- 关闭结论：最终实现无 P0/P1；测试、规范影响、spec_sync 与 verified_commit 四项门禁均满足。

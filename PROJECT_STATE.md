@@ -11,11 +11,11 @@
 
 分析设计阶段。编码准入未开放，由 `docs/baseline.yml` 的 `development_gate` 决定。
 
-- **领域模型 v1.1.5 / status=approved**（TASK-DM-003 已关闭，2026-08-08 末用户批准，独立批准锚点 `f412c7d`）：修复 `NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」的实现阻塞——新增 `delivery_purpose` 列（candidate_notification / interviewer_confirmation / interviewer_cancellation）+ 唯一约束由 `(event_id, channel, event_version, attempt_no)` 调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`；并新增 `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（AES 密文）+ `User.uq_active_owner_admin` 部分唯一索引（单 owner 方案 A）。事件类型继续表达业务事实，投递目的表达投递意图，不重新引入 confirm_mail 业务事件类型。**v1.1.4 已于 `f537296` 正式批准（历史事实保留，不予否认）**，其内容由本 v1.1.5 取代。下游影响评审已执行：SRS v1.1 仅同步版本引用与 based_on（行为不变、不复制物理索引）、UI v1.0 impact=none、architecture v0.2 §6 已纳入 delivery_purpose 同步（仍 review 待批准）。密码哈希冲突升级条款沿用 v1.1.4，未改。TASK-DM-003 已关闭（`verified_commit=f0d3264`）。
-- **SRS v1.1 / status=approved**（v1.0 于 `26ae844` 批准；v1.1 退信(Bounce) 缺陷修正经用户 2026-08-08 独立评审批准，独立批准锚点 `00e125c`，不复用 review 草案 `1c21d7d`；v1.0 approved 快照冻结于 `26ae844` 不重写），`spec_sync=clean`。`baseline.srs.based_on` = prd 2.3.3 / use_cases 1.7.2 / domain_model 1.1.5（上游均已 approved 且对齐，domain_model 已随 v1.1.5 批准同步）；TASK-SRS-001 已完成 impact review 并关闭；**SRS 现为行为唯一源**（precedence 高于 PRD/用例规约），用例规约冻结为历史输入；**v1.1 缺陷修正（TASK-SRS-002）已关闭**：补充退信记录/展示筛选/告警/手动重发/不回滚预约，v1.0 遗漏项已补。
+- **领域模型 v1.1.5 / status=approved**（TASK-DM-003 已关闭，2026-08-08 末用户批准，独立批准锚点 `f412c7d`）：已完成 SRS、UI、architecture 下游同步；architecture v0.2 当前已 approved，正文 based_on 已同步 SRS v1.2。
+- **SRS v1.2 / status=approved**（v1.1 历史快照 `00e125c` 保留；v1.2 用户于 2026-08-10 批准，独立批准锚点 `ab4b94e`）：统一 `AUTH_EXPIRED`/`RATE_LIMITED` 语义并正式定义 `OVERRIDE_NOT_FOUND`/`OVERRIDE_RANGE_EMPTY`；SRS 仍为行为唯一源，`based_on` 与 domain-model v1.1.5 对齐。
 - **UI 线框 v1.0（TASK-UI-001 / ui-wireframe.md）**：UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=`38b102a`，baseline.status=`approved`）；影响评审（TASK-UI-IMPACT-001）结论=基本可沿用 + 1 处缺口；内容缺口由 TASK-UI-002 执行并闭合（A6/A7 失败三态 + 退信），8 项后续内容修正由 **TASK-UI-003** 一次性修正并闭合（对齐 SRS v1.1、消除误导实现表述）；TASK-UI-001 已关闭。下游进入架构/ADR 阶段。
-- **架构设计 v0.2 已批准**：用户于 2026-08-09 明确批准，内容快照=`3a18b7f`，approval_commit=`da3f6fc`。TASK-ARCH-001 / TASK-ARCH-002 已关闭；SSE、事务锁序、Outbox、退信边界与四项核心 ADR 已定稿。ADR-ARCH-005~008 转安全设计，`AUTH_EXPIRED` 留 OpenAPI 前裁定。
-- **安全设计 v0.1 review（TASK-SEC-001）**：已产出密码、会话、Redis 限频、IMAP 退信、AES-256-GCM/密钥、RBAC、LLM/RAG、上传与日志安全草案；保持 review，待用户正式批准。
+- **架构设计 v0.2 已批准**：内容快照=`3a18b7f`，approval_commit=`da3f6fc`；TASK-ARCH-001/002/003 与 TASK-ARCH-IMPACT-001 已收口，正文已同步 SRS v1.2。
+- **安全设计 v0.1 已批准**（TASK-SEC-001 已关闭）：SRS v1.2 impact-sync=`151509f`，approval_commit=`c2f08f2`，BCrypt/会话/Redis 限频/IMAP 退信/AES-256-GCM/RBAC/LLM 与上传边界开始约束下游实现。
 
 ---
 
@@ -33,13 +33,13 @@
 - **TASK-SRS-002**：**已关闭（Closed，2026-08-08）**——SRS 退信(Bounce) 行为缺陷修正（v1.0 → v1.1）；补充 PRD §4.6/R26 与 UC-21 已要求但 v1.0 遗漏的退信记录/展示筛选/告警/手动重发/不回滚预约；domain_model 无需改（bounce 字段已在 v1.1.4 §5）；approval_commit=`00e125c`（SRS v1.1 批准锚点）；verified_commit=`b38febd`（下游 UI 同步验证快照）；spec_sync=clean。SRS v1.1 现已 approved。
 - **TASK-ARCH-001 / TASK-ARCH-002**：**已关闭（Closed，2026-08-09）**——architecture v0.2 内容快照=`3a18b7f`，approval_commit=`da3f6fc`，spec_sync=clean。
 - **TASK-ARCH-003**：**已关闭（Closed，2026-08-09）**——承载用户明确批准后的单一用途状态推进与架构阶段收口。
-- **TASK-SEC-001**：**进行中（Review / impact clean）**——安全设计 v0.1 已完成 SRS v1.2 文字级 impact review；待生成独立批准锚点后收口，未写代码。
+- **TASK-SEC-001**：**已关闭（Closed，2026-08-10）**——security v0.1 impact-sync + 用户批准；approval_commit=`c2f08f2`，verified_commit=待回填。
 - **TASK-CONTENT-001**：**已关闭（Closed，2026-08-09）**——页面二两项目内容基线已完成；sleep202603-an 严格只读，证据按本地/模拟/未验证分级；verified_commit=`a09fa5d`。
-- **TASK-SRS-003**：**进行中（Review）**——SRS v1.2 错误语义收口；v1.1 approved 快照保留，v1.2 未批准，OpenAPI 前需用户评审。
-- **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 草案已启动；等待 SRS 1.2 与 security 0.1 批准后做 impact review。
+- **TASK-SRS-003**：**已关闭（Closed，2026-08-10）**——SRS v1.2 错误语义收口并获用户批准，approval_commit=`ab4b94e`。
+- **TASK-API-001**：**进行中（Review / spec_sync=dirty）**——OpenAPI 3.1 + SSE v0.1 已完成标准 lint 与上游待办修正，现执行 SRS v1.2/security v0.1 impact review。
 - **TASK-TEST-001**：**进行中（Review / spec_sync=dirty）**——测试计划 v0.1 与冻结 TC 矩阵已产出；实际测试代码未实现，开发准入仍关闭。
 - **TASK-ADR-001**：**进行中（Review）**——实现技术栈 ADR 已提出唯一推荐（React/TypeScript/Vite + FastAPI/Python + PostgreSQL/pgvector + Redis + 独立 Worker）；尚未 accepted，未安装依赖、未写代码。
-- **TASK-READY-001**：**进行中（Review / BLOCKED）**——开发准入评审已形成：baseline 6/10 approved，SRS/security/OpenAPI/test_plan 四项 review；待用户批准四份工件并接受实现栈 ADR 后执行 impact review 与准入复核。
+- **TASK-READY-001**：**进行中（Review / BLOCKED）**——SRS/security 已 approved；OpenAPI/test_plan 仍待 impact review、批准与 `spec_sync=clean`，ADR-IMPL-001 已获用户接受，十项门禁尚未全部满足。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。

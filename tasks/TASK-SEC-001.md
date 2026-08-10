@@ -1,6 +1,6 @@
-# TASK-SEC-001 安全设计与 ADR review 草案
+# TASK-SEC-001 安全设计与 ADR
 
-> 承载 architecture v0.2 批准后的安全设计。只产出 review 草案，不代签 approved，不进入 OpenAPI、测试计划或编码。
+> 承载 architecture v0.2 批准后的安全设计。SRS v1.2 impact review 已完成，用户已批准 security v0.1；本任务已收口，不代表已批准具体实现、迁移或外部资源。
 
 ## 任务类型
 - design
@@ -65,19 +65,19 @@
 - 需要新增未列明表/字段/API/依赖；与 SRS/架构冲突；将 security 标为 approved；开始编码。
 
 ## 交付证据
-- commit / PR：`119d35f`（security v0.1 review 草案快照）
+- commit / PR：`119d35f`（review 草案）→ `151509f`（SRS v1.2 impact-sync）→ `c2f08f2`（security approval_commit）
 - 修改文件清单：docs/design/security.md / docs/baseline.yml / tasks/TASK-SEC-001.md / PROJECT_STATE.md
-- 测试命令及结果：四项 ADR、敏感词/密钥边界、baseline security=0.1/review、未新增 Schema/API 检查 → pass
+- 测试命令及结果：四项 ADR、敏感词/密钥边界、baseline security=0.1/approved、未新增 Schema/API 检查 → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
 - 验收证据：docs/design/security.md §1-§13
 - 变更预算实际值：max_files=4，实际 4 文件，未超预算
-- 未解决风险：外部 SMTP/IMAP、飞书、DeepSeek 与云 Secret Manager 配置待上线确认；security approval 尚未生成
+- 未解决风险：外部 SMTP/IMAP、飞书、DeepSeek 与云 Secret Manager 配置待上线确认；具体鉴权、加密、通知和基础设施实现仍需独立 implementation TASK 人审
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
 - verified_commit：`119d35f`
-- 状态：Review
+- 状态：Closed
 
 ## 关联
 - 上游：TASK-ARCH-003

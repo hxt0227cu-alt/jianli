@@ -58,16 +58,16 @@
 - 需要修改测试断言、日志契约、依赖、数据库、API 或超出预算时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`5489b92`（实现与验证快照）
+- 修改文件清单：`apps/api/app/logging_config.py`、`tasks/TASK-TEST-INFRA-001.md`
+- 测试命令及结果：真实 PostgreSQL/Redis 环境执行 `python -m pytest -q -ra` → 25 passed / 0 failed / 0 skipped（4 条 Alembic 配置弃用 warning）
+- lint / typecheck：Ruff check pass；Ruff format check pass；mypy pass；pip check pass
 - DB 迁移验证：无迁移
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：迁移测试先执行后，`test_worker_smoke_logs_one_safe_structured_event` 仍通过并输出既定单条 JSON 日志。
+- 变更预算实际值：2/2 文件；生产代码 +4 行；测试代码 +0 行，未超预算
+- 未解决风险：Alembic `path_separator` 存在既有弃用 warning，不影响本任务行为
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`5489b92`
+- 状态：Closed

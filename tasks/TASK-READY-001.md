@@ -53,9 +53,9 @@
 - `git revert` 本任务提交。
 
 ## 交付证据
-- commit / PR：`51ca872`（BLOCKED 准入评审快照）
+- commit / PR：`51ca872`（BLOCKED 评审快照）→ `8378f14`（十项门禁 PASS + implementation/review TASK 建立）
 - 修改文件清单：`docs/reviews/development-readiness.md`、`tasks/TASK-READY-001.md`、`PROJECT_STATE.md`
-- 测试命令及结果：baseline 十项解析 → approved=6 / review=4，与评审表一致；`git diff --check` 通过
+- 测试命令及结果：baseline 十项解析 → approved=10 / review=0；ADR-IMPL-001=`accepted`；TASK-IMPL-WEB-001/TASK-REVIEW-WEB-001 存在；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：无
 - 验收证据：development-readiness §1 门禁表、§2 批准内容包、§3 固定执行顺序
@@ -64,7 +64,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：dirty
-- verified_commit：`51ca872`
+- verified_commit：`8378f14`
 - 状态：Closed / PASS
 
 ## 关联

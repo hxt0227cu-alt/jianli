@@ -1,6 +1,6 @@
 # 软件需求规格（SRS）v1.3 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
-> **文档状态**：v1.3 · `status = approved`（用户于 2026-08-11 明确批准认证错误契约变更；批准锚点待本任务提交后回填；v1.2 历史批准快照 `ab4b94e` 保留不重写）。
+> **文档状态**：v1.3 · `status = approved`（用户于 2026-08-11 明确批准认证错误契约变更；approval_commit=`71d7861`；v1.2 历史批准快照 `ab4b94e` 保留不重写）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.3 仅补齐认证失败与请求校验错误语义，现为行为唯一源。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
@@ -401,4 +401,4 @@
 
 > **v1.3 修订说明（认证错误契约收口，2026-08-11）**：新增 `INVALID_CREDENTIALS`（401，账号不存在/密码错误同码同文案）与 `INVALID_REQUEST`（422 Problem，不回显原始输入），停止借用 `AUTH_EXPIRED` 表达凭证错误。成功登录、会话、密码策略、限频阈值与权限均不变。用户已明确批准本次精确变更。
 
-> **文档结束** · SRS v1.3 · status=approved · approval_commit=`<待回填>` · v1.2 approved @ `ab4b94e`（历史快照）。
+> **文档结束** · SRS v1.3 · status=approved · approval_commit=`71d7861` · v1.2 approved @ `ab4b94e`（历史快照）。

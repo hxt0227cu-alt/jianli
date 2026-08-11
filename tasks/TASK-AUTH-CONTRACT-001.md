@@ -4,7 +4,7 @@
 - documentation / approved Change Request
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 人工批准：用户于 2026-08-11 明确批准新增 `INVALID_CREDENTIALS`（401）与 `INVALID_REQUEST`（422 Problem）并同步 SRS/OpenAPI/测试计划。
 
 ## 基线版本与基线 commit
@@ -67,16 +67,16 @@
 - 需要新增第三个错误码、修改成功路径/鉴权/密码/限频、改动代码或超过 6 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`71d7861`（用户预批准的规范与状态快照）
+- 修改文件清单：SRS.md / openapi.yaml / test-plan.md / baseline.yml / PROJECT_STATE.md / 本任务单，共 6 文件
+- 测试命令及结果：错误码、版本、登录响应与 69 TC 总数一致性检查 → pass
+- lint / typecheck：Redocly 1.34.5 recommended lint → 0 error / 0 warning / exit 0
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：SRS §3.3/§8；OpenAPI `login` 401/422 专用 Problem；TC-AUTH-002/004 收紧且其他 TC 未改
+- 变更预算实际值：6/6 文件；生产/测试代码均 0 行，未超预算
+- 未解决风险：无；AUTH 实现须在独立 implementation 修正提交中适配，不能与本规范提交混合
+- 是否偏离 TASK：否
 - 规范影响结论：updated
-- spec_sync：dirty
-- verified_commit：待回填
-- 状态：Open
+- spec_sync：clean
+- verified_commit：`71d7861`
+- 状态：Closed

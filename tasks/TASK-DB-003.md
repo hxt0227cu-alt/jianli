@@ -1,11 +1,11 @@
 # TASK-DB-003 预约创建 Outbox 与审计表迁移评审
 
 ## 任务类型
-- migration / review package
+- migration
 
 ## 当前阶段
-- 状态：Waiting for Human Approval
-- 说明：仅产出 migration 评审包；数据库迁移必须经用户批准后另行实施。
+- 状态：In Progress
+- 用户批准：2026-08-11 用户明确批准 `a6e06ea` 的 DB-003 迁移方案，授权按评审包实施；仅限一次性测试库，不含生产迁移。
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.5 / SRS 1.3 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.2 / test_plan 0.2（均 approved）
@@ -23,24 +23,31 @@
 - BOOKING-001 的冻结前置条件：TC-APT-002 要求预约事务同时写 Appointment、3 Slot、NotificationEvent、AuditLog。
 
 ## 目标
-- 产出两张已批准领域实体的最小可逆 migration 评审包，解除 BOOKING-001 的持久化阻塞。
+- 以一份可逆 migration 创建 `notification_events` 与 `audit_logs`、两组 enum 及 approved 约束，解除 BOOKING-001 的持久化阻塞。
 
 ## 非目标
-- 不写 migration、Repository、API、预约事务、SSE、NotificationDelivery、Worker、外部通知或生产部署。
-- 不修改已批准规范，不执行任何数据库变更。
+- 不实现 Repository、API、预约事务、SSE、NotificationDelivery、Worker、外部通知或生产部署。
+- 不修改已批准规范，不执行生产数据库变更。
 
 ## 允许修改路径
+- `apps/api/migrations/versions/0003_outbox_audit_schema.py`
+- `apps/api/tests/migrations/test_outbox_audit_schema.py`
 - `docs/reviews/db-003-outbox-audit-plan.md`
 - `tasks/TASK-DB-003.md`
+- `tasks/TASK-REVIEW-DB-003.md`
 - `PROJECT_STATE.md`（仅任务态与阻塞）
 
 ## 禁止修改路径
-- `apps/**`、`infra/**`、approved 规范正文
+- `apps/api/app/**`、`apps/web/**`、`infra/**`、approved 规范正文
+- `apps/api/migrations/versions/0001_identity_schema.py`、`0002_booking_schema.py`
 - `sleep202603-an/**`
 
 ## 已批准的 DB / API / 依赖变更
-- 本任务仅为评审包，DB/API/依赖实际变更：无。
-- 用户批准评审包前，禁止创建表、enum、索引或 migration。
+- DB：新增 enum `notification_event_type` 与 `notification_event_status`，标签严格按 `a6e06ea` 评审包。
+- DB：新增 `notification_events` 与 `audit_logs` 两表，字段类型和 NULL/NOT NULL 严格按评审包。
+- DB：新增 `notification_events.idempotency_key` UNIQUE、`ix_notification_events_biz_id` 与部分索引 `ix_notification_events_pending_schedule`。
+- DB：新增可逆 `0003_outbox_audit_schema`，down revision=`0002_booking_schema`；不新增 FK/trigger/function/extension/server default。
+- API/SSE/依赖：无。
 
 ## 规范影响评估
 - behavior_change：false
@@ -48,23 +55,26 @@
 - reason：只把 approved 领域实体整理为待人工批准的物理迁移方案。
 
 ## 验收
-- 方案只含 `notification_events` 与 `audit_logs`，逐字段对齐领域模型。
-- 明确 enum、约束、索引、upgrade/downgrade 顺序、真实 PostgreSQL 验证矩阵。
-- 明确不把 NotificationDelivery、通知发送或外部调用并入本批。
+- migration 只含 `notification_events` 与 `audit_logs`，逐字段对齐已批准评审包。
+- 两个 enum、UNIQUE、两个普通/部分索引及 NULL/NOT NULL 在真实 PostgreSQL 逐项验证。
+- `upgrade head → downgrade 0002_booking_schema → upgrade head` 可逆，DB-001/DB-002 数据不受影响。
+- NotificationDelivery、通知发送或外部调用不进入本批。
 
 ## 变更预算
-- max_files：3
-- expected_prod_lines：0
-- expected_test_lines：0
+- max_files：6
+- expected_prod_lines：180
+- expected_test_lines：240
 
 ## 必须运行的测试命令
-- 文档一致性检查、`git diff --check`
+- 一次性真实 PostgreSQL：`alembic upgrade head` → `alembic downgrade 0002_booking_schema` → `alembic upgrade head`
+- `python -m pytest tests/migrations -q -ra`，零 skip
+- Ruff check/format、mypy、pip check
 
 ## 回滚方法
-- 回退评审包与任务状态；无数据库变更。
+- 仅在一次性测试库执行 `alembic downgrade 0002_booking_schema`；生产 downgrade 另行人工批准。
 
 ## 强制停止条件
-- 需要新增领域模型未声明字段/状态/依赖/API，或用户未批准即要求实施 migration。
+- 需要新增评审包未列明的字段/状态/FK/索引/依赖/API；冻结测试失败；超过预算。
 
 ## 交付证据
 - commit / PR：待回填

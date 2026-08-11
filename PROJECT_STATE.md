@@ -50,6 +50,7 @@
 - **TASK-INFRA-LOCAL-001**：**已关闭（Closed，2026-08-11）**——本机临时 PostgreSQL 验收环境已停止并完全删除，进程/监听为 0，下载、解压、venv、口令和 data 均无残留。
 - **TASK-AUTH-001**：**In Progress（2026-08-11）**——实现登录、PostgreSQL 会话、CSRF/同源防护、Redis 登录限频与 RBAC 核心；注册验证/密码找回邮件不并入本任务。
 - **TASK-AUTH-CONTRACT-001**：**Closed（2026-08-11）**——用户批准的 `INVALID_CREDENTIALS`（401）与 `INVALID_REQUEST`（422 Problem）已同步 SRS/OpenAPI/测试计划；approval/verified snapshot=`71d7861`，AUTH 实现阻塞已解除。
+- **TASK-AUTH-003 / TASK-REVIEW-AUTH-002**：**In Progress / Open（2026-08-11）**——只实现并独立复核已批准的认证错误契约；通过后统一关闭 AUTH-001/002/003，再进入 DB-002。
 - **TASK-REVIEW-AUTH-001**：**Open（2026-08-11）**——AUTH-001 独立安全与实现审查，审查角色不修改实现。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。

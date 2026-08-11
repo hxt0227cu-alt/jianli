@@ -55,7 +55,7 @@
 - **TASK-DB-002 / TASK-REVIEW-DB-002**：**Closed（2026-08-11）**——最终验证快照 `2fd1199`；五表/三 enum/approved 约束可逆迁移通过，真实 PostgreSQL migration 测试 22 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
 - **TASK-TEST-MIGRATION-001**：**Closed（2026-08-11）**——获批的身份域表集合子集断言已兼容合法后续 migration，其余身份域精确 schema/约束断言保持冻结。
 - **TASK-TEST-DB-002-CONSTRAINTS / TASK-TEST-DB-002-REFERENTIAL**：**Closed（2026-08-11）**——按预算拆分的 UNIQUE/CHECK 与 enum/FK 真实数据库拒绝路径全部通过，分别为 188/190 与 90/90 测试行。
-- **TASK-DB-003**：**In Progress（2026-08-11）**——用户已批准 `a6e06ea` 的两表/两 enum 最小迁移方案；正在实施可逆 migration 与真实 PostgreSQL 验证，未执行生产迁移、未进入 BOOKING-001。
+- **TASK-DB-003 / TASK-REVIEW-DB-003**：**Closed（2026-08-11）**——最终验证快照 `4f3b74c`；两表/两 enum/approved 约束可逆迁移通过，同一真实 PostgreSQL 连续两遍 migration 测试均 26 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。
@@ -115,5 +115,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（AUTH 最终实现）**：`b8c7fc5cda07a40fa96b079c63565df01f3f3a08`（`b8c7fc5`）— AUTH 已批准错误契约适配与最终安全验证快照；真实 PostgreSQL 16 + Redis 7 环境 AUTH 15 passed / 0 skipped、全套 27 passed / 0 skipped；独立审查 P0=0、P1=0。
 
 - **最新验证锚点（DB-002）**：`2fd1199` ——预约域五表/三 enum/approved 约束最终迁移与回归快照；真实 PostgreSQL `up → down 0001 → up`、migration 22 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
+
+- **最新验证锚点（DB-003）**：`4f3b74c` ——预约创建所需 NotificationEvent/AuditLog 最小迁移最终快照；真实 PostgreSQL `up → down 0002 → up` 与连续两遍 migration 26 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

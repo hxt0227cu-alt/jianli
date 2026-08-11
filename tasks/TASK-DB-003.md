@@ -4,7 +4,7 @@
 - migration
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 用户批准：2026-08-11 用户明确批准 `a6e06ea` 的 DB-003 迁移方案，授权按评审包实施；仅限一次性测试库，不含生产迁移。
 
 ## 基线版本与基线 commit
@@ -77,19 +77,19 @@
 - 需要新增评审包未列明的字段/状态/FK/索引/依赖/API；冻结测试失败；超过预算。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：N/A（纯评审包）
-- DB 迁移验证：未执行，等待用户批准
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：等待用户批准物理迁移方案
+- commit / PR：评审包 `a6e06ea`；批准范围登记 `9d99992`；实现 `2a7e33a`；测试隔离修正 `4f3b74c`
+- 修改文件清单：`docs/reviews/db-003-outbox-audit-plan.md`、`apps/api/migrations/versions/0003_outbox_audit_schema.py`、`apps/api/tests/migrations/test_outbox_audit_schema.py`、`tasks/TASK-DB-003.md`、`tasks/TASK-REVIEW-DB-003.md`、`PROJECT_STATE.md`
+- 测试命令及结果：真实 PostgreSQL migration 测试连续两遍均 26 passed / 0 skipped；全套 42 passed / 1 skipped（仅 AUTH 需要 Redis，与 DB-003 无关）
+- lint / typecheck：Ruff check/format pass；mypy 16 source files / 0 issues；pip check pass
+- DB 迁移验证：`upgrade head → downgrade 0002_booking_schema → upgrade head` 通过；最终 revision=`0003_outbox_audit_schema`
+- 验收证据：两表、两 enum、字段/nullability、UNIQUE、两个索引及部分谓词通过；真实库 server defaults/FK/triggers 均为 0；独立审查 P0/P1/P2=0
+- 变更预算实际值：6/6 文件；生产 79/180 行；测试 206/240 行
+- 未解决风险：无任务阻塞风险；14 条既存 Alembic `path_separator` 弃用警告不影响 DDL
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`4f3b74c`
+- 状态：Closed
 
 ## 关联
 - 前置：TASK-DB-002（Closed，verified_commit=`2fd1199`）

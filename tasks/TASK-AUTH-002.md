@@ -4,7 +4,7 @@
 - implementation / security remediation
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 来源：TASK-REVIEW-AUTH-001 对 `f5fd75c` 的独立审查。
 
 ## 基线版本与基线 commit
@@ -78,9 +78,10 @@
 - DB 迁移验证：无迁移
 - 验收证据：第 5 次失败真实 Redis `Retry-After>=895`；锁定期正确密码被拒；CORS 精确 origin/credentials 与 wildcard fail-fast；旧会话与新会话同事务旋转；422 不回显密码；安全事件仅含 HMAC 标识/请求 ID/结果/截断 IP。
 - 变更预算实际值：7/7 文件；生产增量 152/220 行；测试增量 91/300 行，未超预算
-- 未解决风险：approved SRS/OpenAPI 没有凭证错误与请求校验错误码；实现仍被迫借用 `AUTH_EXPIRED`，且 422 尚非 Problem envelope，须先经 Change Request 裁定
+- 未解决风险：无；原错误契约缺口已由 TASK-AUTH-CONTRACT-001 获用户批准，并由 TASK-AUTH-003 在 `b8c7fc5` 完成适配
 - 是否偏离 TASK：否；已在强制停止点停止契约修改
-- 规范影响结论：change_request_required
-- spec_sync：dirty
-- verified_commit：`e796ebe`
-- 状态：Blocked（等待错误契约 Change Request 获人工批准；不得关闭 AUTH-001 或进入 DB-002）
+- 规范影响结论：updated（Change Request 已由 TASK-AUTH-CONTRACT-001 完成并批准）
+- spec_sync：clean
+- verified_commit：`b8c7fc5`（包含本任务安全修正与后续已批准错误契约适配的最终验证快照）
+- 状态：Closed
+- 关闭结论：安全修正测试通过；契约阻塞已按 Change Request 流程解除；spec_sync=clean；最终验证快照真实存在。

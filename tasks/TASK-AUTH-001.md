@@ -4,7 +4,7 @@
 - implementation
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 用户授权：2026-08-11 用户明确要求直接开始 AUTH-001，并在通过独立审查后自动进入 BOOKING 主线。
 
 ## 基线版本与基线 commit
@@ -101,21 +101,21 @@
 - 冻结验收失败、真实 PostgreSQL 会话路径无法验证或超出 change_budget。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
-- DB 迁移验证：无迁移；真实会话读写待回填
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- commit / PR：`f5fd75c`（原始实现）→ `72cdb9a` / `4fcb316` / `e796ebe`（独立审查修正）→ `b8c7fc5`（已批准错误契约适配与最终验证快照）
+- 修改文件清单：`apps/api/app/auth/**` 10 文件、`apps/api/app/config.py`、`apps/api/app/factory.py`、`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/tests/auth/test_auth.py`，共 15/18 个实现路径
+- 测试命令及结果：一次性真实 PostgreSQL 16 + Redis 7 环境 `python -m pytest tests/auth tests/test_app.py -q -ra` → 15 passed / 0 skipped；`python -m pytest -q -ra` → 27 passed / 0 skipped
+- lint / typecheck：Ruff check/format、mypy、pip check 全部通过
+- DB 迁移验证：本任务无迁移；DB-001 migration `upgrade head` 通过；真实 PostgreSQL session 创建/读取/旋转/吊销路径通过
+- 验收证据：BCrypt cost 12 与 UTF-8 10–72 bytes、dummy hash、PostgreSQL opaque session、Cookie/CSRF/Origin、Redis 限频 fail-closed、完整 15 分钟锁定、会话原子旋转、RBAC 与脱敏日志均通过；最终认证错误契约符合 SRS 1.3 / OpenAPI 0.2
+- 变更预算实际值：原始实现 `a25fd07..f5fd75c` 为 15/18 文件、生产新增 665/750 行、测试新增 475/900 行；后续修正分别按 TASK-AUTH-002 与 TASK-AUTH-003 独立预算执行，均未超预算
+- 未解决风险：无；生产密钥、生产 PostgreSQL/Redis 与上线性能校准仍属于后续基础设施/上线任务
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`b8c7fc5`
+- 状态：Closed
+- 关闭结论：真实依赖测试、静态门禁与独立审查均通过；规范影响已收口；spec_sync=clean；verified_commit 为真实最终实现快照。
 
 ## 关联
 - 独立审查：TASK-REVIEW-AUTH-001
 - 后续：DB-002（预约域迁移）→ BOOKING-001
-

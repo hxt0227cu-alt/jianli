@@ -7,7 +7,7 @@
 - 独立检查 AUTH-001 的范围、契约、密码、会话、CSRF、限频、RBAC、日志脱敏和测试真实性。
 
 ## 审查对象
-- TASK-AUTH-001 最终实现 commit（待回填）。
+- TASK-AUTH-001 原始实现 commit `f5fd75c`，最终修正验证快照 `b8c7fc5`。
 - 冻结 TC-AUTH-002/003/004/006（登录切片）/007/008。
 
 ## 允许修改路径
@@ -22,8 +22,8 @@
 - 冻结测试是否真实覆盖且未被改宽、skip 或 mock 掉关键安全路径。
 
 ## 交付证据
-- 审查结论：待回填
-- findings：待回填
-- verified_commit：待回填
-- 状态：Open
-
+- 审查结论：PASS；原审查发现的安全实现问题由 TASK-AUTH-002 修正，错误契约缺口经 TASK-AUTH-CONTRACT-001 批准并由 TASK-AUTH-003 适配
+- findings：最终独立复核 P0=0、P1=0；无越界实现注册/找回、预约、通知或新增 schema
+- 测试证据：真实 PostgreSQL 16 + Redis 7 环境 AUTH 15 passed / 0 skipped、全套 27 passed / 0 skipped；Ruff/format/mypy/pip check 全通过
+- verified_commit：`b8c7fc5`
+- 状态：Closed

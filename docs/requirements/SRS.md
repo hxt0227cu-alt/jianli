@@ -1,7 +1,7 @@
-# 软件需求规格（SRS）v1.2 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
+# 软件需求规格（SRS）v1.3 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
-> **文档状态**：v1.2 · `status = approved`（用户于 2026-08-10 批准，批准锚点 `ab4b94e`；v1.1 历史批准快照 `00e125c` 保留不重写）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.2 仅修正错误语义，现为行为唯一源。
+> **文档状态**：v1.3 · `status = approved`（用户于 2026-08-11 明确批准认证错误契约变更；批准锚点待本任务提交后回填；v1.2 历史批准快照 `ab4b94e` 保留不重写）。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.3 仅补齐认证失败与请求校验错误语义，现为行为唯一源。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）与「禁止 LLM 自动写预约」硬规则（PRD §8.4#14）为 SRS 边界，正文仅可引用、不可扩展。
@@ -106,7 +106,7 @@
 - **行为**：进入页面 3 须登录；无账号可注册（邮箱验证）；密码登录；支持"记住我"14 天免登录复访；密码找回（邮箱验证码）；防刷限频。
 - **输入·输出**：邮箱/密码/验证码 → 建立认证会话（面试官网与 admin 隔离）。
 - **业务规则**：R9（账号隔离）、R19（记住我 14 天）、R20（注册验证/找回/防刷）。**登录采用完整密码账号体系，验证码仅用于注册验证与密码找回，不用于登录**（PRD §8.4#13）。
-- **异常流程**：凭证错误重试；无账号→注册发验证邮件（10 分钟有效）；忘记密码→邮箱验证码找回；未验证邮箱→`EMAIL_UNVERIFIED`；会话过期→`AUTH_EXPIRED`；任一 SRS §5.6 限频触发→`RATE_LIMITED` 并提示稍后重试。
+- **异常流程**：账号不存在或密码错误均返回同码同文案的 `INVALID_CREDENTIALS`（401），不得泄露账号是否存在；请求结构、格式或 UTF-8 密码字节边界校验失败返回 `INVALID_REQUEST`（422 Problem），不得回显原始输入；无账号注册仍走注册入口发验证邮件（10 分钟有效）；忘记密码→邮箱验证码找回；未验证邮箱→`EMAIL_UNVERIFIED`；会话过期→`AUTH_EXPIRED`；任一 SRS §5.6 限频触发→`RATE_LIMITED` 并提示稍后重试。
 - **验收判定**：注册（邮箱验证）/登录/记住我 14 天/找回/限频生效；面试官网与 admin 账号隔离（PRD §6）。
 
 ### 3.4 动态面试表页（R8 / R16 / R17 → UC-07 / UC-13）
@@ -243,7 +243,7 @@
 - 问答与知识库：`Conversation` / `Message` / `KnowledgeDocument` / `KnowledgeIndexVersion` / `RecommendedQuestionCache`
 - 字段、关系、索引、并发约束一律见领域模型文档，本文不重复维护。
 
-### 6.2 状态模型（SRS v1.2 approved；本文为状态行为唯一规范源，PRD §8.10 / 领域模型 §5 保留为输入与历史依据）
+### 6.2 状态模型（SRS v1.3 approved；本文为状态行为唯一规范源，PRD §8.10 / 领域模型 §5 保留为输入与历史依据）
 - **SlotStatus**：`available` / `booked` / `owner_locked` / `unavailable`（黄格不属此枚举，为前端临时态）。
 - **AppointmentStatus**：`active` / `cancelled` / `completed`（提交即 active；改期 active→active 原子；无 pending/draft）。
 - **DeliveryStatus**：`queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter`（通道无关；手动重发=新建尝试记录）；退信(Bounce) 不属本枚举，仅邮件通道于 `channel_metadata.bounced_at`/`bounce_reason` 记录（见 §3.8/§4.3；领域模型 v1.1.5 §5）。
@@ -286,6 +286,8 @@
 | `DUP_ACCOUNT` | 同账号已有有效预约 | 拦截+提醒 |
 | `OWNER_LOCKED` | 时段被 owner 锁定 | 不可选 |
 | `EMAIL_UNVERIFIED` | 邮箱未验证 | 引导验证 |
+| `INVALID_CREDENTIALS` | 账号不存在或密码错误 | 统一返回 401 模糊响应，不得区分账号是否存在 |
+| `INVALID_REQUEST` | 请求结构、格式或字段约束校验失败 | 返回 422 `application/problem+json`，不得回显密码、token 等原始输入 |
 | `AUTH_EXPIRED` | 登录过期 | 重新登录 |
 | `RATE_LIMITED` | 触发 §5.6 任一限频规则 | 返回限频提示与可重试时间；不得复用 `AUTH_EXPIRED` |
 | `PERM_DENIED` | 修改权限不足（非归属人） | 拒绝 |
@@ -397,4 +399,6 @@
 
 > **v1.2 修订说明（错误语义收口，2026-08-09）**：修正 §3.3 将 `AUTH_EXPIRED` 误用于限频的内部冲突，新增统一 `RATE_LIMITED`；把 architecture v0.2 §4.7 已规定的两类回滚拒绝映射为 `OVERRIDE_NOT_FOUND` / `OVERRIDE_RANGE_EMPTY`。成功路径、阈值、权限和产品能力均不变。用户于 2026-08-10 批准本版。
 
-> **文档结束** · SRS v1.2 · status=approved · approval_commit=`ab4b94e` · v1.1 approved @ `00e125c`（历史快照）。
+> **v1.3 修订说明（认证错误契约收口，2026-08-11）**：新增 `INVALID_CREDENTIALS`（401，账号不存在/密码错误同码同文案）与 `INVALID_REQUEST`（422 Problem，不回显原始输入），停止借用 `AUTH_EXPIRED` 表达凭证错误。成功登录、会话、密码策略、限频阈值与权限均不变。用户已明确批准本次精确变更。
+
+> **文档结束** · SRS v1.3 · status=approved · approval_commit=`<待回填>` · v1.2 approved @ `ab4b94e`（历史快照）。

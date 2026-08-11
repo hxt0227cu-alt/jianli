@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.1.0
+  version: 0.2.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
-    Approved contract based on SRS 1.2, domain-model 1.1.5, architecture 0.2
+    Approved contract based on SRS 1.3, domain-model 1.1.5, architecture 0.2
     and security 0.1. Implementation remains gated by the development_gate.
 servers:
   - url: /api/v1
@@ -175,6 +175,8 @@ paths:
           description: Session Cookie issued
           headers:
             Set-Cookie: { schema: { type: string } }
+        '401': { $ref: '#/components/responses/InvalidCredentials' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Error' }
   /auth/logout:
@@ -716,6 +718,28 @@ components:
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
+    InvalidCredentials:
+      description: Account does not exist or password is incorrect; both cases are indistinguishable.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Problem'
+              - type: object
+                properties:
+                  status: { const: 401 }
+                  code: { const: INVALID_CREDENTIALS }
+    InvalidRequest:
+      description: Request validation failed; raw input values are never returned.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Problem'
+              - type: object
+                properties:
+                  status: { const: 422 }
+                  code: { const: INVALID_REQUEST }
   schemas:
     Problem:
       type: object
@@ -726,7 +750,7 @@ components:
         status: { type: integer, minimum: 400, maximum: 599 }
         code:
           type: string
-          enum: [SLOT_TAKEN, DUP_COMPANY, DUP_ACCOUNT, OWNER_LOCKED, EMAIL_UNVERIFIED, AUTH_EXPIRED, RATE_LIMITED, PERM_DENIED, OVERRIDE_NOT_FOUND, OVERRIDE_RANGE_EMPTY, FEISHU_SYNC_FAIL, NOTIFY_PARTIAL, INDEX_FAIL, MODEL_UNAVAILABLE, SSE_RECONNECT, CONFIRM_EXPIRED, CONFIRM_MAIL_FAIL, EMAIL_NOT_EDITABLE]
+          enum: [SLOT_TAKEN, DUP_COMPANY, DUP_ACCOUNT, OWNER_LOCKED, EMAIL_UNVERIFIED, INVALID_CREDENTIALS, INVALID_REQUEST, AUTH_EXPIRED, RATE_LIMITED, PERM_DENIED, OVERRIDE_NOT_FOUND, OVERRIDE_RANGE_EMPTY, FEISHU_SYNC_FAIL, NOTIFY_PARTIAL, INDEX_FAIL, MODEL_UNAVAILABLE, SSE_RECONNECT, CONFIRM_EXPIRED, CONFIRM_MAIL_FAIL, EMAIL_NOT_EDITABLE]
         detail: { type: string }
         trace_id: { type: string }
         retry_after_seconds: { type: integer, minimum: 1 }

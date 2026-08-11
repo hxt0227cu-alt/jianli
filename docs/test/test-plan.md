@@ -1,6 +1,6 @@
-# 测试计划（review 草案 v0.1）
+# 测试计划 v0.2（approved）
 
-> based_on：SRS 1.2 / domain-model 1.1.5 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.1（均 approved）。当前 69 个 TC 的断言与阈值冻结于内容快照 `204c2b8`；实现任务不得删除、skip、放宽或降级真实依赖级别。本轮 impact review 未修改任何 TC，`spec_sync=clean`。
+> based_on：SRS 1.3 / domain-model 1.1.5 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.2（均 approved）。TC 总数仍为 69；本次只收紧 TC-AUTH-002/004 的错误契约断言，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
 
 ## 1. 证据等级与门禁
 
@@ -44,9 +44,9 @@
 | TC | 覆盖 | 验收 |
 |---|---|---|
 | TC-AUTH-001 | R9/R20 | 注册只创建 interviewer；验证 token 10 分钟、单次消费 |
-| TC-AUTH-002 | R9 | 密码登录成功；验证码不能用于登录 |
+| TC-AUTH-002 | R9 | 密码登录成功；验证码不能用于登录；账号不存在与错误密码均返回同码同文案的 401 `INVALID_CREDENTIALS` |
 | TC-AUTH-003 | R19 | 普通会话 12h、remember_me 14d；Cookie Secure/HttpOnly/SameSite=Lax |
-| TC-AUTH-004 | security §2 | BCrypt 10/72-byte 边界；73 bytes 拒绝且不静默截断；dummy hash 降低账号枚举 |
+| TC-AUTH-004 | security §2 | BCrypt 10/72-byte 边界；73 bytes 返回 422 `INVALID_REQUEST` Problem 且不回显输入、不静默截断；dummy hash 降低账号枚举 |
 | TC-AUTH-005 | R20 | 密码重置后所有 AuthSession 被吊销，旧 Cookie 返回 AUTH_EXPIRED |
 | TC-AUTH-006 | SRS §5.6 | 注册/验证码/登录/预约/重发/问答/SSE 各阈值独立，超限统一 RATE_LIMITED + Retry-After |
 | TC-AUTH-007 | security §3 | Redis 故障时敏感写 fail closed；公开静态页继续；不以进程内计数冒充正式限频 |
@@ -66,7 +66,7 @@
 | TC-APT-008 | UC-22 | CompanyBookingException 并发消费仅一次成功，uq_appointment_exception 兜底 |
 | TC-APT-009 | arch §4.7 | 同一 Override 并发 UPDATE/DELETE 串行化并重读真实 old_range |
 | TC-APT-010 | arch §4.7 | Override 与改期/取消同范围由 Slot 锁串行化；booked 保持 booked |
-| TC-APT-011 | SRS 1.2 | 不存在 Override 返回 OVERRIDE_NOT_FOUND；范围零命中返回 OVERRIDE_RANGE_EMPTY，均回滚 |
+| TC-APT-011 | SRS 1.3 | 不存在 Override 返回 OVERRIDE_NOT_FOUND；范围零命中返回 OVERRIDE_RANGE_EMPTY，均回滚 |
 
 ### 2.5 SSE
 

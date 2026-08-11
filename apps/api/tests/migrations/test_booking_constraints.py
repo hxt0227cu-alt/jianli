@@ -147,6 +147,14 @@ def test_exception_uniques(constraint_engine: Engine) -> None:
         companies = (_company(connection), _company(connection))
         reusable = _exception(connection, users[1], "other")
         _appointment(connection, users[0], companies[0], "first", reusable)
+        extra_users = (_user(connection), _user(connection))
+        extra_companies = (_company(connection), _company(connection))
+        exceptions = (
+            _exception(connection, extra_users[0], "shared"),
+            _exception(connection, extra_users[1], "shared"),
+        )
+        _appointment(connection, extra_users[0], extra_companies[0], "shared", exceptions[0])
+        _appointment(connection, extra_users[1], extra_companies[1], "shared", exceptions[1])
     with pytest.raises(IntegrityError), constraint_engine.begin() as connection:
         _appointment(connection, users[1], companies[1], "second", reusable)
 

@@ -19,6 +19,7 @@
 - ADR-IMPL-001：accepted
 - 基线 commit：`5062c699f1b692ae0571955ec92976b555071c65`
 - 前置迁移：DB-002 最终快照 `2fd1199`；DB-003 最终快照 `4f3b74c`（均已独立审查；不代表生产已迁移）
+- 用户批准：2026-08-11 用户明确批准「BOOKING-001 加密实施方案，按 `dd59869` 实施」，授权本任务列明的 `cryptography==46.0.7`、AES-256-GCM key ring、公司指纹 HMAC 与三分钟确认 token HMAC；不含生产密钥、生产迁移、外部通知或基础设施。
 
 ## 精确规范引用（AI 只读取这些章节）
 - SRS §3.5、§5.1～§5.3、§5.6、§7、§8
@@ -66,18 +67,18 @@
 - DB：**无 schema 变更**。只使用已批准并已迁移验证的 `0001`～`0003` 表、列、约束和索引；本任务不得新增 migration。
 - API/SSE：**无契约变更**。严格实现 approved OpenAPI 0.2 的 `previewAppointment` 与 `createAppointment`；不得增删请求/响应字段或 SSE 事件。
 - 鉴权：复用 AUTH 最终快照 `b8c7fc5` 的 Cookie session、CSRF、Origin、RBAC 与 Redis fail-closed 机制；只允许 `interviewer` 创建预约，`owner_admin` 返回 `PERM_DENIED`。
-- 依赖（**待用户人工批准后方可实施**）：新增直接依赖 `cryptography==46.0.7`，并把其解析出的传递依赖以精确版本写入 `requirements.lock`；来源为 accepted ADR-IMPL-001，但按其 §5 与 AGENTS.md §4，加密实现仍需本次人工批准。
-- 加密与密钥（**待用户人工批准后方可实施**）：
+- 依赖（**已由用户批准**）：新增直接依赖 `cryptography==46.0.7`，并把其解析出的传递依赖以精确版本写入 `requirements.lock`；来源为 accepted ADR-IMPL-001，实施授权见本任务「用户批准」。
+- 加密与密钥（**已由用户批准**）：
   - `JIANLI_FIELD_ENCRYPTION_CURRENT_KEY_ID`：当前写入 key id；
   - `JIANLI_FIELD_ENCRYPTION_KEYS`：JSON key ring，`key_id -> URL-safe Base64(32-byte AES key)`，仅允许当前与上一版本读取，当前版本写入；
   - `JIANLI_COMPANY_FINGERPRINT_HMAC_KEY`：独立 URL-safe Base64 32-byte key；
   - `JIANLI_APPOINTMENT_CONFIRMATION_HMAC_KEY`：独立 URL-safe Base64 32-byte key，签名三分钟确认 token；
   - 四项不得与 CSRF、rate-limit、Cookie 或外部服务凭证复用；密钥只由环境变量/Secret Manager 注入，不入 Git、日志、响应或测试证据。
-- 加密格式（**待用户人工批准后方可实施**）：AES-256-GCM 每次 96-bit 随机 nonce；二进制版本化 envelope 包含 version/key_id/nonce/ciphertext/tag；AAD 绑定 `table + column + record_id`；解密失败拒绝并写不含 PII 的安全告警；key ring 双读单写。
-- 确认 token（**待用户人工批准后方可实施**）：HMAC-SHA256 签名、URL-safe 编码，绑定 `user_id + canonical appointment payload digest + expires_at + 256-bit nonce`；服务端只信签名内容并重新校验提交 payload，三分钟后返回 `CONFIRM_EXPIRED`；token 不持久化、不写日志。
+- 加密格式（**已由用户批准**）：AES-256-GCM 每次 96-bit 随机 nonce；二进制版本化 envelope 包含 version/key_id/nonce/ciphertext/tag；AAD 绑定 `table + column + record_id`；解密失败拒绝并写不含 PII 的安全告警；key ring 双读单写。
+- 确认 token（**已由用户批准**）：HMAC-SHA256 签名、URL-safe 编码，绑定 `user_id + canonical appointment payload digest + expires_at + 256-bit nonce`；服务端只信签名内容并重新校验提交 payload，三分钟后返回 `CONFIRM_EXPIRED`；token 不持久化、不写日志。
 - 公司归一化：严格按 PRD 已批准口径（去空格、统一小写、去常见标点后缀）后使用独立 HMAC-SHA256 key 生成 fingerprint；不得记录归一化原文。
 
-> **当前硬门禁**：用户尚未批准本节的 `cryptography` 精确依赖与预约加密/密钥实施方案。任务评审包可以提交；业务代码、依赖安装与配置实现必须等待用户明确批准。
+> **批准门禁已解除**：用户已于 2026-08-11 明确批准本节的精确依赖与预约加密/密钥实施方案；任何未列明的 DB/API/依赖/加密变化仍须 Stop & Report。
 
 ## 规范影响评估（spec impact）
 - behavior_change：false（实现 approved 行为，不改变规范）
@@ -121,26 +122,26 @@
 - 测试环境密钥、PostgreSQL、Redis、venv 全部一次性创建，测试后停止并删除。
 
 ## 强制停止条件
-- 用户未明确批准本任务的加密、密钥和依赖实施方案。
+- 出现本任务已批准范围之外的加密、密钥和依赖变化。
 - 需要新增/修改 DB schema、migration、公开 API/SSE、鉴权/加密策略或外部依赖。
 - 确认 token、`Idempotency-Key` 或一次性例外语义无法在 approved 工件与现有 schema 内实现。
 - 冻结 TC 失败、真实并发测试不能运行或超过 change_budget。
 - 发现当前 migration/代码与领域模型不一致；不得以文档推断实现已存在。
 
 ## 交付证据
-- commit / PR：评审包待提交；实现待用户批准
+- commit / PR：评审包 `dd59869`；批准记录待提交；实现待回填
 - 修改文件清单：当前仅本任务、独立审查任务与 PROJECT_STATE；实现阶段待回填
 - 测试命令及结果：未运行（当前禁止业务实现与依赖安装）
 - lint / typecheck：未运行
 - DB 迁移验证：沿用 DB-002/DB-003 已关闭证据；BOOKING 实现阶段须重新在一次性真实 PostgreSQL 验证，不执行生产迁移
 - 验收证据：待回填
 - 变更预算实际值：待回填
-- 未解决风险：加密/依赖/密钥方案待用户人工批准；`Idempotency-Key` 的请求级重放响应未在 approved OpenAPI 中定义，本任务不自行扩展语义
+- 未解决风险：`Idempotency-Key` 的请求级重放响应未在 approved OpenAPI 中定义，本任务不自行扩展语义
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
 - verified_commit：待实现与独立审查后回填
-- 状态：Awaiting human approval
+- 状态：Approved for implementation
 
 ## 关联
 - 前置：TASK-AUTH-001～003、TASK-DB-002、TASK-DB-003（均 Closed）

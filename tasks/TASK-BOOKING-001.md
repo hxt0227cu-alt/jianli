@@ -129,19 +129,20 @@
 - 发现当前 migration/代码与领域模型不一致；不得以文档推断实现已存在。
 
 ## 交付证据
-- commit / PR：评审包 `dd59869`；批准记录待提交；实现待回填
-- 修改文件清单：当前仅本任务、独立审查任务与 PROJECT_STATE；实现阶段待回填
-- 测试命令及结果：未运行（当前禁止业务实现与依赖安装）
-- lint / typecheck：未运行
-- DB 迁移验证：沿用 DB-002/DB-003 已关闭证据；BOOKING 实现阶段须重新在一次性真实 PostgreSQL 验证，不执行生产迁移
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：`Idempotency-Key` 的请求级重放响应未在 approved OpenAPI 中定义，本任务不自行扩展语义
+- commit / PR：评审包 `dd59869`；批准记录 `9dc6379`；初始实现 `2291e4b`；独立测试修正 `b8b241f`；最终固定实现 `9374a91`；未创建 PR
+- 修改文件清单：`apps/api/app/appointments/{__init__,crypto,models,router,runtime,service}.py`、`apps/api/app/config.py`、`apps/api/app/factory.py`、`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/tests/appointments/{test_booking,test_security}.py`、本任务、`PROJECT_STATE.md`
+- 测试命令及结果：一次性 WSL Python 3.12 / PostgreSQL 16 / Redis 7 环境执行 `pytest tests/appointments -q` → 8 passed / 0 skipped；执行 `pytest -q` → 51 passed / 0 failed / 0 skipped（14 条既有 Alembic 配置弃用 warning）
+- lint / typecheck：`ruff check .` → pass；`ruff format --check .` → 38 files formatted；`mypy app` → 22 source files / 0 issues；`pip check` → no broken requirements
+- DB 迁移验证：三个一次性空库分别用于 BOOKING、AUTH、migration；`0001 → 0002 → 0003` upgrade 通过，全套 migration 测试中的 upgrade/downgrade 路径通过；未执行生产迁移
+- 临时环境清理：PostgreSQL/Redis 已停止，端口 `55438`/`6398` 无监听；`/var/tmp/jianli-booking-001-019fd035b`（venv、下载包、data、日志、PID）已删除
+- 验收证据：TC-APT-001～003、TC-SEC-001～004、TC-AUTH-006/008 通过；TC-APT-003 真实独立事务连续 10 轮均为一个 201、一个 `SLOT_TAKEN`，每轮严格为 1 Appointment / 3 booked Slot / 2 NotificationEvent / 1 AuditLog；并发请求耗时以每轮 max ≤ 1.5s 的更严格阈值通过
+- 变更预算实际值：14 个文件；生产代码 745 行；测试代码 482 行（其中独立 TASK-TEST-BOOKING-001 为 `+10/-6`）
+- 未解决风险：`Idempotency-Key` 的请求级重放响应未在 approved OpenAPI 中定义，本任务仅强制 16～128 长度且不自行扩展重放语义；Alembic 现有 `path_separator` 弃用 warning 非本任务范围
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待实现与独立审查后回填
-- 状态：Approved for implementation
+- verified_commit：`9374a91`
+- 状态：Implemented awaiting independent review
 
 ## 关联
 - 前置：TASK-AUTH-001～003、TASK-DB-002、TASK-DB-003（均 Closed）

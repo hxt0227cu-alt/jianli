@@ -56,7 +56,7 @@
 - **TASK-TEST-MIGRATION-001**：**Closed（2026-08-11）**——获批的身份域表集合子集断言已兼容合法后续 migration，其余身份域精确 schema/约束断言保持冻结。
 - **TASK-TEST-DB-002-CONSTRAINTS / TASK-TEST-DB-002-REFERENTIAL**：**Closed（2026-08-11）**——按预算拆分的 UNIQUE/CHECK 与 enum/FK 真实数据库拒绝路径全部通过，分别为 188/190 与 90/90 测试行。
 - **TASK-DB-003 / TASK-REVIEW-DB-003**：**Closed（2026-08-11）**——最终验证快照 `4f3b74c`；两表/两 enum/approved 约束可逆迁移通过，同一真实 PostgreSQL 连续两遍 migration 测试均 26 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
-- **TASK-BOOKING-001**：**Approved for implementation（2026-08-11）**——用户已明确批准评审包 `dd59869` 中的 `cryptography==46.0.7`、AES key ring、公司指纹 HMAC 与三分钟确认 token HMAC；DB/API 均不变，现进入独立实现窗口。
+- **TASK-BOOKING-001**：**Implemented awaiting independent review（2026-08-11）**——最终固定实现 `9374a91`；真实 PostgreSQL/Redis 预约 8 passed、全套 51 passed / 0 skipped、TC-APT-003 连续 10 轮、Ruff/format/mypy/pip check 全通过；DB/API 不变，等待 TASK-REVIEW-BOOKING-001 独立审查。
 - **TASK-REVIEW-BOOKING-001**：**Planned**——BOOKING-001 获批并固定实现 commit 后，在独立审查窗口执行事务/并发/安全/越界复核。
 - **TASK-TEST-BOOKING-001**：**Closed（2026-08-11）**——测试兼容性提交 `b8b241f` 仅显式清理无 FK 的 Outbox/Audit 测试数据，不改断言、10 轮并发、生产代码或 schema；真实 PostgreSQL/Redis 预约测试 8 passed / 0 skipped。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。

@@ -4,7 +4,7 @@
 
 建议批准一份独立、可逆的 `0002_booking_schema` migration，只物化预约域五张核心表：`companies`、`company_booking_exceptions`、`appointments`、`appointment_slots`、`availability_overrides`。通知 Outbox、AuditLog、Repository、API、预约事务和生产部署均不进入本迁移。
 
-本文件是数据库迁移的人审输入。用户明确批准前，不写 migration、不执行任何数据库变更。
+本文件是数据库迁移的人审输入。用户已于 2026-08-11 明确批准 commit `437f45c` 中的四项方案；实现仅可在本边界内进行，不执行生产数据库变更。
 
 ## 规范依据
 
@@ -150,9 +150,9 @@ downgrade：按依赖逆序删除 `availability_overrides` → `appointment_slot
 | 非法 enum / 缺失 FK | 拒绝 |
 | 冻结测试 | TC-OPS-002 真实 PostgreSQL 零 skip；后续 BOOKING 并发 TC 不在 migration 中用 mock 冒充 |
 
-## 请求批准
+## 批准记录
 
-请批准或调整以下四项后再写 migration：
+用户已批准以下四项：
 
 1. 五表 + 三 enum 的本批范围；
 2. 上述字段类型与 NULL/NOT NULL 物理裁定；

@@ -4,7 +4,8 @@
 - migration
 
 ## 当前阶段
-- 状态：Awaiting Approval
+- 状态：In Progress
+- 用户批准：2026-08-11 用户明确批准 `docs/reviews/db-002-migration-plan.md`（commit `437f45c`），授权按评审包实施；仅限一次性测试库，不含生产迁移。
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.3 / 用例规约 1.7.2 / 领域模型 1.1.5 / SRS 1.3 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.2 / test_plan 0.2（均 approved）
@@ -42,7 +43,10 @@
 - `sleep202603-an/**`
 
 ## 已批准的 DB / API / 依赖变更
-- 待用户批准 `docs/reviews/db-002-migration-plan.md` 后，逐项抄入；批准前本节无 DB 变更授权，不得写 migration。
+- DB：新增 PostgreSQL enum `appointment_status`、`slot_status`、`availability_override_action`。
+- DB：新增 `companies`、`company_booking_exceptions`、`appointments`、`appointment_slots`、`availability_overrides` 五表及评审包列明的字段、NULL/NOT NULL、FK 和 `NO ACTION` 删除策略。
+- DB：新增 `uq_active_company`、`uq_active_user`、`uq_exception_open`、`uq_appointment_exception` 四个部分唯一索引；`companies.normalized_name_fingerprint` 与 `appointment_slots(start_at,end_at)` 两个 UNIQUE；Slot 30 分钟与 Override 正向范围两个 CHECK；五个评审包列明的普通 FK 索引。
+- DB：新增可逆 `0002_booking_schema`，down revision=`0001_identity_schema`；不新增 trigger/function/extension/server default。
 - API/SSE/依赖：无。
 
 ## 规范影响评估

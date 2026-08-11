@@ -56,16 +56,21 @@ def outbox_engine() -> Iterator[Engine]:
         with engine.begin() as connection:
             company_id = uuid4()
             connection.execute(
-                text("INSERT INTO companies VALUES (:id,'preserved-db003',:ciphertext)"),
-                {"id": company_id, "ciphertext": b"ciphertext"},
+                text("INSERT INTO companies VALUES (:id,:fingerprint,:ciphertext)"),
+                {
+                    "id": company_id,
+                    "fingerprint": f"preserved-db003-{company_id}",
+                    "ciphertext": b"ciphertext",
+                },
             )
         command.downgrade(config, "0002_booking_schema")
         assert OUTBOX_TABLES.isdisjoint(inspect(engine).get_table_names())
         assert set(inspect(engine).get_table_names()) >= BOOKING_TABLES
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             assert connection.scalar(
                 text("SELECT count(*) FROM companies WHERE id=:id"), {"id": company_id}
             )
+            connection.execute(text("DELETE FROM companies WHERE id=:id"), {"id": company_id})
         command.upgrade(config, "head")
         yield engine
     finally:

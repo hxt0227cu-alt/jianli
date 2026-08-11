@@ -4,7 +4,7 @@
 - test
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 拆分原因：DB-002 测试经 Ruff 格式化后超过 320 行预算，按硬规则拆分，不事后上调预算。
 
 ## 基线版本与基线 commit
@@ -60,19 +60,19 @@
 - 需要新约束/字段/API/依赖、降低冻结断言、真实测试失败或超过预算。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：任务建立 `b314b42`；实现 `280ba83`；例外正向回归补齐 `2fd1199`
+- 修改文件清单：`apps/api/tests/migrations/test_booking_constraints.py`、`tasks/TASK-TEST-DB-002-CONSTRAINTS.md`、`PROJECT_STATE.md`
+- 测试命令及结果：真实 PostgreSQL migration 测试 22 passed / 0 skipped；本文件 6 passed
+- lint / typecheck：Ruff check/format pass；pip check pass
 - DB 迁移验证：与 TASK-DB-002 共用一次性 PostgreSQL
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：UNIQUE、四个部分唯一索引、两个 CHECK 的拒绝路径及不同例外放行同公司指纹正向路径通过
+- 变更预算实际值：3/3 文件；生产 0/0 行；测试 188/190 行
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`2fd1199`
+- 状态：Closed
 
 ## 关联
 - enum / FK 拒绝路径因本任务格式化后仍超过 190 行预算，拆至 `TASK-TEST-DB-002-REFERENTIAL`，不得事后上调预算。

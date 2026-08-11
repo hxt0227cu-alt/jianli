@@ -4,7 +4,7 @@
 - migration
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 用户批准：2026-08-11 用户明确批准 `docs/reviews/db-002-migration-plan.md`（commit `437f45c`），授权按评审包实施；仅限一次性测试库，不含生产迁移。
 
 ## 基线版本与基线 commit
@@ -83,19 +83,19 @@
 - 用户尚未批准迁移评审包；需要未列明表/列/索引/enum/trigger/function/extension/依赖；冻结测试失败；超过预算。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
-- DB 迁移验证：待回填
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- commit / PR：评审包 `437f45c`；用户批准登记 `5e49d48`；实现 `280ba83`；回归补齐 `2fd1199`
+- 修改文件清单：`docs/reviews/db-002-migration-plan.md`、`apps/api/migrations/versions/0002_booking_schema.py`、`apps/api/tests/migrations/test_booking_schema.py`、`tasks/TASK-DB-002.md`、`tasks/TASK-REVIEW-DB-002.md`、`PROJECT_STATE.md`
+- 测试命令及结果：真实 PostgreSQL `python -m pytest tests/migrations -q -ra` → 22 passed / 0 skipped；全套 → 38 passed / 1 skipped（仅 AUTH 需要 Redis 的环境门禁，与 DB-002 无关）
+- lint / typecheck：Ruff check/format pass；mypy 16 source files / 0 issues；pip check pass
+- DB 迁移验证：`upgrade head → downgrade 0001_identity_schema → upgrade head` 通过；最终 revision=`0002_booking_schema`
+- 验收证据：五表、三 enum、六 FK、四部分唯一索引、两个 UNIQUE、两个 CHECK、五普通索引逐项通过；身份域数据在 down/up 中保留；独立审查 P0/P1/P2=0
+- 变更预算实际值：6/6 文件；生产 166/260 行；结构测试 206/320 行；约束与 enum/FK 测试按独立任务拆分
+- 未解决风险：无任务阻塞风险；全套测试的 1 个 AUTH skip 已由 AUTH 最终快照 `b8c7fc5` 在 PostgreSQL+Redis 环境独立验证
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`2fd1199`
+- 状态：Closed
 
 ## 关联
 - 独立审查：TASK-REVIEW-DB-002

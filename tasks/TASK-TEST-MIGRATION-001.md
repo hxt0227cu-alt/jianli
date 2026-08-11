@@ -4,7 +4,7 @@
 - test / approved test maintenance
 
 ## 当前阶段
-- 状态：In Progress
+- 状态：Closed
 - 用户批准：2026-08-11 明确批准迁移冻结测试兼容性修正。
 
 ## 基线版本与基线 commit
@@ -62,16 +62,16 @@
 - 需要修改除表集合断言外的冻结断言、出现测试失败或超过预算。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：任务建立 `7b26f4b`；兼容修正 `c85bdf3`；Ruff 等价语法规范化随 `280ba83`
+- 修改文件清单：`apps/api/tests/migrations/test_identity_schema.py`、`tasks/TASK-TEST-MIGRATION-001.md`、`PROJECT_STATE.md`
+- 测试命令及结果：真实 PostgreSQL migration 测试 22 passed / 0 skipped；身份域列、类型、PK/FK/UK/index/enum 精确断言未改
+- lint / typecheck：Ruff check/format pass；mypy 0 issues
 - DB 迁移验证：无独立 migration；与 DB-002 真实 up/down/up 一并验证
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：DB-002 合法新增表存在时，身份域六表子集断言通过；down base 后身份域仍严格清空
+- 变更预算实际值：3/3 文件；生产 0/0 行；测试 1/2 行
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Open
+- verified_commit：`2fd1199`
+- 状态：Closed

@@ -1,9 +1,6 @@
-"""Appointment runtime wiring over the existing auth engine and Redis client."""
-
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 
 from app.auth.runtime import AuthRuntime
 from app.config import Settings
@@ -12,12 +9,7 @@ from .crypto import BookingSecrets
 from .service import BookingService
 
 
-@dataclass(slots=True)
-class BookingRuntime:
-    service: BookingService
-
-
-def build_booking_runtime(settings: Settings, auth_runtime: AuthRuntime) -> BookingRuntime:
+def build_booking_runtime(settings: Settings, auth_runtime: AuthRuntime) -> BookingService:
     if not settings.booking_configured:
         raise ValueError("complete booking settings are required")
     assert settings.field_encryption_current_key_id
@@ -41,11 +33,9 @@ def build_booking_runtime(settings: Settings, auth_runtime: AuthRuntime) -> Book
         csrf_key=settings.csrf_hmac_key.get_secret_value(),
         rate_limit_key=settings.rate_limit_hmac_key.get_secret_value(),
     )
-    return BookingRuntime(
-        BookingService(
-            auth_runtime.engine,
-            secrets_config,
-            auth_runtime.redis_client,
-            settings.rate_limit_hmac_key.get_secret_value(),
-        )
+    return BookingService(
+        auth_runtime.engine,
+        secrets_config,
+        auth_runtime.redis_client,
+        settings.rate_limit_hmac_key.get_secret_value(),
     )

@@ -14,7 +14,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from .appointments.router import create_appointment_router
-from .appointments.runtime import BookingRuntime, build_booking_runtime
+from .appointments.runtime import build_booking_runtime
+from .appointments.service import BookingService
 from .auth.errors import AuthError
 from .auth.router import create_auth_router, problem_response
 from .auth.runtime import AuthRuntime, build_auth_runtime
@@ -65,7 +66,7 @@ def _validated_origins(origins: frozenset[str]) -> frozenset[str]:
 def create_app(
     settings: Settings | None = None,
     auth_runtime: AuthRuntime | None = None,
-    booking_runtime: BookingRuntime | None = None,
+    booking_runtime: BookingService | None = None,
 ) -> FastAPI:
     """Create the application and mount auth only with complete secure dependencies."""
 

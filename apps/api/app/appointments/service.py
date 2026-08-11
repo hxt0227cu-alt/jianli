@@ -1,5 +1,3 @@
-"""Appointment preview and the approved atomic creation transaction."""
-
 from __future__ import annotations
 
 import hashlib

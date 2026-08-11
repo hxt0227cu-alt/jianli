@@ -1,5 +1,3 @@
-"""Approved appointment preview and creation routes."""
-
 from __future__ import annotations
 
 from typing import Annotated
@@ -11,11 +9,11 @@ from app.auth.router import _principal, _require_csrf
 from app.auth.runtime import AuthRuntime
 
 from .models import Appointment, AppointmentDraft, AppointmentPreview, CreateAppointmentRequest
-from .runtime import BookingRuntime
+from .service import BookingService
 
 
 def create_appointment_router(
-    auth_runtime: AuthRuntime, booking_runtime: BookingRuntime
+    auth_runtime: AuthRuntime, booking_service: BookingService
 ) -> APIRouter:
     router = APIRouter(tags=["Appointments"])
 
@@ -30,7 +28,7 @@ def create_appointment_router(
     )
     def preview(payload: AppointmentDraft, request: Request) -> AppointmentPreview:
         principal = interviewer(request)
-        return booking_runtime.service.preview(principal, payload)
+        return booking_service.preview(principal, payload)
 
     @router.post(
         "/appointments",
@@ -46,10 +44,6 @@ def create_appointment_router(
         ],
     ) -> Appointment:
         principal = interviewer(request)
-        if not idempotency_key.strip():
-            raise ValueError("Idempotency-Key must not be blank")
-        return booking_runtime.service.create(
-            principal, payload.appointment, payload.confirmation_token
-        )
+        return booking_service.create(principal, payload.appointment, payload.confirmation_token)
 
     return router

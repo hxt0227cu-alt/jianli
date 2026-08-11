@@ -1,5 +1,3 @@
-"""AES-GCM fields, company fingerprints, and signed confirmation tokens."""
-
 from __future__ import annotations
 
 import base64
@@ -52,7 +50,10 @@ def _b64encode(value: bytes) -> str:
 
 
 def _b64decode(value: str) -> bytes:
-    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    decoded = base64.b64decode(value + "=" * (-len(value) % 4), altchars=b"-_", validate=True)
+    if _b64encode(decoded) != value:
+        raise ValueError("non-canonical Base64URL")
+    return decoded
 
 
 def normalize_company_name(value: str) -> str:

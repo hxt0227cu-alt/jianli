@@ -34,7 +34,7 @@
 
 ## 已批准的 DB / API / 依赖变更
 - DB/API/依赖：无。
-- frozen test：用户批准仅将 `set(get_table_names()) == DOMAIN_TABLES | {alembic_version}` 改为 `DOMAIN_TABLES <= set(get_table_names())`；其它断言不得改变。
+- frozen test：用户批准仅将 `set(get_table_names()) == DOMAIN_TABLES | {alembic_version}` 改为等价的子集断言 `set(get_table_names()) >= DOMAIN_TABLES`；其它断言不得改变。
 
 ## 规范影响评估
 - behavior_change：false

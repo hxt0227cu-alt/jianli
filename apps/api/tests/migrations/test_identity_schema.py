@@ -106,7 +106,7 @@ def _insert_user(connection: Any, *, role: str = "interviewer") -> tuple[object,
 
 def test_identity_schema_shape(migrated_engine: Engine) -> None:
     inspector = inspect(migrated_engine)
-    assert DOMAIN_TABLES <= set(inspector.get_table_names())
+    assert set(inspector.get_table_names()) >= DOMAIN_TABLES
     assert _enum_labels(migrated_engine) == ["interviewer", "owner_admin"]
 
     expected_columns: dict[str, dict[str, tuple[str, bool]]] = {

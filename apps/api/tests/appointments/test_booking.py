@@ -28,6 +28,13 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _reset_database(engine: Engine) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text("TRUNCATE TABLE audit_logs, notification_events, users, companies CASCADE")
+        )
+
+
 def _settings() -> Settings:
     assert DATABASE_URL and REDIS_URL
     return Settings(
@@ -49,8 +56,7 @@ def real_stack() -> tuple[Engine, redis.Redis, object, Settings]:
     engine = create_engine(settings.database_url)
     redis_client = redis.Redis.from_url(settings.redis_url)
     redis_client.flushdb()
-    with engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE users CASCADE"))
+    _reset_database(engine)
     auth_runtime = build_auth_runtime(settings)
     booking_runtime = build_booking_runtime(settings, auth_runtime)
     app = create_app(settings, auth_runtime, booking_runtime)
@@ -59,8 +65,7 @@ def real_stack() -> tuple[Engine, redis.Redis, object, Settings]:
     finally:
         auth_runtime.close()
         redis_client.close()
-        with engine.begin() as connection:
-            connection.execute(text("TRUNCATE TABLE users CASCADE"))
+        _reset_database(engine)
         engine.dispose()
 
 
@@ -296,8 +301,7 @@ async def test_two_transactions_race_for_slots_ten_rounds(real_stack) -> None:
     engine, redis_client, app, settings = real_stack
     durations: list[float] = []
     for round_number in range(10):
-        with engine.begin() as connection:
-            connection.execute(text("TRUNCATE TABLE users CASCADE"))
+        _reset_database(engine)
         redis_client.flushdb()
         users = [_seed_user(engine), _seed_user(engine)]
         slots = _seed_slots(engine, datetime(2031, 1, 2 + round_number, 1, 0, tzinfo=UTC))

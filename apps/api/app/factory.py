@@ -98,11 +98,16 @@ def create_app(
     ) -> JSONResponse:
         if not request.url.path.startswith("/auth/"):
             return await request_validation_exception_handler(request, error)
-        _log_auth_rejection(request, "VALIDATION_FAILED", str(uuid4()))
-        details = [
-            {key: item[key] for key in ("type", "loc", "msg") if key in item}
-            for item in error.errors()
-        ]
-        return JSONResponse({"detail": details}, status_code=422)
+        request_id = str(uuid4())
+        _log_auth_rejection(request, "INVALID_REQUEST", request_id)
+        return problem_response(
+            AuthError(
+                "INVALID_REQUEST",
+                422,
+                "Invalid request",
+                "Request validation failed",
+            ),
+            request_id,
+        )
 
     return app

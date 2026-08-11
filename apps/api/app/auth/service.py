@@ -84,7 +84,9 @@ class AuthService:
                 _log_account_failure(account_tag, ip, "RATE_LIMITED", request_id)
                 raise
             _log_account_failure(account_tag, ip, "INVALID_CREDENTIALS", request_id)
-            raise AuthError("AUTH_EXPIRED", 401, "Invalid credentials", "Invalid credentials")
+            raise AuthError(
+                "INVALID_CREDENTIALS", 401, "Invalid credentials", "Invalid credentials"
+            )
         assert user is not None
         if not bool(user["verified"]):
             _log_account_failure(account_tag, ip, "EMAIL_UNVERIFIED", request_id)

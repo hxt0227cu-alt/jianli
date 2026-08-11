@@ -287,7 +287,7 @@ def test_unverified_and_invalid_credentials_are_rejected(passwords: PasswordHash
             "127.0.0.1",
             None,
         )
-    assert invalid.value.code == "AUTH_EXPIRED"
+    assert invalid.value.code == "INVALID_CREDENTIALS"
 
 
 @pytest.mark.asyncio
@@ -420,6 +420,8 @@ async def test_login_rejects_missing_origin_and_73_byte_password(
             },
         )
         assert overlong.status_code == 422
+        assert overlong.headers["content-type"].startswith("application/problem+json")
+        assert overlong.json()["code"] == "INVALID_REQUEST"
         assert overlong_password not in overlong.text
         multibyte_overlong = await client.post(
             "/auth/login",
@@ -427,6 +429,7 @@ async def test_login_rejects_missing_origin_and_73_byte_password(
             json={"email": "person@example.invalid", "password": "密" * 25, "remember_me": False},
         )
         assert multibyte_overlong.status_code == 422
+        assert multibyte_overlong.json()["code"] == "INVALID_REQUEST"
         invalid = await client.post(
             "/auth/login",
             headers={"Origin": ORIGIN},
@@ -437,6 +440,22 @@ async def test_login_rejects_missing_origin_and_73_byte_password(
             },
         )
         assert invalid.status_code == 401
+        assert invalid.headers["content-type"].startswith("application/problem+json")
+        assert invalid.json()["code"] == "INVALID_CREDENTIALS"
+        missing = await client.post(
+            "/auth/login",
+            headers={"Origin": ORIGIN},
+            json={
+                "email": "missing@example.invalid",
+                "password": "wrong-password",
+                "remember_me": False,
+            },
+        )
+        assert missing.status_code == 401
+        comparable_fields = ("type", "title", "status", "code", "detail")
+        assert {key: invalid.json()[key] for key in comparable_fields} == {
+            key: missing.json()[key] for key in comparable_fields
+        }
         event = next(
             record.getMessage()
             for record in reversed(caplog.records)
@@ -540,6 +559,7 @@ async def test_real_postgresql_and_redis_auth_flow(passwords: PasswordHasher) ->
                     },
                 )
                 assert response.status_code == 401
+                assert response.json()["code"] == "INVALID_CREDENTIALS"
             limited = await client.post(
                 "/auth/login",
                 headers={"Origin": ORIGIN},

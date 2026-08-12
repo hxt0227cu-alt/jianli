@@ -384,7 +384,7 @@ class BookingService:
                         "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
                         "company_name_fingerprint,meeting_platform_ciphertext,"
                         "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
-                        "FROM appointments WHERE user_id=:user_id AND deleted_at IS NULL "
+                        "FROM appointments WHERE user_id=:user_id AND status='active' "
                         "ORDER BY start_at DESC"
                     ),
                     {"user_id": principal.id},

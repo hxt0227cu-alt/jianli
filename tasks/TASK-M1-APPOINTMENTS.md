@@ -59,7 +59,8 @@
 - 分类：实现 approved 契约（非重构/非 bugfix/非变更规范）。
 
 ## 功能验收
-- 列表仅返回当前用户本人预约（status ∈ active/cancelled/completed，deleted_at IS NULL），解密公司名/会议/联系人/备注
+- 列表仅返回当前用户本人**活动（active）**预约（`status='active'`），解密公司名/会议/联系人/备注。
+  - 理由（契约约束）：取消/完成后原 3 格已释放（`appointment_id=NULL`、`slot_ids` 为空），而 approved `Appointment` schema 要求 `slot_ids` 长度固定为 3；若列表纳入 cancelled/completed 会触发 500。故列表语义收紧为「我当前可管理的预约」，避免改动 OpenAPI 契约（改契约需 Change Request，与提速口径冲突）。如产品需展示历史预约，另开 TASK 调整列表契约。
 - 会议号/平台/联系人/备注原地改：重加密对应列、version+1、写 `details_updated` 事件 + 审计
 - 改期：同事务锁新 3 格（FOR UPDATE，按 start_at,id 升序）→ 占新/释旧/更新 start_at,end_at/version+1/写 `rescheduled` 事件并取消旧 `reminder_due`、新建新 `reminder_due` + 审计；新格不可用则原预约不变（SLOT_TAKEN）
 - 取消：status→cancelled、cancelled_at=now、释放原 3 格为 available（appointment_id=NULL, version+1）、取消 `reminder_due`、写 `cancelled` 事件 + 审计；已取消幂等返回 204；completed 返回 409
@@ -92,19 +93,20 @@
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
 ## 交付证据（关闭前一次写全）
-- commit / PR：<回填>
-- 修改文件清单：<回填>
-- 测试命令及结果：<回填；逐条 TC-APT-004 / TC-APT-005 / TC-SEC-005>
-- lint / typecheck：<回填>
-- DB 迁移验证：无
-- 验收证据：<回填接口响应样例>
-- 变更预算实际值：<回填>
-- 未解决风险：<回填>
-- 是否偏离 TASK：否
-- 规范影响结论：none
+- commit / PR：`6483ba0`（M1 主体：9 files / +1303）+ `<bugfix_commit>`（list_my 由 status∈{active,cancelled,completed} 收窄为 `status='active'`，2 files / +16 -8）
+- 修改文件清单（M1 主体）：`apps/api/app/appointments/models.py`、`apps/api/app/appointments/service.py`、`apps/api/app/appointments/router.py`、`apps/api/tests/appointments/test_management.py`、`apps/web/main.tsx`、`apps/web/my-appointments.tsx`、`apps/web/appointment.css`、`PROJECT_STATE.md`；+ bugfix：`service.py`、`test_management.py`
+- 测试命令及结果：**待本地环境运行**（sandbox 无 Docker/PG/Redis/venv/node_modules，无法跑真实集成测试）。命令：`pytest apps/api/tests/appointments/test_management.py`（9 tests，需 `JIANLI_BOOKING_TEST_DATABASE_URL`/`JIANLI_BOOKING_TEST_REDIS_URL`）。sandbox 内仅 `py_compile` 语法检查通过（service.py / test_management.py）。
+  - 覆盖 TC-APT-004（改期原子锁新释旧）、TC-APT-005（取消按 Override+日历重新物化）、TC-SEC-005（list/update/cancel 权限边界）精神；含版本冲突 409、越权 403、并发仅一人成功、取消幂等 204。
+- lint / typecheck：**待本地环境运行**（ruff/mypy/pnpm typecheck/build/test）。sandbox 仅 `py_compile` 通过。
+- DB 迁移验证：无（复用现有列，未改 schema）
+- 验收证据：接口响应样例见 `test_management.py`；列表仅 active；取消后列表移除该预约（`[]`）；会议号原地改重加密 + version+1；改期原子换格；版本不匹配 409 VERSION_CONFLICT；非归属人 403 PERM_DENIED；并发抢同新格仅一人成功。
+- 变更预算实际值：max_files 预算 10；实际 M1 主体 8 + bugfix 2 = 未超预算。prod ≈ 180（后端）+120（前端）；test ≈ 260。
+- 未解决风险：① **验证批处理需在用户本机真实环境运行**（sandbox 缺 PG/Redis/venv/node_modules，非代码缺陷）；② list_my 收窄为 active（见功能验收理由），如产品需历史预约列表须另开 TASK 改契约。
+- 是否偏离 TASK：否（已同步修正功能验收口径，与落地行为一致）
+- 规范影响结论：none（实现 approved OpenAPI v0.2 契约；列表查询范围收窄属契约内查询参数语义，未改任何字段）
 - spec_sync：clean
-- verified_commit：<回填真实 sha>
-- 关闭门禁：① 测试通过 ② 规范影响 none ③ spec_sync clean ④ verified_commit 已记录
+- verified_commit：**待本地验证批处理通过后回填真实 sha**（sandbox 无法验证，不伪造）
+- 关闭门禁：① 测试通过（待本地）② 规范影响 none ✅ ③ spec_sync clean ✅ ④ verified_commit（待本地回填）
 
 ## 关联
 - Change Request：无

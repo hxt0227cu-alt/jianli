@@ -37,7 +37,7 @@ async def _create_appointment(client, engine: Engine, start: datetime) -> tuple[
 
 
 @pytest.mark.asyncio
-async def test_list_my_returns_only_own_appointments(real_stack) -> None:
+async def test_list_my_returns_only_own_active_appointments(real_stack) -> None:
     engine, _, app, settings = real_stack
     owner = _seed_user(engine)
     other = _seed_user(engine)
@@ -47,12 +47,20 @@ async def test_list_my_returns_only_own_appointments(real_stack) -> None:
         own_id, _ = await _create_appointment(client, engine, datetime(2030, 6, 3, 3, 0, tzinfo=UTC))
         await _create_appointment(other_client, engine, datetime(2030, 6, 4, 3, 0, tzinfo=UTC))
         response = await client.get("/appointments")
-    assert response.status_code == 200
-    items = response.json()["items"]
-    assert {UUID(item["id"]) for item in items} == {own_id}
-    assert items[0]["company_name"] == "Example, Inc."
-    assert items[0]["meeting_number"] == "123-456-789"
-    assert items[0]["contact_phone"] == "13800000000"
+        assert response.status_code == 200
+        items = response.json()["items"]
+        assert {UUID(item["id"]) for item in items} == {own_id}
+        assert items[0]["company_name"] == "Example, Inc."
+        assert items[0]["meeting_number"] == "123-456-789"
+        assert items[0]["contact_phone"] == "13800000000"
+        # 取消后从活动列表移除（已取消预约无关联时段，不应进入列表）
+        cancelled = await client.delete(
+            f"/appointments/{own_id}", headers={"Idempotency-Key": str(uuid4())}
+        )
+        assert cancelled.status_code == 204
+        after = await client.get("/appointments")
+        assert after.status_code == 200
+        assert after.json()["items"] == []
 
 
 @pytest.mark.asyncio

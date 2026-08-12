@@ -408,6 +408,27 @@ class BookingService:
         code, detail = mapping[constraint]
         raise AuthError(code, 409, "Duplicate appointment", detail) from error
 
+    def get_notification_appointment(self, appointment_id: UUID) -> Appointment | None:
+        """Load and decrypt a single appointment for notification rendering (M3).
+
+        Reuses the internal ``_decrypt_appointment`` so AAD/key handling stays correct.
+        Returns ``None`` if the appointment no longer exists.
+        """
+
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                    "company_name_fingerprint,meeting_platform_ciphertext,"
+                    "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                    "FROM appointments WHERE id=:id"
+                ),
+                {"id": appointment_id},
+            ).mappings().one_or_none()
+            if row is None:
+                return None
+            return self._decrypt_appointment(row, self._slot_ids_for(connection, appointment_id))
+
     # ---- 我的预约 / 改期 / 取消（M1）----
 
     def list_my(self, principal: Principal) -> list[Appointment]:

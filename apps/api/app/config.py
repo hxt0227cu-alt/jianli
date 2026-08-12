@@ -31,6 +31,11 @@ class Settings(BaseModel):
     field_encryption_keys: SecretStr | None = None
     company_fingerprint_hmac_key: SecretStr | None = None
     appointment_confirmation_hmac_key: SecretStr | None = None
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=465, ge=1, le=65535)
+    smtp_user: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str | None = None
 
     @property
     def auth_configured(self) -> bool:
@@ -60,6 +65,12 @@ class Settings(BaseModel):
             )
         )
 
+    @property
+    def notification_configured(self) -> bool:
+        """Return whether the SMTP notification channel can run (runtime-only secrets)."""
+
+        return all((self.database_url, self.smtp_host, self.smtp_user, self.smtp_password))
+
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
         """Load only supported variables; unknown values, including secrets, are ignored."""
@@ -81,6 +92,11 @@ class Settings(BaseModel):
             "field_encryption_keys": "JIANLI_FIELD_ENCRYPTION_KEYS",
             "company_fingerprint_hmac_key": "JIANLI_COMPANY_FINGERPRINT_HMAC_KEY",
             "appointment_confirmation_hmac_key": "JIANLI_APPOINTMENT_CONFIRMATION_HMAC_KEY",
+            "smtp_host": "JIANLI_SMTP_HOST",
+            "smtp_port": "JIANLI_SMTP_PORT",
+            "smtp_user": "JIANLI_SMTP_USER",
+            "smtp_password": "JIANLI_SMTP_PASSWORD",
+            "smtp_from": "JIANLI_SMTP_FROM",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

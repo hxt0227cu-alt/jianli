@@ -30,6 +30,13 @@ class AuthRepository:
             )
         return dict(row) if row else None
 
+    def find_email_by_user_id(self, user_id: UUID) -> str | None:
+        with self._engine.connect() as connection:
+            return connection.execute(
+                text("SELECT email FROM users WHERE id=:user_id AND deleted_at IS NULL"),
+                {"user_id": user_id},
+            ).scalar()
+
     def create_session(
         self,
         session_id: UUID,

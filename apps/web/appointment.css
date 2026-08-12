@@ -108,3 +108,30 @@
 .success-panel { max-width: 540px; margin: 35px auto; text-align: center; }
 .success-panel svg { color: #315f43; }
 .success-panel p { color: #718078; font-size: 12px; }
+
+/* ---- 我的预约（M1） ---- */
+.mine-view { max-width: 880px; }
+.appointment-list { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.appointment-card {
+  border: 1px solid #e4e9e4;
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: #fff;
+}
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.card-head b { font-size: 15px; color: #1f2a23; }
+.status-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
+.status-badge.active { background: #e6f3ea; color: #315f43; }
+.status-badge.cancelled { background: #f6e7e7; color: #b5493f; }
+.status-badge.completed { background: #eef0f2; color: #6b7480; }
+.card-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 22px; margin: 0; }
+.card-detail div { display: flex; flex-direction: column; }
+.card-detail dt { font-size: 11px; color: #8b938c; }
+.card-detail dd { margin: 2px 0 0; font-size: 13px; color: #2c382f; display: flex; align-items: center; gap: 5px; }
+.card-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.text-command.danger { color: #b5493f; }
+.text-command.danger:hover { background: #f6e7e7; }
+.empty-state { text-align: center; color: #718078; padding: 40px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty-state svg { color: #315f43; }
+.reschedule-board { margin-top: 14px; border-top: 1px dashed #e4e9e4; padding-top: 14px; }
+.reschedule-board .booking-calendar { background: #fbfcfb; }

@@ -5,6 +5,12 @@
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
 > 最后更新：2026-08-08（**SRS v1.1 / approved**（v1.0 于 `26ae844` 批准、v1.1 退信(Bounce) 缺陷修正于 `00e125c` 批准；TASK-SRS-002 已关闭、TASK-UI-002 已同步退信并关闭、SRS 现为行为唯一源）；domain_model **v1.1.5 / approved**（TASK-DM-003 已关闭、下游 SRS/架构已同步）；TASK-DM-001 历史已关闭、`f64b6de` 为旧版 1.1.3 真实批准锚点、v1.1.4 批准锚点 `f537296` 保留为历史；**UI 线框 v1.0 / approved**（经用户 2026-08-08 独立评审批准，approval_commit=`38b102a`；TASK-UI-002/TASK-UI-003 均已闭合、TASK-UI-001 已关闭）；现进入架构/ADR 阶段）
 
+> ### 交接模式（2026-08-12 切换 — Codex / 下一 AI 接手必读）
+> - **治理节奏已切换为功能交付优先**：用户批准 4 条提速口径 —— ① 合并同域主线；② 独立审查按风险分级（同域 CRUD 不单列 REVIEW 任务，仅内联自审并发/归属/乐观版本）；③ 交付证据一次写全（关闭时不补纯回填 commit）；④ 验证批处理（一轮 pytest+ruff+mypy+pnpm typecheck/build/test）。
+> - **仓库可被任意 AI 直接接手**：对齐锚点 = `AGENTS.md` + `docs/baseline.yml` + `PROJECT_STATE.md`（本文件）+ `tasks/TASK-*.md` + Git 历史；不依赖对话记忆。工作区须干净（无未提交改动）。
+> - **SMTP 163 授权码已提供**：仅运行时环境变量使用，**绝不写入任何文档/配置/记忆文件**（见「本周阻塞」）。M3 通知 Worker 凭运行时凭据一次做通；未提供时先实现本地 sink 版（真实 Outbox 消费、不真发信）。
+> - **未变铁律**：MVP 硬规则、冻结 TC 断言、DB 迁移人审批、加密/鉴权策略、`.workbuddy/` 不入库。
+
 ---
 
 ## 当前阶段
@@ -61,6 +67,7 @@
 - **TASK-BOOKING-FLOW-001**：**Closed（2026-08-12）**——登录→真实 14 天 Slot→连续三格→预览→原子创建的桌面端闭环已交付；最终实现快照=`ccd698b`，真实 PostgreSQL/Redis 53 passed、基础测试 5 passed、前端 1 passed + typecheck/build；一轮独立审查唯一 P1 已修复，无遗留 P0/P1。
 - **TASK-TEST-BOOKING-001**：**Closed（2026-08-11）**——测试兼容性提交 `b8b241f` 仅显式清理无 FK 的 Outbox/Audit 测试数据，不改断言、10 轮并发、生产代码或 schema；真实 PostgreSQL/Redis 预约测试 8 passed / 0 skipped。
 - **TASK-TEST-BOOKING-002**：**Closed（2026-08-12；证据修正待第三轮复核）**——测试增强 `90884af` 与最终固定实现 `4d5381a` 已补强 TC-APT-003 的真实事务重叠/backend PID/loser 完整回滚，以及两个预约 POST 的 CSRF/RBAC 与 Redis fail-closed 端点覆盖；第二轮真实复跑预约套件为 14 passed，修正 `b41b28c` 的 13 passed 计数笔误；冻结断言未放宽、无 skip/mock。
+- **TASK-M1-APPOINTMENTS**：**Open（2026-08-12 进行中）**——合并同域主线：我的预约列表 + 改期（原子换格/会议号原地改）+ 取消；后端三接口 `listMyAppointments`/`updateAppointment`/`cancelAppointment` + 真实 PG/Redis 测试 `test_management.py` + 前端 `my-appointments.tsx`；复用现有列、无新迁移、不单列 REVIEW 任务。证据回填待验证批处理完成后。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - 具体版本与评审状态见 `docs/baseline.yml`。

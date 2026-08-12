@@ -1,14 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Archive, ArrowLeft, ArrowRight, Bot, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, FolderOpen,
+  Archive, ArrowLeft, ArrowRight, Bot, CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, FolderOpen,
   LayoutDashboard, LockKeyhole, MessageSquare, Play, Plus, Send, Sparkles,
   UserRound, X,
 } from 'lucide-react';
 import './styles.css';
 import './appointment.css';
+import { MyAppointmentsView } from './my-appointments';
 
-type Page = 'resume' | 'projects' | 'interview';
+type Page = 'resume' | 'projects' | 'interview' | 'mine';
 type ProjectId = 'jianli' | 'sleep';
 type BookingStep = 'login' | 'slots' | 'details' | 'confirm' | 'done';
 type SlotStatus = 'available' | 'booked' | 'owner_locked' | 'unavailable';
@@ -71,6 +72,7 @@ function HistoryRail({ page, onPage }: { page: Page; onPage: (page: Page) => voi
     <button className={page === 'resume' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('resume')}><FileText size={16} /> 简历问答</button>
     <button className={page === 'projects' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('projects')}><FolderOpen size={16} /> 项目说明</button>
     <button className={page === 'interview' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('interview')}><CalendarDays size={16} /> 预约面试</button>
+    <button className={page === 'mine' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('mine')}><CalendarCheck size={16} /> 我的预约</button>
     <div className="rail-label history-title">历史对话</div>
     <div className="session-list">{sessions.map((session) => <button className="session-item" key={session.title}><MessageSquare size={14} /><span><b>{session.title}</b><small>{session.meta}</small></span></button>)}</div>
     <div className="rail-bottom"><button className="rail-link"><Archive size={16} /> 已归档</button><div className="account"><span className="avatar">晓</span><span><b>用户</b><small>静态演示账号</small></span><ChevronDown size={15} /></div></div>
@@ -94,7 +96,7 @@ function ChatPanel({ context }: { context: string }) {
 
 function TopBar({ page, onPage }: { page: Page; onPage: (page: Page) => void }) {
   const title = page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : '预约面试';
-  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
+  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
@@ -188,7 +190,7 @@ function InterviewView() {
 
 function App() {
   const [page, setPage] = useState<Page>('resume');
-  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView onInterview={() => setPage('interview')} /> : <InterviewView />;
+  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : <InterviewView />;
   const context = page === 'resume' ? '简历与全部项目' : page === 'projects' ? '当前项目说明' : '面试预约流程';
   return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel context={context} /></div></div>;
 }

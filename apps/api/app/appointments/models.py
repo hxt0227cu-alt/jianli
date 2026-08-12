@@ -77,3 +77,36 @@ class Appointment(AppointmentDraft):
     version: int = Field(ge=1)
     start_at: datetime
     end_at: datetime
+
+
+class AppointmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    version: int = Field(ge=1)
+    new_slot_ids: list[UUID] | None = Field(default=None, min_length=3, max_length=3)
+    meeting_platform: str | None = Field(default=None, min_length=1, max_length=100)
+    meeting_number: str | None = Field(default=None, min_length=1, max_length=200)
+    contact_last_name: str | None = Field(default=None, min_length=1, max_length=50)
+    contact_salutation: str | None = Field(default=None, min_length=1, max_length=20)
+    contact_phone: str | None = Field(default=None, min_length=5, max_length=40)
+    notes: str | None = Field(default=None, max_length=2000)
+
+    @field_validator(
+        "meeting_platform",
+        "meeting_number",
+        "contact_last_name",
+        "contact_salutation",
+        "contact_phone",
+    )
+    @classmethod
+    def reject_blank_optional(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("value must not be blank")
+        return value
+
+    @field_validator("new_slot_ids")
+    @classmethod
+    def require_distinct_slots(cls, value: list[UUID] | None) -> list[UUID] | None:
+        if value is not None and len(set(value)) != 3:
+            raise ValueError("slot ids must be distinct")
+        return value

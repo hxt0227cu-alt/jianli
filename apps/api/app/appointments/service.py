@@ -23,7 +23,14 @@ from .crypto import (
     FieldCipher,
     canonical_payload_digest,
 )
-from .models import Appointment, AppointmentDraft, AppointmentPreview, Slot, SlotSnapshot
+from .models import (
+    Appointment,
+    AppointmentDraft,
+    AppointmentPreview,
+    AppointmentUpdate,
+    Slot,
+    SlotSnapshot,
+)
 
 _CONSUME_SCRIPT = """
 local current = redis.call('INCR', KEYS[1])
@@ -366,3 +373,390 @@ class BookingService:
             raise error
         code, detail = mapping[constraint]
         raise AuthError(code, 409, "Duplicate appointment", detail) from error
+
+    # ---- 我的预约 / 改期 / 取消（M1）----
+
+    def list_my(self, principal: Principal) -> list[Appointment]:
+        with self._engine.connect() as connection:
+            rows = list(
+                connection.execute(
+                    text(
+                        "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                        "company_name_fingerprint,meeting_platform_ciphertext,"
+                        "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                        "FROM appointments WHERE user_id=:user_id AND deleted_at IS NULL "
+                        "ORDER BY start_at DESC"
+                    ),
+                    {"user_id": principal.id},
+                ).mappings()
+            )
+            return [
+                self._decrypt_appointment(row, self._slot_ids_for(connection, row["id"]))
+                for row in rows
+            ]
+
+    def update(
+        self, principal: Principal, appointment_id: UUID, update: AppointmentUpdate
+    ) -> Appointment:
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            row = self._load_owned_for_write(connection, appointment_id, principal.id)
+            if row["status"] != "active":
+                raise AuthError("TERMINAL_STATE", 409, "Cannot modify", "Appointment is not active")
+            if row["version"] != update.version:
+                raise AuthError("VERSION_CONFLICT", 409, "Version conflict", "Reload and retry")
+            if update.new_slot_ids is not None:
+                self._reschedule(connection, row, update.new_slot_ids, principal.id, now)
+            elif self._has_detail_change(update):
+                self._patch_details(connection, row, update, principal.id, now)
+            else:
+                return self._decrypt_appointment(
+                    row, self._slot_ids_for(connection, appointment_id)
+                )
+            refreshed = connection.execute(
+                text(
+                    "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                    "company_name_fingerprint,meeting_platform_ciphertext,"
+                    "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                    "FROM appointments WHERE id=:id"
+                ),
+                {"id": appointment_id},
+            ).mappings().one()
+            slot_ids = self._slot_ids_for(connection, appointment_id)
+        return self._decrypt_appointment(refreshed, slot_ids)
+
+    def cancel(self, principal: Principal, appointment_id: UUID) -> None:
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            row = self._load_owned_for_write(connection, appointment_id, principal.id)
+            if row["status"] == "cancelled":
+                return None
+            if row["status"] == "completed":
+                raise AuthError("TERMINAL_STATE", 409, "Cannot cancel", "Appointment is completed")
+            self._release_slots(connection, appointment_id, now)
+            connection.execute(
+                text(
+                    "UPDATE appointments SET status='cancelled',cancelled_at=:now,"
+                    "version=version+1 WHERE id=:id"
+                ),
+                {"id": appointment_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "UPDATE notification_events SET status='cancelled',cancelled_at=:now "
+                    "WHERE biz_id=:id AND type='reminder_due' AND status='pending'"
+                ),
+                {"id": appointment_id, "now": now},
+            )
+            self._write_event(
+                connection,
+                appointment_id,
+                "appointment_cancelled",
+                None,
+                now,
+                f"appointment:{appointment_id}:appointment_cancelled",
+            )
+            self._write_audit(
+                connection,
+                principal.id,
+                "appointment.cancelled",
+                appointment_id,
+                now,
+                "categories=company,meeting,contact,notes",
+            )
+
+    @staticmethod
+    def _has_detail_change(update: AppointmentUpdate) -> bool:
+        return any(
+            value is not None
+            for value in (
+                update.meeting_platform,
+                update.meeting_number,
+                update.contact_last_name,
+                update.contact_salutation,
+                update.contact_phone,
+                update.notes,
+            )
+        )
+
+    def _load_owned_for_write(
+        self, connection: Any, appointment_id: UUID, user_id: UUID
+    ) -> dict[str, Any]:
+        row = connection.execute(
+            text(
+                "SELECT id,user_id,status,version,start_at,end_at,company_name_ciphertext,"
+                "company_name_fingerprint,meeting_platform_ciphertext,"
+                "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                "FROM appointments WHERE id=:id FOR UPDATE"
+            ),
+            {"id": appointment_id},
+        ).mappings().first()
+        if row is None:
+            raise AuthError("NOT_FOUND", 404, "Not found", "Appointment not found")
+        if row["user_id"] != user_id:
+            raise AuthError("PERM_DENIED", 403, "Permission denied", "Not the appointment owner")
+        return row
+
+    def _reschedule(
+        self,
+        connection: Any,
+        row: dict[str, Any],
+        new_slot_ids: list[UUID],
+        user_id: UUID,
+        now: datetime,
+    ) -> None:
+        appointment_id = row["id"]
+        new_slots = [
+            SlotRow(**slot)
+            for slot in connection.execute(
+                text(
+                    "SELECT id,start_at,end_at,status::text AS status "
+                    "FROM appointment_slots WHERE id=ANY(CAST(:slot_ids AS uuid[])) "
+                    "ORDER BY start_at ASC,id ASC FOR UPDATE"
+                ),
+                {"slot_ids": new_slot_ids},
+            ).mappings()
+        ]
+        self._validate_slots(new_slots)
+        new_start = new_slots[0].start_at
+        new_end = new_start + timedelta(minutes=90)
+        self._release_slots(connection, appointment_id, now)
+        connection.execute(
+            text(
+                "UPDATE appointment_slots SET status='booked',appointment_id=:aid,"
+                "version=version+1 WHERE id=ANY(CAST(:slot_ids AS uuid[]))"
+            ),
+            {"aid": appointment_id, "slot_ids": new_slot_ids},
+        )
+        connection.execute(
+            text(
+                "UPDATE appointments SET start_at=:start,end_at=:end,version=version+1 "
+                "WHERE id=:id"
+            ),
+            {"start": new_start, "end": new_end, "id": appointment_id},
+        )
+        connection.execute(
+            text(
+                "UPDATE notification_events SET status='cancelled',cancelled_at=:now "
+                "WHERE biz_id=:id AND type='reminder_due' AND status='pending'"
+            ),
+            {"id": appointment_id, "now": now},
+        )
+        self._write_event(
+            connection,
+            appointment_id,
+            "appointment_rescheduled",
+            None,
+            now,
+            f"appointment:{appointment_id}:appointment_rescheduled:{row['version'] + 1}",
+        )
+        self._write_event(
+            connection,
+            appointment_id,
+            "reminder_due",
+            new_start - timedelta(minutes=10),
+            now,
+            f"appointment:{appointment_id}:reminder_due:{row['version'] + 1}",
+        )
+        self._write_audit(
+            connection,
+            user_id,
+            "appointment.rescheduled",
+            appointment_id,
+            now,
+            "categories=company,meeting,contact,notes",
+        )
+
+    def _patch_details(
+        self,
+        connection: Any,
+        row: dict[str, Any],
+        update: AppointmentUpdate,
+        user_id: UUID,
+        now: datetime,
+    ) -> None:
+        appointment_id = row["id"]
+        sets: dict[str, bytes | None] = {}
+        if update.meeting_platform is not None:
+            sets["meeting_platform_ciphertext"] = self._cipher.encrypt(
+                update.meeting_platform, "appointments", "meeting_platform_ciphertext", appointment_id
+            )
+        if update.meeting_number is not None:
+            sets["meeting_number_ciphertext"] = self._cipher.encrypt(
+                update.meeting_number, "appointments", "meeting_number_ciphertext", appointment_id
+            )
+        if any(
+            value is not None
+            for value in (
+                update.contact_last_name,
+                update.contact_salutation,
+                update.contact_phone,
+            )
+        ):
+            existing = (
+                json.loads(
+                    self._cipher.decrypt(
+                        row["contact_ciphertext"], "appointments", "contact_ciphertext", appointment_id
+                    )
+                )
+                if row["contact_ciphertext"] is not None
+                else {}
+            )
+            contact = dict(existing)
+            if update.contact_last_name is not None:
+                contact["last_name"] = update.contact_last_name
+            if update.contact_salutation is not None:
+                contact["salutation"] = update.contact_salutation
+            if update.contact_phone is not None:
+                contact["phone"] = update.contact_phone
+            sets["contact_ciphertext"] = self._cipher.encrypt(
+                json.dumps(contact, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
+                "appointments",
+                "contact_ciphertext",
+                appointment_id,
+            )
+        if update.notes is not None:
+            sets["notes_ciphertext"] = (
+                self._cipher.encrypt(update.notes, "appointments", "notes_ciphertext", appointment_id)
+                if update.notes
+                else None
+            )
+        if not sets:
+            return
+        set_clause = ", ".join(f"{column}=:{column}" for column in sets)
+        connection.execute(
+            text(f"UPDATE appointments SET {set_clause},version=version+1 WHERE id=:id"),
+            {**sets, "id": appointment_id},
+        )
+        self._write_event(
+            connection,
+            appointment_id,
+            "appointment_details_updated",
+            None,
+            now,
+            f"appointment:{appointment_id}:appointment_details_updated:{row['version'] + 1}",
+        )
+        self._write_audit(
+            connection,
+            user_id,
+            "appointment.details_updated",
+            appointment_id,
+            now,
+            "categories=meeting,contact,notes",
+        )
+
+    def _release_slots(self, connection: Any, appointment_id: UUID, now: datetime) -> None:
+        slots = connection.execute(
+            text(
+                "SELECT s.id,s.start_at,s.end_at FROM appointment_slots s "
+                "WHERE s.appointment_id=:id"
+            ),
+            {"id": appointment_id},
+        ).mappings()
+        for slot in slots:
+            override = connection.execute(
+                text(
+                    "SELECT action::text FROM availability_overrides "
+                    "WHERE start_at<=:start AND end_at>=:end LIMIT 1"
+                ),
+                {"start": slot["start_at"], "end": slot["end_at"]},
+            ).scalar_one_or_none()
+            target = "unavailable" if override == "force_unavailable" else "available"
+            connection.execute(
+                text(
+                    "UPDATE appointment_slots SET status=:target,appointment_id=NULL,"
+                    "version=version+1 WHERE id=:sid"
+                ),
+                {"target": target, "sid": slot["id"]},
+            )
+
+    @staticmethod
+    def _slot_ids_for(connection: Any, appointment_id: UUID) -> list[UUID]:
+        return list(
+            connection.execute(
+                text(
+                    "SELECT id FROM appointment_slots WHERE appointment_id=:id "
+                    "ORDER BY start_at,id"
+                ),
+                {"id": appointment_id},
+            ).scalars().all()
+        )
+
+    def _decrypt_appointment(self, row: dict[str, Any], slot_ids: list[UUID]) -> Appointment:
+        def decrypt(value: bytes | None, column: str) -> str | None:
+            return (
+                self._cipher.decrypt(value, "appointments", column, row["id"])
+                if value is not None
+                else None
+            )
+
+        company = decrypt(row["company_name_ciphertext"], "company_name_ciphertext")
+        platform = decrypt(row["meeting_platform_ciphertext"], "meeting_platform_ciphertext")
+        number = decrypt(row["meeting_number_ciphertext"], "meeting_number_ciphertext")
+        contact_raw = decrypt(row["contact_ciphertext"], "contact_ciphertext")
+        contact = json.loads(contact_raw) if contact_raw is not None else {}
+        notes = decrypt(row["notes_ciphertext"], "notes_ciphertext")
+        return Appointment(
+            slot_ids=slot_ids,
+            company_name=company,
+            meeting_platform=platform,
+            meeting_number=number,
+            contact_last_name=contact.get("last_name"),
+            contact_salutation=contact.get("salutation"),
+            contact_phone=contact.get("phone"),
+            notes=notes,
+            id=row["id"],
+            status=row["status"],
+            version=row["version"],
+            start_at=row["start_at"],
+            end_at=row["end_at"],
+        )
+
+    def _write_event(
+        self,
+        connection: Any,
+        business_id: UUID,
+        event_type: str,
+        scheduled_at: datetime | None,
+        now: datetime,
+        idempotency_key: str,
+    ) -> None:
+        connection.execute(
+            text(
+                "INSERT INTO notification_events "
+                "(id,type,biz_id,scheduled_at,idempotency_key,status,created_at) "
+                "VALUES (:id,:type,:biz,:sched,:key,'pending',:now)"
+            ),
+            {
+                "id": uuid4(),
+                "type": event_type,
+                "biz": business_id,
+                "sched": scheduled_at,
+                "key": idempotency_key,
+                "now": now,
+            },
+        )
+
+    @staticmethod
+    def _write_audit(
+        connection: Any,
+        actor: UUID,
+        action: str,
+        target: UUID,
+        now: datetime,
+        detail: str,
+    ) -> None:
+        connection.execute(
+            text(
+                "INSERT INTO audit_logs (id,actor,action,target,masked_detail,created_at) "
+                "VALUES (:id,:actor,:action,:target,:detail,:now)"
+            ),
+            {
+                "id": uuid4(),
+                "actor": str(actor),
+                "action": action,
+                "target": str(target),
+                "detail": detail,
+                "now": now,
+            },
+        )

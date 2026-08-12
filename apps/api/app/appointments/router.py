@@ -4,6 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Header, Query, Request
+from fastapi.responses import StreamingResponse
 
 from app.auth.models import Principal
 from app.auth.router import _principal, _require_csrf
@@ -18,6 +19,7 @@ from .models import (
     SlotSnapshot,
 )
 from .service import BookingService
+from .sse import stream_slot_events
 
 
 def create_appointment_router(
@@ -38,6 +40,10 @@ def create_appointment_router(
             _principal(request, auth_runtime), "interviewer"
         )
         return booking_service.slot_snapshot(principal, week_offset)
+
+    @router.get("/slots/events", operation_id="streamSlotEvents")
+    def slot_events(request: Request) -> StreamingResponse:
+        return stream_slot_events(booking_service, viewer(request), request)
 
     @router.get("/appointments", operation_id="listMyAppointments")
     def list_my(request: Request) -> dict[str, object]:

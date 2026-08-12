@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Archive, ArrowLeft, ArrowRight, Bot, CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, FolderOpen,
@@ -132,6 +132,26 @@ function InterviewView() {
   useEffect(() => {
     api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadSlots(); setStep('slots'); }).catch(() => undefined);
   }, []);
+
+  // SSE 实时刷新（sse.md v0.1 / architecture §5）：订阅 slot.changed，按 resource_version 收敛；
+  // 断线或 resync 回退到快照拉取（§5.7 降级路径与稳态一致）。
+  const loadSlotsRef = useRef(loadSlots);
+  loadSlotsRef.current = loadSlots;
+  useEffect(() => {
+    const source = new EventSource('/slots/events');
+    const onChanged = (event: MessageEvent) => {
+      try {
+        const incoming = (JSON.parse(event.data) as { slot?: Slot }).slot;
+        if (!incoming) return;
+        setSlots((prev) => prev.map((slot) => (slot.id === incoming.id && incoming.resource_version > slot.resource_version ? { ...slot, ...incoming } : slot)));
+      } catch { /* 忽略畸形帧 */ }
+    };
+    const onResync = () => { loadSlotsRef.current().catch(() => undefined); };
+    source.addEventListener('slot.changed', onChanged as EventListener);
+    source.addEventListener('resync.required', onResync as EventListener);
+    source.onerror = () => { loadSlotsRef.current().catch(() => undefined); };
+    return () => source.close();
+  }, [setSlots]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setBusy(true); setError('');

@@ -77,6 +77,39 @@ class SlotRow:
     status: str
 
 
+class SseRegistry:
+    """Per-account SSE connection cap (SRS §5.6: ≤2 concurrent connections per account).
+
+    The Slot event stream is derived from committed DB state per architecture §5.1; a
+    shared hub is unnecessary for the MVP window size, so each connection polls
+    independently through the existing ``slot_snapshot`` read path. This registry only
+    enforces the concurrent-connection ceiling.
+    """
+
+    MAX_PER_ACCOUNT = 2
+
+    def __init__(self) -> None:
+        self._counts: dict[UUID, int] = {}
+
+    def acquire(self, user_id: UUID) -> None:
+        if self._counts.get(user_id, 0) >= self.MAX_PER_ACCOUNT:
+            raise AuthError(
+                "RATE_LIMITED",
+                429,
+                "Too many SSE connections",
+                "Close another tab and reconnect",
+                30,
+            )
+        self._counts[user_id] = self._counts.get(user_id, 0) + 1
+
+    def release(self, user_id: UUID) -> None:
+        remaining = self._counts.get(user_id, 0) - 1
+        if remaining <= 0:
+            self._counts.pop(user_id, None)
+        else:
+            self._counts[user_id] = remaining
+
+
 class BookingService:
     def __init__(
         self,
@@ -90,6 +123,7 @@ class BookingService:
         self._cipher = FieldCipher(secrets_config.current_key_id, secrets_config.field_keys)
         self._tokens = ConfirmationTokens(secrets_config.confirmation_hmac_key)
         self._rate_limiter = BookingRateLimiter(redis_client, rate_limit_key)
+        self.sse_registry = SseRegistry()
 
     def slot_snapshot(self, principal: Principal, week_offset: int) -> SlotSnapshot:
         now = datetime.now(UTC)

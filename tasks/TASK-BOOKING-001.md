@@ -141,11 +141,11 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`<回填关闭快照>`
+- verified_commit：`0e5f660f40dfd329309700fc4c5d0e8ef22a015f`
 - 状态：Closed（2026-08-12）
 - 第二轮证据修正：`b41b28c` 的预约套件 13 passed 为计数笔误；`07c6eff` 真实复跑确认为 14 passed、全套仍为 57 passed。
 - 独立审查：第三轮审查提交 `ce5b95f`，结论 PASS（P0=0 / P1=0 / P2=0）。
-- 关闭结论：① 冻结验收与全套测试通过；② 规范影响 none；③ `spec_sync=clean`；④ 独立审查 PASS。以本次状态收口提交作为完整关闭快照，后续纯证据提交仅回填其 SHA，避免自引用。
+- 关闭结论：① 冻结验收与全套测试通过；② 规范影响 none；③ `spec_sync=clean`；④ 独立审查 PASS。`0e5f660` 为完整关闭快照，后续纯证据提交仅回填其 SHA，避免自引用。
 
 ## 关联
 - 前置：TASK-AUTH-001～003、TASK-DB-002、TASK-DB-003（均 Closed）

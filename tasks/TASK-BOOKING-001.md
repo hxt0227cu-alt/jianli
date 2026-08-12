@@ -141,7 +141,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`0e5f660f40dfd329309700fc4c5d0e8ef22a015f`
+- verified_commit：`0e5f6602664f1fae3799f6ed67b4bcbef3fbebec`
 - 状态：Closed（2026-08-12）
 - 第二轮证据修正：`b41b28c` 的预约套件 13 passed 为计数笔误；`07c6eff` 真实复跑确认为 14 passed、全套仍为 57 passed。
 - 独立审查：第三轮审查提交 `ce5b95f`，结论 PASS（P0=0 / P1=0 / P2=0）。

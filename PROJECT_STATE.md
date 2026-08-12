@@ -122,6 +122,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **最新验证锚点（DB-003）**：`4f3b74c` ——预约创建所需 NotificationEvent/AuditLog 最小迁移最终快照；真实 PostgreSQL `up → down 0002 → up` 与连续两遍 migration 26 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
 
-- **最新验证锚点（BOOKING-001）**：`0e5f660f40dfd329309700fc4c5d0e8ef22a015f`（`0e5f660`）——预约预览/创建、加密与并发事务实现完成；真实 PostgreSQL/Redis 预约 14 passed、全套 57 passed / 0 skipped，显式 migration `up → down → up` 通过，第三轮独立审查 P0/P1/P2=0。
+- **最新验证锚点（BOOKING-001）**：`0e5f6602664f1fae3799f6ed67b4bcbef3fbebec`（`0e5f660`）——预约预览/创建、加密与并发事务实现完成；真实 PostgreSQL/Redis 预约 14 passed、全套 57 passed / 0 skipped，显式 migration `up → down → up` 通过，第三轮独立审查 P0/P1/P2=0。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

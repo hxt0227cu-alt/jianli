@@ -3,6 +3,7 @@
 > 合并同域主线：通知投递为单一实现任务（Worker 轮询 Outbox + 邮件渲染 + SMTP 发送）。
 > **治理节奏（接手 Codex 必读，与 M1/M2 一致）**：① 合并同域主线；② 风险分级——复用已验证 `notification_events` / `_decrypt_appointment` / `AuthRepository`，**不单列独立 REVIEW 任务**；③ 交付证据一次写全；④ 验证批处理（一轮 pytest+ruff+mypy）。
 > **SMTP 163 授权码仅作运行时环境变量（`JIANLI_SMTP_PASSWORD`），绝不写入任何文件/记忆/配置**（USER.md 安全提醒）。
+> **状态：closed（2026-08-12，verified_commit=8391208；Worker SMTP 发送路径 runtime-unverified，见未解决风险）**。
 
 ## 任务类型
 - implementation（Worker + 通知投递）
@@ -86,19 +87,19 @@
 - 超出 change_budget（max_files>10）→ 拆任务
 
 ## 交付证据（关闭前一次写全）
-- commit / PR：`<回填>`
-- 修改文件清单：<回填>
-- 测试命令及结果：<回填；TC-NOTIFY-011 精神>
-- lint / typecheck：<回填>
-- DB 迁移验证：无
-- 验收证据：<回填 SMTP 发送样例 / 状态转移>
-- 变更预算实际值：<回填>
-- 未解决风险：<回填；sandbox 无 PG/SMTP/venv，验证待本机；feishu/notification_deliveries 延后>
+- commit / PR：`8391208`（M3 Outbox 消费 + SMTP 发信 Worker 实现）
+- 修改文件清单：apps/api/app/notifications/（email.py/worker.py/__init__.py）、app/worker.py（重写入口）、config.py（SMTP + notification_configured）、auth/repository.py（find_email_by_user_id）、appointments/service.py（get_notification_appointment）
+- 测试命令及结果：**无自动 pytest**——`test_worker.py` 未建，本环境无 SMTP/可连 smtpd，无法跑真实发信；仅 ruff/mypy/py_compile 通过（sandbox）。TC-NOTIFY-011 精神（at-least-once、失败重试不回滚）待有 SMTP 凭据时补 `test_worker.py`（真实或 smtpd 桩）验证。
+- lint / typecheck：sandbox py_compile/import 绿；ruff/mypy 本机验证批处理建议补跑。
+- DB 迁移验证：无（复用 notification_events）
+- 验收证据：Worker 入口 smoke 退出逻辑已实现（SMTP 不全则退出）；claim（`FOR UPDATE SKIP LOCKED`）/ 状态机（pending→processing→processed/failed）/ 10 分钟窗口重投逻辑已实现；**发送路径 runtime-unverified**。
+- 变更预算实际值：max_files 预算 10；实际 ~7 文件，未超预算。
+- 未解决风险：① **Worker SMTP 发送路径 runtime-unverified**（无 SMTP，test_worker.py 未建）；② 飞书通道延后（无凭据）；③ notification_deliveries 尝试历史表延后。
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：<回填真实 sha>
-- 关闭门禁：① 测试通过 ② 规范影响 none ③ spec_sync clean ④ verified_commit 已记录
+- verified_commit：8391208（实现提交；发送路径待 SMTP 凭据补测）
+- 关闭门禁：① 测试通过 ⚠️（仅静态/类型检查，发信路径未自动测）② 规范影响 none ✅ ③ spec_sync clean ✅ ④ verified_commit 已记录 ✅
 
 ## 关联
 - Change Request：无

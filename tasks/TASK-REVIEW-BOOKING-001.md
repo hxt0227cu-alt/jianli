@@ -86,3 +86,31 @@
 - candidate_commit：`4d5381a`
 - 实现窗口证据：P1-1/P1-2 增强覆盖已通过；P2-1 已严格拒绝非 URL-safe 与非 canonical Base64 key 表示；P2-2 已按相对基线 Git 路径口径更正为 17 个路径。
 - 状态：原审查 FAIL 历史保留；BOOKING-001 继续 awaiting independent review，须由独立审查窗口复核 candidate 后另行 PASS/FAIL。
+
+### 第二轮独立复核（2026-08-12）
+- reviewed_head：`b41b28cdb5c95a45afde48e383e02b21d12ba767`
+- implementation_candidate：`4d5381ace2678eb6823bab86797e8c3fbd76a793`
+- correction_baseline：`90884afd016ca60fa150ee3ea816d07912debc7a`
+- reviewer：独立审查窗口 `019ff47a-2a70-7da2-9f22-503bdb6c982c`
+- result：**FAIL（P0=0 / P1=0 / P2=1）**
+
+#### P2-3：最终测试计数证据与候选源码的真实收集结果不一致
+- 位置：`PROJECT_STATE.md:59`、`tasks/TASK-BOOKING-001.md:134`、`tasks/TASK-TEST-BOOKING-002.md:66`
+- 证据：三个位置均声称候选 `4d5381a` 的 `pytest tests/appointments -q` 为 `13 passed`；本审查窗口在候选链 HEAD 上使用一次性 PostgreSQL 16 / Redis 7.4、迁移 `0001 -> 0002 -> 0003` 独立执行同一命令，实际结果为 **`14 passed in 33.23s`**。差异来自 `test_key_material_requires_canonical_urlsafe_base64` 的四个参数化 case 均按独立测试计数；因此同一证据中的全套 `57 passed` 也至少存在一项计数失真风险，不能在未按候选源码重跑并记录真实结果前视为可信。
+- 影响：功能验收未失败，但交付证据不满足“测试结果真实性”要求；本轮不能给出 PASS。
+- 修正方向：实现/治理窗口按候选源码重新记录真实预约套件与全套 pytest 计数；不得合并或省略参数化 case，不得修改测试来迎合旧计数。
+
+#### 前轮 findings 复核结果
+- P1-1 已关闭：`test_two_transactions_race_for_slots_ten_rounds` 在实际 Slot `FOR UPDATE` 前通过测试侧屏障同步两请求，每轮记录两个不同 `pg_backend_pid()`；连续 10 轮均为一个 `201`、一个 `SLOT_TAKEN`，并逐轮核对 1 Company / 1 Appointment / 3 个归属 winner 的 booked Slot / 2 NotificationEvent / 1 AuditLog，证明 loser 完整回滚。
+- P1-2 已关闭：`/appointment-confirmations` 与 `/appointments` 分别覆盖匿名、`owner_admin`、缺失/错误 CSRF、跨 Origin 拒绝；create 的 Redis 故障路径返回 approved `RATE_LIMITED` Problem 且无预约副作用，preview 前后 `booking:create:account:*` 键集合不变。
+- P2-1 已关闭：`_decode_key()` 使用 `validate=True` 的 URL-safe alphabet 解码并与带规范 padding 的重新编码结果精确比较；独立测试确认标准 Base64 的 `+`/`/`、垃圾字符、缺失 padding和多余 padding均拒绝。
+- P2-2 已关闭：`git diff --name-only 5062c699..4d5381a` 实际为 17 个 Git 路径，与候选证据一致；生产代码 `+748/-1`、预约测试 `+643/-0`，均未超过 18 / 750 / 650 预算。
+
+#### 第二轮测试、门禁与清理证据
+- 提交关系：`merge-base(90884af,b41b28c)=90884af`；`b41b28c^=4d5381a`；工作区审查前干净。
+- 真实服务：一次性容器 `postgres:16-alpine`（宿主端口 `55442`）与 `redis:7.4-alpine`（宿主端口 `6403`）；仅执行测试库迁移，未执行生产迁移。
+- 动态测试：`pytest tests/appointments -q` -> **14 passed / 0 failed / 0 skipped（33.23s）**；其中真实双 backend PID + 屏障并发连续 10 轮、端点安全边界、Redis fail-closed、preview 不消耗配额与 Base64URL canonical 拒绝均通过。
+- 静态门禁：`ruff check .` -> pass；`ruff format --check .` -> 38 files already formatted；`mypy app` -> 22 source files / 0 issues；`pip check` -> no broken requirements；`git diff --check 90884af..b41b28c` -> pass。
+- 范围与依赖：`90884af..4d5381a` 仅修改 `crypto.py`、`test_booking.py`、`test_security.py`；`4d5381a..b41b28c` 仅修改 4 个治理/任务证据文件；无新 migration、依赖、公开 API、鉴权策略或外部通知变化，未发现重复抽象、未来空壳或敏感材料进入 diff。
+- 临时环境清理：一次性 PostgreSQL/Redis 容器已删除；`/var/tmp/jianli-booking-review-d900` 与 `/var/tmp/jianli-booking-static-d900` 已删除；端口 `55442`/`6403` 无残留监听。
+- 剩余风险：未由本审查窗口独立执行带全部测试数据库配置的全套 pytest 与 migration downgrade；更重要的是现有 `57 passed` 计数已被预约套件的 `13 -> 14` 实测差异削弱，须由治理窗口重跑并更正后再复核。

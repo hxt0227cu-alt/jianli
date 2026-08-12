@@ -63,9 +63,9 @@
 ## 交付证据
 - commit / PR：授权提交 `519892b`；测试增强 `90884af`；生产修正与最终测试固定提交 `4d5381a`；未创建 PR
 - 修改文件清单：`apps/api/tests/appointments/test_booking.py`、`tasks/TASK-TEST-BOOKING-002.md`、`PROJECT_STATE.md`
-- 测试命令及结果：真实 WSL PostgreSQL 16.14 / Redis 7.0.15 执行 `pytest tests/appointments -q` → 修正前增强套件 10 passed；最终修正后 13 passed；全套 `pytest -q` → 57 passed / 0 failed / 0 skipped
+- 测试命令及结果：第二轮证据修正使用真实 WSL PostgreSQL 16.14 / Redis 7.0.15 执行 `pytest tests/appointments -q` → 14 passed / 0 skipped；全套 `pytest -q` → 57 passed / 0 failed / 0 skipped；`b41b28c` 中 13 passed 为计数笔误
 - lint / typecheck：`ruff check .` → pass；`ruff format --check .` → 38 files formatted；`mypy app` → 22 source files / 0 issues；`pip check` → no broken requirements
-- DB 迁移验证：无 schema 变更；使用一次性真实 PostgreSQL
+- DB 迁移验证：无 schema 变更；使用一次性真实 PostgreSQL，全套 26 个 migration 用例通过，独立空库显式 `upgrade head → downgrade base → upgrade head` 通过
 - 验收证据：TC-APT-003 连续 10 轮均观测两个不同 `pg_backend_pid()` 且屏障同时到达 Slot `FOR UPDATE` 前；每轮一个 201、一个 `SLOT_TAKEN`，最终 1 Company / 1 Appointment / 3 winner-owned booked Slot / 2 Event / 1 AuditLog；两个 POST 的匿名、owner_admin、缺失/错误 CSRF、跨源拒绝与合法 interviewer 路径通过；create Redis 故障返回 approved `RATE_LIMITED` Problem，preview 不消耗 create 配额
 - 变更预算实际值：3 个允许路径；生产 0 行；测试增强提交相对父提交 `test_booking.py +156/-17`，新增 156 行低于 160 行预算
 - 未解决风险：无
@@ -74,6 +74,7 @@
 - spec_sync：clean
 - verified_commit：`4d5381a`
 - 状态：Closed（2026-08-12）
+- 第二轮证据修正状态：证据计数已向前修正，等待第三轮独立复核；任务功能状态仍 Closed
 
 ## 关联
 - 被阻塞任务：TASK-BOOKING-001

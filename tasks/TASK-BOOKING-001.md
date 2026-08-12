@@ -131,10 +131,10 @@
 ## 交付证据
 - commit / PR：评审包 `dd59869`；批准记录 `9dc6379`；初始实现 `2291e4b`；独立测试修正 `b8b241f`；测试增强 `90884af`；审查修正后的最终固定实现 `4d5381a`；未创建 PR
 - 修改文件清单（相对基线 Git 路径口径，共 17）：`PROJECT_STATE.md`、`apps/api/app/appointments/{__init__,crypto,models,router,runtime,service}.py`、`apps/api/app/config.py`、`apps/api/app/factory.py`、`apps/api/pyproject.toml`、`apps/api/requirements.lock`、`apps/api/tests/appointments/{test_booking,test_security}.py`、`tasks/TASK-BOOKING-001.md`、`tasks/TASK-REVIEW-BOOKING-001.md`、`tasks/TASK-TEST-BOOKING-001.md`、`tasks/TASK-TEST-BOOKING-002.md`
-- 测试命令及结果：一次性 WSL Python 3.12 / PostgreSQL 16.14 / Redis 7.0.15 环境执行 `pytest tests/appointments -q` → 13 passed / 0 skipped；最终执行 `pytest -q` → 57 passed / 0 failed / 0 skipped（14 条既有 Alembic 配置弃用 warning）
+- 测试命令及结果：第二轮证据修正使用一次性 WSL Python 3.12 / PostgreSQL 16.14 / Redis 7.0.15，执行 `pytest tests/appointments -q` → 14 passed / 0 skipped；执行 `pytest -q` → 57 passed / 0 failed / 0 skipped（14 条既有 Alembic 配置弃用 warning）
 - lint / typecheck：`ruff check .` → pass；`ruff format --check .` → 38 files formatted；`mypy app` → 22 source files / 0 issues；`pip check` → no broken requirements
-- DB 迁移验证：三个一次性空库分别用于 BOOKING、AUTH、migration；`0001 → 0002 → 0003` upgrade 通过，全套 migration 测试中的 upgrade/downgrade 路径通过；未执行生产迁移
-- 临时环境清理：PostgreSQL/Redis 已停止，端口 `55441`/`6402` 无监听；`/var/tmp/jianli-booking-001-recovery-9caa`（venv、下载包、三个临时数据库、data、日志、PID）已删除
+- DB 迁移验证：BOOKING/AUTH 两个空库 `0001 → 0002 → 0003` upgrade 通过；全套 26 个 migration 用例通过；另在独立空库显式执行 `upgrade head → downgrade base → upgrade head` 通过；未执行生产迁移
+- 临时环境清理：PostgreSQL/Redis 已停止，端口 `55442`/`6403` 无监听；`/var/tmp/jianli-booking-evidence-9caa-r2`（venv、下载包、四个临时数据库、data、日志、PID）已删除
 - 验收证据：TC-APT-001～003、TC-SEC-001～004、TC-AUTH-006/008 通过；TC-APT-003 使用两个不同 backend PID 与测试侧屏障连续 10 轮均为一个 201、一个 `SLOT_TAKEN`，每轮严格为 1 Company / 1 Appointment / 3 个归属 winner 的 booked Slot / 2 NotificationEvent / 1 AuditLog，loser 完整回滚；两个 POST 的匿名/owner_admin/CSRF/跨源拒绝与 create Redis fail closed 均通过；非 URL-safe、垃圾字符、缺失/额外 padding 的 key 表示均在启动时拒绝
 - 变更预算实际值：17 个 Git 路径；生产代码 `+748/-1`；预约测试代码 `+643/-0`；均低于 18 / 750 / 650 硬预算
 - 未解决风险：`Idempotency-Key` 的请求级重放响应未在 approved OpenAPI 中定义，本任务仅强制 16～128 长度且不自行扩展重放语义；Alembic 现有 `path_separator` 弃用 warning 非本任务范围
@@ -143,6 +143,7 @@
 - spec_sync：clean
 - verified_commit：`4d5381a`
 - 状态：Implemented awaiting independent review
+- 第二轮证据修正：`b41b28c` 的预约套件 13 passed 为计数笔误；真实复跑确认为 14 passed，全套仍为 57 passed；等待第三轮独立复核
 
 ## 关联
 - 前置：TASK-AUTH-001～003、TASK-DB-002、TASK-DB-003（均 Closed）

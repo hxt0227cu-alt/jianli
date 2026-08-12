@@ -114,3 +114,23 @@
 - 范围与依赖：`90884af..4d5381a` 仅修改 `crypto.py`、`test_booking.py`、`test_security.py`；`4d5381a..b41b28c` 仅修改 4 个治理/任务证据文件；无新 migration、依赖、公开 API、鉴权策略或外部通知变化，未发现重复抽象、未来空壳或敏感材料进入 diff。
 - 临时环境清理：一次性 PostgreSQL/Redis 容器已删除；`/var/tmp/jianli-booking-review-d900` 与 `/var/tmp/jianli-booking-static-d900` 已删除；端口 `55442`/`6403` 无残留监听。
 - 剩余风险：未由本审查窗口独立执行带全部测试数据库配置的全套 pytest 与 migration downgrade；更重要的是现有 `57 passed` 计数已被预约套件的 `13 -> 14` 实测差异削弱，须由治理窗口重跑并更正后再复核。
+
+### 第三轮独立复核（2026-08-12）
+- evidence_candidate：`07c6eff4cbe3273cadc1491f985dc1c5e8e16e87`
+- implementation_candidate：`4d5381ace2678eb6823bab86797e8c3fbd76a793`
+- prior_review：`7e6f706a953bc44afdd8f52d00135eeb9b1bd8ee`
+- reviewer：独立审查窗口 `019ff47a-2a70-7da2-9f22-503bdb6c982c`
+- result：**PASS（P0=0 / P1=0 / P2=0）**
+
+#### Findings
+- 无 P0/P1/P2 finding。第二轮 P2-3 已关闭。
+
+#### 复核证据
+- `b41b28c..07c6eff4` 仅修改 `PROJECT_STATE.md`、`tasks/TASK-BOOKING-001.md`、`tasks/TASK-TEST-BOOKING-002.md` 三份证据（`+9/-7`）；实现、测试、migration、依赖与 `4d5381a` 一致，`git diff --check` 通过。
+- 三份证据均把预约套件的 `13 passed` 更正为真实 `14 passed / 0 skipped`；全套仍明确记录真实复跑 `57 passed / 0 failed / 0 skipped`，未将预约参数化 case 叠加到全套历史运行，也未修改测试迎合计数。
+- `TASK-BOOKING-001` 明确记录全套 26 个 migration 用例通过，并在独立空库显式执行 `upgrade head -> downgrade base -> upgrade head`；同时记录 PostgreSQL/Redis 停止、端口 `55442`/`6403` 无监听及一次性目录删除。复核时目录、容器与端口均无残留。
+- 状态保持 `Implemented awaiting independent review` / 等待第三轮复核，未在审查前提前关闭 BOOKING；`TASK-TEST-BOOKING-002` 功能状态仍为 Closed，仅证据修正等待复核。
+- 结合第二轮本窗口独立执行的真实 PostgreSQL/Redis 预约套件 `14 passed in 33.23s`，以及 Ruff、format、mypy、pip check 全部通过，证据修正与实际结果一致。
+
+#### 剩余风险
+- 全套 `57 passed` 与 migration up/down/up 由候选证据环境执行，本窗口第三轮未再次重建全套数据库环境；其结果与候选源码测试总量口径、第二轮独立预约 14 项和静态门禁相容，未发现足以形成 P2 的矛盾。

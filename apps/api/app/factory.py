@@ -13,6 +13,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
+from .appointments.router import create_appointment_router
+from .appointments.runtime import build_booking_runtime
+from .appointments.service import BookingService
 from .auth.errors import AuthError
 from .auth.router import create_auth_router, problem_response
 from .auth.runtime import AuthRuntime, build_auth_runtime
@@ -63,6 +66,7 @@ def _validated_origins(origins: frozenset[str]) -> frozenset[str]:
 def create_app(
     settings: Settings | None = None,
     auth_runtime: AuthRuntime | None = None,
+    booking_runtime: BookingService | None = None,
 ) -> FastAPI:
     """Create the application and mount auth only with complete secure dependencies."""
 
@@ -85,6 +89,12 @@ def create_app(
     if runtime is not None:
         app.state.auth_runtime = runtime
         app.include_router(create_auth_router(runtime))
+        appointments = booking_runtime or (
+            build_booking_runtime(config, runtime) if config.booking_configured else None
+        )
+        if appointments is not None:
+            app.state.booking_runtime = appointments
+            app.include_router(create_appointment_router(runtime, appointments))
 
     @app.exception_handler(AuthError)
     async def handle_auth_error(request: Request, error: AuthError) -> JSONResponse:
@@ -96,7 +106,11 @@ def create_app(
     async def handle_validation_error(
         request: Request, error: RequestValidationError
     ) -> JSONResponse:
-        if not request.url.path.startswith("/auth/"):
+        if not (
+            request.url.path.startswith("/auth/")
+            or request.url.path == "/appointment-confirmations"
+            or request.url.path == "/appointments"
+        ):
             return await request_validation_exception_handler(request, error)
         request_id = str(uuid4())
         _log_auth_rejection(request, "INVALID_REQUEST", request_id)

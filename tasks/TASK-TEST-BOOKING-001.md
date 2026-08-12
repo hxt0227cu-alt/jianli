@@ -63,19 +63,19 @@
 - 修正清理后仍出现事务/并发行为失败；应返回 BOOKING-001 实现修正，不得继续改测试。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：授权提交 `bd433cc`（本分支引入为 `c624780`）；测试兼容性提交 `b8b241f`
+- 修改文件清单：`apps/api/tests/appointments/test_booking.py`、本任务、`PROJECT_STATE.md`
+- 测试命令及结果：一次性真实 PostgreSQL 16 + Redis 7 环境执行 `pytest tests/appointments -q` → 8 passed / 0 failed / 0 skipped；TC-APT-003 完整 10 轮
 - lint / typecheck：由 BOOKING-001 全套验证回填
-- DB 迁移验证：无 schema 变更；真实空库 upgrade 由 BOOKING-001 环境执行
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- DB 迁移验证：无 schema 变更；同一一次性空库 `0001 → 0002 → 0003` upgrade 通过
+- 验收证据：每轮仍严格断言 1 Appointment、3 booked Slot、2 NotificationEvent、1 AuditLog；并发结果保持 201 + `SLOT_TAKEN`
+- 变更预算实际值：3 个文件；生产代码 0 行；测试代码 `+10/-6`
 - 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 状态：Approved for execution
+- verified_commit：`b8b241f`
+- 状态：Closed
 
 ## 关联
 - 被阻塞任务：TASK-BOOKING-001

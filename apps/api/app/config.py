@@ -27,6 +27,10 @@ class Settings(BaseModel):
     csrf_hmac_key: SecretStr | None = None
     rate_limit_hmac_key: SecretStr | None = None
     allowed_origins: tuple[str, ...] = ()
+    field_encryption_current_key_id: str | None = None
+    field_encryption_keys: SecretStr | None = None
+    company_fingerprint_hmac_key: SecretStr | None = None
+    appointment_confirmation_hmac_key: SecretStr | None = None
 
     @property
     def auth_configured(self) -> bool:
@@ -39,6 +43,20 @@ class Settings(BaseModel):
                 self.csrf_hmac_key,
                 self.rate_limit_hmac_key,
                 self.allowed_origins,
+            )
+        )
+
+    @property
+    def booking_configured(self) -> bool:
+        """Return whether every approved booking secret is present."""
+
+        return all(
+            (
+                self.auth_configured,
+                self.field_encryption_current_key_id,
+                self.field_encryption_keys,
+                self.company_fingerprint_hmac_key,
+                self.appointment_confirmation_hmac_key,
             )
         )
 
@@ -59,6 +77,10 @@ class Settings(BaseModel):
             "csrf_hmac_key": "JIANLI_CSRF_HMAC_KEY",
             "rate_limit_hmac_key": "JIANLI_RATE_LIMIT_HMAC_KEY",
             "allowed_origins": "JIANLI_ALLOWED_ORIGINS",
+            "field_encryption_current_key_id": "JIANLI_FIELD_ENCRYPTION_CURRENT_KEY_ID",
+            "field_encryption_keys": "JIANLI_FIELD_ENCRYPTION_KEYS",
+            "company_fingerprint_hmac_key": "JIANLI_COMPANY_FINGERPRINT_HMAC_KEY",
+            "appointment_confirmation_hmac_key": "JIANLI_APPOINTMENT_CONFIRMATION_HMAC_KEY",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

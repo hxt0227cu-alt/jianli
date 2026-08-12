@@ -108,6 +108,7 @@ def create_app(
     ) -> JSONResponse:
         if not (
             request.url.path.startswith("/auth/")
+            or request.url.path == "/slots/snapshot"
             or request.url.path == "/appointment-confirmations"
             or request.url.path == "/appointments"
         ):

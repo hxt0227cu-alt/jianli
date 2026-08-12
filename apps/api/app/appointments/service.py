@@ -23,7 +23,7 @@ from .crypto import (
     FieldCipher,
     canonical_payload_digest,
 )
-from .models import Appointment, AppointmentDraft, AppointmentPreview
+from .models import Appointment, AppointmentDraft, AppointmentPreview, Slot, SlotSnapshot
 
 _CONSUME_SCRIPT = """
 local current = redis.call('INCR', KEYS[1])
@@ -83,6 +83,41 @@ class BookingService:
         self._cipher = FieldCipher(secrets_config.current_key_id, secrets_config.field_keys)
         self._tokens = ConfirmationTokens(secrets_config.confirmation_hmac_key)
         self._rate_limiter = BookingRateLimiter(redis_client, rate_limit_key)
+
+    def slot_snapshot(self, principal: Principal, week_offset: int) -> SlotSnapshot:
+        now = datetime.now(UTC)
+        local_today = now.astimezone(LOCAL_TIME).date()
+        monday = local_today - timedelta(days=local_today.weekday()) + timedelta(weeks=week_offset)
+        start_at = datetime.combine(monday, datetime.min.time(), LOCAL_TIME).astimezone(UTC)
+        end_at = start_at + timedelta(days=7)
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT s.id,s.start_at,s.end_at,s.status::text AS status,s.version,"
+                    "CASE WHEN s.appointment_id IS NULL THEN 'none' "
+                    "WHEN a.user_id=:user_id THEN 'self' ELSE 'other' END AS ownership "
+                    "FROM appointment_slots s LEFT JOIN appointments a ON a.id=s.appointment_id "
+                    "WHERE s.start_at>=:start_at AND s.start_at<:end_at "
+                    "ORDER BY s.start_at,s.id"
+                ),
+                {"user_id": principal.id, "start_at": start_at, "end_at": end_at},
+            ).mappings()
+            items = [
+                Slot(
+                    id=row["id"],
+                    start_at=row["start_at"],
+                    end_at=row["end_at"],
+                    status=row["status"],
+                    resource_version=row["version"],
+                    ownership=row["ownership"],
+                )
+                for row in rows
+            ]
+        return SlotSnapshot(
+            watermark=max((item.resource_version for item in items), default=0),
+            generated_at=now,
+            items=items,
+        )
 
     def preview(self, principal: Principal, draft: AppointmentDraft) -> AppointmentPreview:
         token, expires_at = self._tokens.issue(principal.id, canonical_payload_digest(draft))

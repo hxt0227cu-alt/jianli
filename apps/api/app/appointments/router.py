@@ -2,13 +2,19 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Request
+from fastapi import APIRouter, Header, Query, Request
 
 from app.auth.models import Principal
 from app.auth.router import _principal, _require_csrf
 from app.auth.runtime import AuthRuntime
 
-from .models import Appointment, AppointmentDraft, AppointmentPreview, CreateAppointmentRequest
+from .models import (
+    Appointment,
+    AppointmentDraft,
+    AppointmentPreview,
+    CreateAppointmentRequest,
+    SlotSnapshot,
+)
 from .service import BookingService
 
 
@@ -20,6 +26,13 @@ def create_appointment_router(
     def interviewer(request: Request) -> Principal:
         _require_csrf(request, auth_runtime)
         return auth_runtime.service.require_role(_principal(request, auth_runtime), "interviewer")
+
+    @router.get("/slots/snapshot", response_model=SlotSnapshot, operation_id="getSlotSnapshot")
+    def snapshot(request: Request, week_offset: int = Query(default=0, ge=0, le=1)) -> SlotSnapshot:
+        principal = auth_runtime.service.require_role(
+            _principal(request, auth_runtime), "interviewer"
+        )
+        return booking_service.slot_snapshot(principal, week_offset)
 
     @router.post(
         "/appointment-confirmations",

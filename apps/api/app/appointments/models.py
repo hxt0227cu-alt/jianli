@@ -49,6 +49,21 @@ class AppointmentPreview(BaseModel):
     salutation: str
 
 
+class Slot(BaseModel):
+    id: UUID
+    start_at: datetime
+    end_at: datetime
+    status: Literal["available", "booked", "owner_locked", "unavailable"]
+    resource_version: int = Field(ge=0)
+    ownership: Literal["none", "self", "other"]
+
+
+class SlotSnapshot(BaseModel):
+    watermark: int = Field(ge=0)
+    generated_at: datetime
+    items: list[Slot]
+
+
 class CreateAppointmentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

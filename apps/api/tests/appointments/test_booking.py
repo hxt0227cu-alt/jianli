@@ -7,6 +7,7 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 import redis
@@ -288,6 +289,81 @@ async def test_create_redis_outage_fails_closed_and_preview_uses_no_quota(real_s
     assert response.json()["code"] == "RATE_LIMITED"
     assert response.headers["content-type"].startswith("application/problem+json")
     assert _table_counts(engine)["appointments"] == 0
+
+
+@pytest.mark.asyncio
+async def test_slot_snapshot_is_authenticated_and_privacy_safe(real_stack) -> None:
+    engine, _, app, settings = real_stack
+    user_id = _seed_user(engine)
+    other_user_id = _seed_user(engine)
+    now = datetime.now(UTC)
+    days_until_monday = -now.astimezone(ZoneInfo("Asia/Shanghai")).weekday()
+    start = (now + timedelta(days=days_until_monday)).replace(
+        hour=2, minute=0, second=0, microsecond=0
+    )
+    slot_ids = _seed_slots(engine, start)
+    own_appointment = uuid4()
+    other_appointment = uuid4()
+    company_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO companies "
+                "(id,normalized_name_fingerprint,raw_name_ciphertext) "
+                "VALUES (:id,'snapshot-company',:value)"
+            ),
+            {"id": company_id, "value": b"encrypted"},
+        )
+        for appointment_id, owner, fingerprint in (
+            (own_appointment, user_id, "own-company"),
+            (other_appointment, other_user_id, "other-company"),
+        ):
+            connection.execute(
+                text(
+                    "INSERT INTO appointments "
+                    "(id,user_id,company_id,start_at,end_at,status,"
+                    "company_name_ciphertext,company_name_fingerprint,version,created_at) "
+                    "VALUES (:id,:user_id,:company_id,:start_at,:end_at,'active',"
+                    ":ciphertext,:fingerprint,1,:created_at)"
+                ),
+                {
+                    "id": appointment_id,
+                    "user_id": owner,
+                    "company_id": company_id,
+                    "start_at": start,
+                    "end_at": start + timedelta(minutes=90),
+                    "ciphertext": b"encrypted",
+                    "fingerprint": fingerprint,
+                    "created_at": now,
+                },
+            )
+        connection.execute(
+            text(
+                "UPDATE appointment_slots SET status='booked',"
+                "appointment_id=:appointment_id WHERE id=:id"
+            ),
+            {"appointment_id": own_appointment, "id": slot_ids[0]},
+        )
+        connection.execute(
+            text(
+                "UPDATE appointment_slots SET status='booked',"
+                "appointment_id=:appointment_id WHERE id=:id"
+            ),
+            {"appointment_id": other_appointment, "id": slot_ids[1]},
+        )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="https://testserver"
+    ) as anonymous:
+        unauthorized = await anonymous.get("/slots/snapshot")
+        assert unauthorized.status_code == 401
+    async with _authorized_client(app, engine, settings, user_id) as client:
+        response = await client.get("/slots/snapshot?week_offset=0")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"watermark", "generated_at", "items"}
+    assert [item["ownership"] for item in body["items"]] == ["self", "other", "none"]
+    assert all("appointment_id" not in item for item in body["items"])
 
 
 @pytest.mark.asyncio

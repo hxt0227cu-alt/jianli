@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Archive, ArrowLeft, ArrowRight, Bot, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, FolderOpen,
@@ -10,6 +10,31 @@ import './appointment.css';
 
 type Page = 'resume' | 'projects' | 'interview';
 type ProjectId = 'jianli' | 'sleep';
+type BookingStep = 'login' | 'slots' | 'details' | 'confirm' | 'done';
+type SlotStatus = 'available' | 'booked' | 'owner_locked' | 'unavailable';
+type Slot = { id: string; start_at: string; end_at: string; status: SlotStatus; resource_version: number; ownership: 'none' | 'self' | 'other' };
+type User = { id: string; email: string; role: 'interviewer' | 'owner_admin'; verified: boolean };
+type Draft = { slot_ids: string[]; company_name: string; meeting_platform: string; meeting_number: string; contact_last_name: string; contact_salutation: string; contact_phone: string; notes: string | null };
+type Preview = { confirmation_token: string; expires_at: string; company_name: string; recipient_email: string; salutation: string };
+
+const emptyDraft: Draft = { slot_ids: [], company_name: '', meeting_platform: '腾讯会议', meeting_number: '', contact_last_name: '', contact_salutation: '老师', contact_phone: '', notes: null };
+
+const shanghaiDay = (iso: string) => new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai',
+}).format(new Date(iso));
+
+function csrfCookie(): string {
+  return document.cookie.split('; ').find((part) => part.startsWith('__Host-csrf='))?.split('=')[1] || '';
+}
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  if (!response.ok) {
+    const problem = await response.json().catch(() => ({}));
+    throw new Error(problem.detail || problem.title || `请求失败 (${response.status})`);
+  }
+  return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+}
 
 const sessions = [
   { title: '为什么 Agent 不直接预约？', meta: '今天 14:32' },
@@ -87,8 +112,68 @@ function ProjectView({ onInterview }: { onInterview: () => void }) {
 }
 
 function InterviewView() {
-  const steps = [{ icon: UserRound, title: '账号验证', detail: '登录并验证邮箱后才能进入选时。' }, { icon: CalendarDays, title: '选择时间', detail: '真实可用时段将在后续接口接入后显示。' }, { icon: CheckCircle2, title: '确认预约', detail: '二次确认后才会创建预约并发送通知。' }];
-  return <main className="workspace interview-view"><div className="workspace-heading"><div><span className="eyebrow">INTERVIEW / 03</span><h1>预约一次有准备的交流。</h1><p>流程已经规划好，但当前不会展示虚假时段，也不会提交真实预约。</p></div><span className="placeholder-badge">静态流程预览</span></div><div className="booking-steps">{steps.map((item, index) => { const Icon = item.icon; return <div className={index === 0 ? 'booking-step active' : 'booking-step'} key={item.title}><span className="step-icon"><Icon size={18} /></span><div><small>STEP 0{index + 1}</small><b>{item.title}</b><p>{item.detail}</p></div></div>; })}</div><section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 可预约时间</span><span className="muted">待接入真实日历</span></div><div className="empty-calendar"><Clock size={30} /><h2>暂无可展示的真实时段</h2><p>完成登录、时区和预约 API 后，这里将显示 14 天内的可用时间。</p><button disabled>选择时间后继续</button></div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>交流形式</dt><dd>线上面试</dd></div><div><dt>预计时长</dt><dd>待确认</dd></div><div><dt>时间</dt><dd>尚未选择</dd></div></dl><div className="booking-note"><LockKeyhole size={15} /><p>当前是静态页面，不会写入预约、发送邮件或产生通知。</p></div></aside></section></main>;
+  const [step, setStep] = useState<BookingStep>('login');
+  const [user, setUser] = useState<User | null>(null);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [csrf, setCsrf] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const loadSlots = async () => {
+    const snapshots = await Promise.all([0, 1].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)));
+    setSlots(snapshots.flatMap((item) => item.items));
+  };
+
+  useEffect(() => {
+    api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadSlots(); setStep('slots'); }).catch(() => undefined);
+  }, []);
+
+  const login = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError('');
+    const data = new FormData(event.currentTarget);
+    try {
+      const response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email: data.get('email'), password: data.get('password'), remember_me: Boolean(data.get('remember')) }) });
+      if (!response.ok) throw new Error((await response.json()).detail || '登录失败');
+      setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
+      const me = await api<User>('/auth/me'); setUser(me); await loadSlots(); setStep('slots');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '登录失败'); } finally { setBusy(false); }
+  };
+
+  const choose = (slot: Slot) => {
+    const ordered = slots.filter((item) => shanghaiDay(item.start_at) === shanghaiDay(slot.start_at)).sort((a, b) => a.start_at.localeCompare(b.start_at));
+    const index = ordered.findIndex((item) => item.id === slot.id);
+    const group = ordered.slice(index, index + 3);
+    const valid = group.length === 3 && group.every((item) => item.status === 'available') && group.slice(1).every((item, offset) => item.start_at === group[offset].end_at);
+    setError(valid ? '' : '请选择同一天内连续的三个绿色时段');
+    setSelected(valid ? group.map((item) => item.id) : []);
+  };
+
+  const selectedSlots = slots.filter((item) => selected.includes(item.id)).sort((a, b) => a.start_at.localeCompare(b.start_at));
+  const dayGroups = useMemo(() => Object.entries(slots.reduce<Record<string, Slot[]>>((groups, slot) => { const day = shanghaiDay(slot.start_at); (groups[day] ||= []).push(slot); return groups; }, {})), [slots]);
+  const submitDetails = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError('');
+    const data = new FormData(event.currentTarget);
+    const next: Draft = { slot_ids: selected, company_name: String(data.get('company_name')), meeting_platform: String(data.get('meeting_platform')), meeting_number: String(data.get('meeting_number')), contact_last_name: String(data.get('contact_last_name')), contact_salutation: String(data.get('contact_salutation')), contact_phone: String(data.get('contact_phone')), notes: String(data.get('notes') || '') || null };
+    try { const result = await api<Preview>('/appointment-confirmations', { method: 'POST', headers: { 'X-CSRF-Token': csrf }, body: JSON.stringify(next) }); setDraft(next); setPreview(result); setStep('confirm'); } catch (reason) { setError(reason instanceof Error ? reason.message : '预览失败'); } finally { setBusy(false); }
+  };
+  const confirm = async () => {
+    if (!preview) return; setBusy(true); setError('');
+    try { await api('/appointments', { method: 'POST', headers: { 'X-CSRF-Token': csrf, 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ confirmation_token: preview.confirmation_token, appointment: draft }) }); await loadSlots(); setStep('done'); } catch (reason) { setError(reason instanceof Error ? reason.message : '预约失败'); } finally { setBusy(false); }
+  };
+  const stageIndex = step === 'login' ? 0 : step === 'slots' ? 1 : 2;
+  const stages = [{ icon: UserRound, title: '账号验证', detail: user ? user.email : '登录后进入选时' }, { icon: CalendarDays, title: '选择时间', detail: '连续 3 格，共 90 分钟' }, { icon: CheckCircle2, title: '确认预约', detail: '预览确认后原子提交' }];
+  return <main className="workspace interview-view"><div className="workspace-heading"><div><span className="eyebrow">INTERVIEW / 03</span><h1>预约一次有准备的交流。</h1><p>登录后选择真实可用时段，填写会议信息并在三分钟内确认。</p></div><span className="placeholder-badge">真实预约流程</span></div>
+    <div className="booking-steps">{stages.map((item, index) => { const Icon = item.icon; return <div className={index === stageIndex ? 'booking-step active' : 'booking-step'} key={item.title}><span className="step-icon"><Icon size={18} /></span><div><small>STEP 0{index + 1}</small><b>{item.title}</b><p>{item.detail}</p></div></div>; })}</div>
+    {error && <div className="booking-error">{error}</div>}
+    {step === 'login' && <section className="login-panel"><div><span className="eyebrow">SECURE SIGN IN</span><h2>面试官登录</h2><p>使用已验证账号进入预约日历。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><label className="check-row"><input name="remember" type="checkbox" /> 14 天内保持登录</label><button disabled={busy}>{busy ? '正在登录…' : '登录并查看时段'}</button></form></section>}
+    {step === 'slots' && <section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 未来两周可预约时间</span><span className="muted">绿色可选 · 红色不可约 · 深红色为本人预约</span></div><div className="slot-grid">{dayGroups.map(([day, items]) => <div className="slot-day" key={day}><b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(items[0].start_at))}</b><div>{items.map((slot) => { const ownBooking = slot.status === 'booked' && slot.ownership === 'self'; const slotLabel = ownBooking ? '已预约（本人）' : slot.status === 'booked' ? '已预约' : ''; return <button key={slot.id} className={`${slot.status} ${ownBooking ? 'own-booking' : ''} ${selected.includes(slot.id) ? 'selected' : ''}`} disabled={slot.status !== 'available'} title={slotLabel || undefined} aria-label={slotLabel ? `${new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))} ${slotLabel}` : undefined} onClick={() => choose(slot)}>{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>; })}</div></div>)}</div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>账号</dt><dd>{user?.email}</dd></div><div><dt>时长</dt><dd>90 分钟</dd></div><div><dt>时间</dt><dd>{selectedSlots[0] ? `${new Date(selectedSlots[0].start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 起` : '尚未选择'}</dd></div></dl><button className="primary-command" disabled={selected.length !== 3} onClick={() => setStep('details')}>填写预约信息</button></aside></section>}
+    {step === 'details' && <section className="details-panel"><button className="text-command" onClick={() => setStep('slots')}><ArrowLeft size={15} /> 返回选时</button><form onSubmit={submitDetails}><h2>填写会议信息</h2><div className="form-grid"><label>公司名称<input name="company_name" required maxLength={200} /></label><label>会议平台<input name="meeting_platform" defaultValue="腾讯会议" required /></label><label>会议号<input name="meeting_number" required /></label><label>联系人姓氏<input name="contact_last_name" required /></label><label>称呼<select name="contact_salutation"><option>老师</option><option>先生</option><option>女士</option></select></label><label>联系电话<input name="contact_phone" required /></label><label className="wide">备注<textarea name="notes" maxLength={2000} /></label></div><button className="primary-command" disabled={busy}>{busy ? '正在生成预览…' : '下一步：确认信息'}</button></form></section>}
+    {step === 'confirm' && preview && <section className="confirm-panel"><span className="eyebrow">FINAL CHECK</span><h2>请确认预约信息</h2><p>确认链接有效至 {new Date(preview.expires_at).toLocaleTimeString('zh-CN')}，期间不预占时段。</p><dl><div><dt>公司</dt><dd>{preview.company_name}</dd></div><div><dt>收件邮箱</dt><dd>{preview.recipient_email}</dd></div><div><dt>称呼</dt><dd>{preview.salutation}</dd></div><div><dt>会议</dt><dd>{draft.meeting_platform} · {draft.meeting_number}</dd></div></dl><div className="confirm-actions"><button className="text-command" onClick={() => setStep('details')}>返回修改</button><button className="primary-command" disabled={busy} onClick={confirm}>{busy ? '正在提交…' : '确认预约'}</button></div></section>}
+    {step === 'done' && <section className="success-panel"><CheckCircle2 size={34} /><h2>预约已创建</h2><p>时段已原子锁定，通知事件已进入异步处理队列。</p><button className="primary-command" onClick={() => { setSelected([]); setStep('slots'); }}>返回日历</button></section>}
+  </main>;
 }
 
 function App() {

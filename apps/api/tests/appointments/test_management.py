@@ -22,9 +22,11 @@ from .test_booking import (  # noqa: F401
 )
 
 
-async def _create_appointment(client, engine: Engine, start: datetime) -> tuple[UUID, list[UUID]]:
+async def _create_appointment(
+    client, engine: Engine, start: datetime, company: str = "Example, Inc."
+) -> tuple[UUID, list[UUID]]:
     slots = _seed_slots(engine, start)
-    draft = _draft(slots)
+    draft = _draft(slots, company)
     preview = await client.post("/appointment-confirmations", json=draft)
     assert preview.status_code == 200, preview.status_code
     response = await client.post(
@@ -45,7 +47,9 @@ async def test_list_my_returns_only_own_active_appointments(real_stack) -> None:
         app, engine, settings, other
     ) as other_client:
         own_id, _ = await _create_appointment(client, engine, datetime(2030, 6, 3, 3, 0, tzinfo=UTC))
-        await _create_appointment(other_client, engine, datetime(2030, 6, 4, 3, 0, tzinfo=UTC))
+        # 第二个不同用户的预约必须用不同公司名，否则会命中 uq_active_company
+        # （一家公司同一时刻只能有一条 active 预约，见 domain-model §6.6 / 迁移 0002）
+        await _create_appointment(other_client, engine, datetime(2030, 6, 4, 3, 0, tzinfo=UTC), company="Other Corp")
         response = await client.get("/appointments")
         assert response.status_code == 200
         items = response.json()["items"]
@@ -210,7 +214,7 @@ async def test_reschedule_slot_taken_keeps_original(real_stack) -> None:
             owner_client, engine, datetime(2030, 6, 10, 3, 0, tzinfo=UTC)
         )
         _, target = await _create_appointment(
-            rival_client, engine, datetime(2030, 7, 10, 3, 0, tzinfo=UTC)
+            rival_client, engine, datetime(2030, 7, 10, 3, 0, tzinfo=UTC), company="Rival Co"
         )
         response = await owner_client.patch(
             f"/appointments/{appointment_id}",
@@ -265,7 +269,7 @@ async def test_reschedule_two_transactions_race_for_slots(real_stack) -> None:
             first_client, engine, datetime(2031, 3, 2, 3, 0, tzinfo=UTC)
         )
         second_id, _ = await _create_appointment(
-            second_client, engine, datetime(2031, 3, 3, 3, 0, tzinfo=UTC)
+            second_client, engine, datetime(2031, 3, 3, 3, 0, tzinfo=UTC), company="Second Co"
         )
         new_slots = _seed_slots(engine, datetime(2031, 4, 1, 3, 0, tzinfo=UTC))
         results = await asyncio.gather(

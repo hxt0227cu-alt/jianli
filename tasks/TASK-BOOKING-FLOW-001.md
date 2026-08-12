@@ -81,19 +81,19 @@
 - 冻结测试失败且必须降低断言、超出预算或发现 approved 工件冲突。
 
 ## 交付证据
-- commit / PR：实现快照待本次提交后回填；独立审查仅执行一轮
+- commit / PR：主实现 `28530b4`；独立审查发现的唯一 P1（创建成功后刷新失败被误报为预约失败）已于最终实现快照 `ccd698b` 修复
 - 修改文件清单：`apps/api/app/appointments/{models,router,service}.py`、`apps/api/app/factory.py`、`apps/api/tests/appointments/test_booking.py`、`apps/api/scripts/seed_demo.py`、`apps/web/{main.tsx,appointment.css}`、`tests/web-shell/shell.test.ts`、`vite.config.ts`、`docker-compose.dev.yml`、本 TASK、`PROJECT_STATE.md`
 - 测试命令及结果：隔离真实 PostgreSQL 16 + Redis 7 回归 `pytest tests/appointments tests/auth tests/migrations -q` → 53 passed / 0 skipped；基础测试 → 5 passed；`pnpm test` → 1 passed；桌面端浏览器真实流程 → pass
 - lint / typecheck：`ruff check .` / `ruff format --check .` / `mypy app` / `pip check` / `pnpm typecheck` / `pnpm build` 全部 pass
 - DB 迁移验证：无新 migration；隔离测试库由既有 Alembic `0001 → 0002 → 0003` upgrade 成功；本地 `jianli_dev` seed 成功
 - 验收证据：已实测登录 → 真实 14 天时段 → 连续三格 → 信息表单 → 三分钟预览 → 原子创建；返回日历后三格显示 `booked/self` 且标记“已预约（本人）”；他人预约仅返回 `ownership=other`，无 `appointment_id`/PII；浏览器无 console error/warning
 - 变更预算实际值：13 个允许路径（上限 14）；产品代码约 205 新增行，测试约 80 新增行，均未超预期
-- 未解决风险：无
+- 未解决风险：无 P0/P1；日历刷新失败时保留“预约已创建”事实并提供重试，不会诱导重复提交
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待独立审查后回填实现快照
-- 状态：Implemented; awaiting one independent review
+- verified_commit：`ccd698b8cfffac7a5036e9d358000e98c2fcb1d4`
+- 状态：Closed
 
 ## 关联
 - 前置：TASK-BOOKING-001（Closed）

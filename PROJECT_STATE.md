@@ -58,7 +58,7 @@
 - **TASK-DB-003 / TASK-REVIEW-DB-003**：**Closed（2026-08-11）**——最终验证快照 `4f3b74c`；两表/两 enum/approved 约束可逆迁移通过，同一真实 PostgreSQL 连续两遍 migration 测试均 26 passed / 0 skipped，独立审查 P0/P1/P2=0；未执行生产迁移。
 - **TASK-BOOKING-001**：**Closed（2026-08-12）**——最终固定实现 `4d5381a`；真实 PostgreSQL/Redis 预约 14 passed、全套 57 passed / 0 skipped，独立空库 `up → down base → up` 通过；TC-APT-003 两 backend PID + 屏障连续 10 轮与 loser 完整回滚通过，严格 Base64URL key、端点 CSRF/RBAC、Redis fail closed 已冻结；Ruff/format/mypy/pip check/secret scan 全通过；DB/API/依赖不变。
 - **TASK-REVIEW-BOOKING-001**：**Closed / PASS（2026-08-12）**——原审查 `ae651c5` 的 P1=2/P2=2 与第二轮计数 P2 均已向前修正；第三轮独立审查 `ce5b95f` 结论 P0=0 / P1=0 / P2=0。
-- **TASK-BOOKING-FLOW-001**：**In progress（2026-08-12）**——功能交付优先：实现登录→真实 Slot 快照→连续三格→预览→确认创建的桌面端闭环；一张 TASK 承载实现、测试与证据，只做一轮独立审查。
+- **TASK-BOOKING-FLOW-001**：**Closed（2026-08-12）**——登录→真实 14 天 Slot→连续三格→预览→原子创建的桌面端闭环已交付；最终实现快照=`ccd698b`，真实 PostgreSQL/Redis 53 passed、基础测试 5 passed、前端 1 passed + typecheck/build；一轮独立审查唯一 P1 已修复，无遗留 P0/P1。
 - **TASK-TEST-BOOKING-001**：**Closed（2026-08-11）**——测试兼容性提交 `b8b241f` 仅显式清理无 FK 的 Outbox/Audit 测试数据，不改断言、10 轮并发、生产代码或 schema；真实 PostgreSQL/Redis 预约测试 8 passed / 0 skipped。
 - **TASK-TEST-BOOKING-002**：**Closed（2026-08-12；证据修正待第三轮复核）**——测试增强 `90884af` 与最终固定实现 `4d5381a` 已补强 TC-APT-003 的真实事务重叠/backend PID/loser 完整回滚，以及两个预约 POST 的 CSRF/RBAC 与 Redis fail-closed 端点覆盖；第二轮真实复跑预约套件为 14 passed，修正 `b41b28c` 的 13 passed 计数笔误；冻结断言未放宽、无 skip/mock。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。

@@ -5,10 +5,15 @@ from __future__ import annotations
 import os
 import smtplib
 import ssl
+from datetime import datetime
 from email.message import EmailMessage
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from app.config import Settings
+
+if TYPE_CHECKING:  # annotations are lazy (PEP 563), so this stays import-cycle free
+    from app.appointments.models import Appointment
 
 _LOCAL = ZoneInfo("Asia/Shanghai")
 
@@ -24,11 +29,11 @@ def web_base_url() -> str:
     return os.environ.get("JIANLI_WEB_BASE_URL", "http://localhost:5173")
 
 
-def _fmt(dt) -> str:
+def _fmt(dt: datetime) -> str:
     return dt.astimezone(_LOCAL).strftime("%Y-%m-%d %H:%M")
 
 
-def render(event_type: str, appt, owner_email: str) -> tuple[str, str]:
+def render(event_type: str, appt: Appointment, owner_email: str) -> tuple[str, str]:
     """Return (subject, plain_text) for a notification event about ``appt``.
 
     ``appt`` is a decrypted ``Appointment`` (company_name / meeting_* / contact_* / notes).
@@ -125,13 +130,16 @@ class EmailSender:
     """Send transactional email over SMTP using runtime-only credentials."""
 
     def __init__(self, settings: Settings) -> None:
-        self._host = settings.smtp_host
-        self._port = settings.smtp_port
-        self._user = settings.smtp_user
-        self._password = (
-            settings.smtp_password.get_secret_value() if settings.smtp_password else None
-        )
-        self._sender = settings.smtp_from or self._user
+        host, user, password = settings.smtp_host, settings.smtp_user, settings.smtp_password
+        if host is None or user is None or password is None:
+            # Every call site is guarded by Settings.notification_configured; failing here
+            # keeps the missing-credential error at construction instead of mid-send.
+            raise ValueError("EmailSender requires SMTP host, user and password")
+        self._host: str = host
+        self._port: int = settings.smtp_port
+        self._user: str = user
+        self._password: str = password.get_secret_value()
+        self._sender: str = settings.smtp_from or user
 
     def send(self, to: str, subject: str, text: str) -> None:
         message = EmailMessage()

@@ -24,11 +24,12 @@ def run_worker(settings: Settings | None = None) -> int:
     config = settings or Settings.from_env()
     configure_logging(config.log_level)
 
-    if not config.notification_configured:
+    database_url = config.database_url
+    if not config.notification_configured or database_url is None:
         LOGGER.info("worker_smoke_completed", extra={"notification_configured": False})
         return 0
 
-    engine: Engine = create_engine(config.database_url)
+    engine: Engine = create_engine(database_url)
     auth_runtime: AuthRuntime = build_auth_runtime(config)
     booking = build_booking_runtime(config, auth_runtime)
     auth_repo = AuthRepository(engine)

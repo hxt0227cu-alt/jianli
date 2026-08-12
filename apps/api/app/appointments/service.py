@@ -5,11 +5,11 @@ import hmac
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, RowMapping, text
 from sqlalchemy.exc import IntegrityError
 
 from app.auth.errors import AuthError
@@ -536,7 +536,7 @@ class BookingService:
 
     def _load_owned_for_write(
         self, connection: Any, appointment_id: UUID, user_id: UUID
-    ) -> dict[str, Any]:
+    ) -> RowMapping:
         row = connection.execute(
             text(
                 "SELECT id,user_id,status,version,start_at,end_at,company_name_ciphertext,"
@@ -555,7 +555,7 @@ class BookingService:
     def _reschedule(
         self,
         connection: Any,
-        row: dict[str, Any],
+        row: RowMapping,
         new_slot_ids: list[UUID],
         user_id: UUID,
         now: datetime,
@@ -625,7 +625,7 @@ class BookingService:
     def _patch_details(
         self,
         connection: Any,
-        row: dict[str, Any],
+        row: RowMapping,
         update: AppointmentUpdate,
         user_id: UUID,
         now: datetime,
@@ -745,7 +745,7 @@ class BookingService:
             ).scalars().all()
         )
 
-    def _decrypt_appointment(self, row: dict[str, Any], slot_ids: list[UUID]) -> Appointment:
+    def _decrypt_appointment(self, row: RowMapping, slot_ids: list[UUID]) -> Appointment:
         def decrypt(value: bytes | None, column: str) -> str | None:
             return (
                 self._cipher.decrypt(value, "appointments", column, row["id"])
@@ -759,14 +759,17 @@ class BookingService:
         contact_raw = decrypt(row["contact_ciphertext"], "contact_ciphertext")
         contact = json.loads(contact_raw) if contact_raw is not None else {}
         notes = decrypt(row["notes_ciphertext"], "notes_ciphertext")
+        # The ciphertext columns are nullable in SQL while the domain model requires the
+        # plaintext fields; the write path always populates them, so narrow the type here
+        # instead of widening the model (that would need an approved migration).
         return Appointment(
             slot_ids=slot_ids,
-            company_name=company,
-            meeting_platform=platform,
-            meeting_number=number,
-            contact_last_name=contact.get("last_name"),
-            contact_salutation=contact.get("salutation"),
-            contact_phone=contact.get("phone"),
+            company_name=cast(str, company),
+            meeting_platform=cast(str, platform),
+            meeting_number=cast(str, number),
+            contact_last_name=cast(str, contact.get("last_name")),
+            contact_salutation=cast(str, contact.get("salutation")),
+            contact_phone=cast(str, contact.get("phone")),
             notes=notes,
             id=row["id"],
             status=row["status"],

@@ -419,15 +419,24 @@ async def test_two_transactions_race_for_slots_ten_rounds(real_stack) -> None:
             pid_lock = threading.Lock()
 
             def observe_slot_lock(
-                _connection, cursor, statement, _parameters, _context, _executemany
+                _connection,
+                cursor,
+                statement,
+                _parameters,
+                _context,
+                _executemany,
+                *,
+                round_barrier=barrier,
+                round_backend_pids=backend_pids,
+                round_pid_lock=pid_lock,
             ) -> None:
                 if "FROM appointment_slots" not in statement or "FOR UPDATE" not in statement:
                     return
                 cursor.execute("SELECT pg_backend_pid()")
                 backend_pid = int(cursor.fetchone()[0])
-                with pid_lock:
-                    backend_pids.append(backend_pid)
-                barrier.wait(timeout=5)
+                with round_pid_lock:
+                    round_backend_pids.append(backend_pid)
+                round_barrier.wait(timeout=5)
 
             event.listen(booking_engine, "before_cursor_execute", observe_slot_lock)
             started = time.perf_counter()
@@ -471,8 +480,7 @@ async def test_two_transactions_race_for_slots_ten_rounds(real_stack) -> None:
                     )
                 ).mappings()
                 assert all(
-                    row["status"] == "booked"
-                    and str(row["appointment_id"]) == winner.json()["id"]
+                    row["status"] == "booked" and str(row["appointment_id"]) == winner.json()["id"]
                     for row in slot_rows
                 )
         finally:

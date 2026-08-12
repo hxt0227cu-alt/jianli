@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -29,9 +30,11 @@ class BookingCryptoError(ValueError):
 
 def _decode_key(value: str, label: str) -> bytes:
     try:
-        decoded = base64.urlsafe_b64decode(value.encode("ascii"))
-    except (ValueError, UnicodeEncodeError) as error:
+        decoded = base64.b64decode(value.encode("ascii"), altchars=b"-_", validate=True)
+    except (binascii.Error, ValueError, UnicodeEncodeError) as error:
         raise ValueError(f"{label} must be URL-safe Base64") from error
+    if base64.urlsafe_b64encode(decoded).decode("ascii") != value:
+        raise ValueError(f"{label} must be canonical URL-safe Base64")
     if len(decoded) != 32:
         raise ValueError(f"{label} must decode to 32 bytes")
     return decoded

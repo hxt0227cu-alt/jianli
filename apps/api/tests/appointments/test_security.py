@@ -35,6 +35,20 @@ def _draft() -> AppointmentDraft:
     )
 
 
+@pytest.mark.parametrize(
+    "invalid_key",
+    [
+        base64.b64encode(b"\xfb" * 32).decode("ascii"),
+        _encoded_key() + "!",
+        _encoded_key().rstrip("="),
+        _encoded_key() + "=",
+    ],
+)
+def test_key_material_requires_canonical_urlsafe_base64(invalid_key: str) -> None:
+    with pytest.raises(ValueError, match="URL-safe Base64"):
+        FieldCipher("current", {"current": invalid_key})
+
+
 def test_aes_gcm_random_nonce_and_aad_binding(caplog: pytest.LogCaptureFixture) -> None:
     cipher = FieldCipher("current", {"current": _encoded_key()})
     record_id = uuid4()

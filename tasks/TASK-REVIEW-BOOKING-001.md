@@ -81,3 +81,8 @@
 - 审查窗口独立复跑：未完成。Windows 无 Python/Docker；一次性 WSL 隔离环境未能可靠启动，已按主窗口指令终止，不再安装或运行。误建 `/packages` 经列出本次下载包并核验路径后删除；`/var/tmp/jianli-review-booking-001` 亦已删除；未启动 PostgreSQL/Redis，端口 `55439`/`6399` 无已知监听。
 - 残余风险：动态测试、lint/typecheck、migration up/down 仅复核实现窗口固定证据，未由审查窗口独立重跑；结合 P1-1，既有 TC-APT-003 通过结果不能替代真实重叠/完整 loser 回滚证明。
 - result：FAIL（P0=0 / P1=2 / P2=2）
+
+### 前向修正待独立复核
+- candidate_commit：`4d5381a`
+- 实现窗口证据：P1-1/P1-2 增强覆盖已通过；P2-1 已严格拒绝非 URL-safe 与非 canonical Base64 key 表示；P2-2 已按相对基线 Git 路径口径更正为 17 个路径。
+- 状态：原审查 FAIL 历史保留；BOOKING-001 继续 awaiting independent review，须由独立审查窗口复核 candidate 后另行 PASS/FAIL。

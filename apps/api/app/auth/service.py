@@ -8,18 +8,18 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from app.notifications.email import (
-    EmailSender,
-    render_reset_email,
-    render_verification_email,
-    web_base_url,
-)
 from .errors import AuthError
 from .models import Principal, UserRole, UserSummary
 from .passwords import PasswordHasher, PasswordPolicyError
 from .rate_limit import LoginRateLimiter
 from .repository import AuthRepository
 from .tokens import SessionTokens
+from app.notifications.email import (
+    EmailSender,
+    render_reset_email,
+    render_verification_email,
+    web_base_url,
+)
 
 SESSION_HOURS = 12
 REMEMBER_DAYS = 14

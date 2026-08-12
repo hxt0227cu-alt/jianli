@@ -16,11 +16,11 @@ from app.auth.models import Principal
 
 # 复用同域已验证夹具与种子助手（单一来源，便于接手）
 from .test_booking import (  # noqa: F401
+    _authorized_client,
+    _draft,
     _seed_slots,
     _seed_user,
     real_stack,
-    _authorized_client,
-    _draft,
 )
 
 DATABASE_URL = os.environ.get("JIANLI_BOOKING_TEST_DATABASE_URL")

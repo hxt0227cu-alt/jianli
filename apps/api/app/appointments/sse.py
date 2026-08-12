@@ -12,8 +12,8 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from datetime import UTC, datetime
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 from fastapi import Request
 from fastapi.responses import StreamingResponse

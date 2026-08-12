@@ -168,12 +168,20 @@ async def test_verify_email_consumes_token_and_is_idempotent(real_stack, monkeyp
             "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": known}
         )
         assert again.status_code == 204
-        # Wrong token is rejected.
+        # An unknown token of contract-valid length is rejected as INVALID_TOKEN.
+        unknown = "unknown-verification-token-0123456789abcdef"
+        assert len(unknown) >= 32  # TokenRequest.token minLength in the approved contract
         bad = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": "nope"}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": unknown}
         )
         assert bad.status_code == 409
         assert bad.json()["code"] == "INVALID_TOKEN"
+        # A token shorter than the contract minimum never reaches the service layer.
+        too_short = await client.post(
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": "nope"}
+        )
+        assert too_short.status_code == 422
+        assert too_short.json()["code"] == "INVALID_REQUEST"
 
     user = _user_row(engine, "verify@example.com")
     assert user["verified"] is True

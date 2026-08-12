@@ -14,6 +14,7 @@ from .rate_limit import LoginRateLimiter, RedisClient
 from .repository import AuthRepository
 from .service import AuthService
 from .tokens import SessionTokens
+from app.notifications.email import EmailSender
 
 
 @dataclass(slots=True)
@@ -37,10 +38,13 @@ def build_auth_runtime(settings: Settings) -> AuthRuntime:
     engine = create_engine(settings.database_url, pool_pre_ping=True)
     client = redis.Redis.from_url(settings.redis_url, decode_responses=False)
     tokens = SessionTokens(settings.csrf_hmac_key.get_secret_value())
+    # Email delivery is best-effort: wired only when SMTP is configured at runtime.
+    email_sender = EmailSender(settings) if settings.notification_configured else None
     service = AuthService(
         AuthRepository(engine),
         PasswordHasher(),
         tokens,
         LoginRateLimiter(client, settings.rate_limit_hmac_key.get_secret_value()),
+        email_sender,
     )
     return AuthRuntime(service, tokens, frozenset(settings.allowed_origins), engine, client)

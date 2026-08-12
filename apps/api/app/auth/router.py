@@ -9,7 +9,15 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 
 from .errors import AuthError
-from .models import LoginRequest, Principal, UserSummary
+from .models import (
+    EmailRequest,
+    LoginRequest,
+    Principal,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenRequest,
+    UserSummary,
+)
 from .runtime import AuthRuntime
 
 SESSION_COOKIE = "__Host-session"
@@ -120,5 +128,32 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
     @router.get("/me", response_model=UserSummary, operation_id="getCurrentUser")
     def current_user(request: Request) -> UserSummary:
         return UserSummary.model_validate(_principal(request, runtime), from_attributes=True)
+
+    @router.post("/register", status_code=202, operation_id="registerInterviewer")
+    def register(payload: RegisterRequest, request: Request) -> None:
+        # Anonymous entry point: same-origin only, no session/CSRF required.
+        # Returns 202 (generic); a verification email is queued when SMTP is configured.
+        _require_same_origin(request, runtime)
+        ip = request.client.host if request.client else "unknown"
+        runtime.service.register(payload.email, payload.password, ip)
+
+    @router.post("/verify-email", status_code=204, operation_id="verifyEmail")
+    def verify_email(payload: TokenRequest, request: Request) -> None:
+        _require_same_origin(request, runtime)
+        runtime.service.verify_email(payload.token)
+
+    @router.post(
+        "/password-reset/request", status_code=202, operation_id="requestPasswordReset"
+    )
+    def request_password_reset(payload: EmailRequest, request: Request) -> None:
+        # Anonymous entry point: same-origin only. Always 202; never reveals existence.
+        _require_same_origin(request, runtime)
+        ip = request.client.host if request.client else "unknown"
+        runtime.service.request_password_reset(payload.email, ip)
+
+    @router.post("/password-reset/confirm", status_code=204, operation_id="confirmPasswordReset")
+    def confirm_password_reset(payload: ResetPasswordRequest, request: Request) -> None:
+        _require_same_origin(request, runtime)
+        runtime.service.reset_password(payload.token, payload.new_password)
 
     return router

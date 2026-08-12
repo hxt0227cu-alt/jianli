@@ -1,7 +1,8 @@
-"""SMTP email sender and Chinese notification templates (M3)."""
+"""SMTP email sender and Chinese notification templates (M3 + M4)."""
 
 from __future__ import annotations
 
+import os
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -10,6 +11,17 @@ from zoneinfo import ZoneInfo
 from app.config import Settings
 
 _LOCAL = ZoneInfo("Asia/Shanghai")
+
+
+def web_base_url() -> str:
+    """Front-end base URL used to build magic-link emails.
+
+    Override per deployment via ``JIANLI_WEB_BASE_URL``; defaults to the local dev
+    server. Reads the environment directly (no new Settings field) so M4 stays
+    within its approved change surface.
+    """
+
+    return os.environ.get("JIANLI_WEB_BASE_URL", "http://localhost:5173")
 
 
 def _fmt(dt) -> str:
@@ -82,6 +94,30 @@ def render(event_type: str, appt, owner_email: str) -> tuple[str, str]:
         subject = f"面试通知 · {company}"
         body = f"公司：{company}\n时段：{window}\n"
 
+    return subject, body
+
+
+def render_verification_email(email: str, link: str) -> tuple[str, str]:
+    """Return (subject, plain_text) for a new-account email verification link (M4)."""
+
+    subject = "请验证你的简历面试站点邮箱"
+    body = (
+        f"你好，\n\n感谢注册简历面试站点。请点击以下链接验证邮箱（{email}）：\n"
+        f"{link}\n\n"
+        "链接 24 小时内有效。如非本人操作，请忽略本邮件。\n"
+    )
+    return subject, body
+
+
+def render_reset_email(email: str, link: str) -> tuple[str, str]:
+    """Return (subject, plain_text) for a password reset link (M4)."""
+
+    subject = "重置你的简历面试站点密码"
+    body = (
+        f"你好，\n\n我们收到了重置密码的请求（{email}）。请点击以下链接重置密码：\n"
+        f"{link}\n\n"
+        "链接 1 小时内有效。如非本人操作，请忽略本邮件，账号仍然安全。\n"
+    )
     return subject, body
 
 

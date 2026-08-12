@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
+import threading
 import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
@@ -10,7 +11,7 @@ from uuid import UUID, uuid4
 import pytest
 import redis
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Engine, create_engine, event, text
 
 from app.appointments.runtime import build_booking_runtime
 from app.auth.passwords import PasswordHasher
@@ -180,6 +181,7 @@ async def test_preview_is_read_only_and_auth_boundaries(real_stack) -> None:
             "/appointment-confirmations", headers={"Origin": ORIGIN}, json=draft
         )
         assert denied.status_code == 401
+        assert denied.json()["code"] == "AUTH_EXPIRED"
     async with _authorized_client(app, engine, settings, owner) as owner_client:
         denied = await owner_client.post("/appointment-confirmations", json=draft)
         assert denied.status_code == 403
@@ -189,6 +191,103 @@ async def test_preview_is_read_only_and_auth_boundaries(real_stack) -> None:
             "/appointment-confirmations", headers={"Origin": "https://evil.invalid"}, json=draft
         )
         assert denied.status_code == 403
+        assert denied.json()["code"] == "PERM_DENIED"
+
+    async with _authorized_client(app, engine, settings, interviewer) as csrf_client:
+        csrf = csrf_client.headers.pop("X-CSRF-Token")
+        missing = await csrf_client.post("/appointment-confirmations", json=draft)
+        assert missing.status_code == 403
+        assert missing.json()["code"] == "PERM_DENIED"
+        wrong = await csrf_client.post(
+            "/appointment-confirmations", headers={"X-CSRF-Token": "wrong"}, json=draft
+        )
+        assert wrong.status_code == 403
+        assert wrong.json()["code"] == "PERM_DENIED"
+        csrf_client.headers["X-CSRF-Token"] = csrf
+
+
+@pytest.mark.asyncio
+async def test_create_auth_csrf_and_origin_boundaries(real_stack) -> None:
+    engine, _, app, settings = real_stack
+    interviewer = _seed_user(engine)
+    owner = _seed_user(engine, "owner_admin")
+    slots = _seed_slots(engine, datetime(2030, 6, 3, 1, 30, tzinfo=UTC))
+    draft = _draft(slots)
+    async with _authorized_client(app, engine, settings, interviewer) as preview_client:
+        preview = await preview_client.post("/appointment-confirmations", json=draft)
+    payload = {
+        "confirmation_token": preview.json()["confirmation_token"],
+        "appointment": draft,
+    }
+    idempotency = {"Idempotency-Key": str(uuid4())}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anonymous:
+        denied = await anonymous.post(
+            "/appointments", headers={"Origin": ORIGIN, **idempotency}, json=payload
+        )
+        assert denied.status_code == 401
+        assert denied.json()["code"] == "AUTH_EXPIRED"
+    async with _authorized_client(app, engine, settings, owner) as owner_client:
+        denied = await owner_client.post("/appointments", headers=idempotency, json=payload)
+        assert denied.status_code == 403
+        assert denied.json()["code"] == "PERM_DENIED"
+    async with _authorized_client(app, engine, settings, interviewer) as csrf_client:
+        csrf = csrf_client.headers.pop("X-CSRF-Token")
+        missing = await csrf_client.post("/appointments", headers=idempotency, json=payload)
+        assert missing.status_code == 403
+        assert missing.json()["code"] == "PERM_DENIED"
+        wrong = await csrf_client.post(
+            "/appointments",
+            headers={**idempotency, "X-CSRF-Token": "wrong"},
+            json=payload,
+        )
+        assert wrong.status_code == 403
+        assert wrong.json()["code"] == "PERM_DENIED"
+        csrf_client.headers["X-CSRF-Token"] = csrf
+        cross_origin = await csrf_client.post(
+            "/appointments",
+            headers={**idempotency, "Origin": "https://evil.invalid"},
+            json=payload,
+        )
+        assert cross_origin.status_code == 403
+        assert cross_origin.json()["code"] == "PERM_DENIED"
+    assert _table_counts(engine)["appointments"] == 0
+
+
+@pytest.mark.asyncio
+async def test_create_redis_outage_fails_closed_and_preview_uses_no_quota(real_stack) -> None:
+    engine, redis_client, app, settings = real_stack
+    user_id = _seed_user(engine)
+    slots = _seed_slots(engine, datetime(2030, 6, 3, 2, 0, tzinfo=UTC))
+    draft = _draft(slots)
+    booking_keys_before = set(redis_client.scan_iter(match="booking:create:account:*"))
+    async with _authorized_client(app, engine, settings, user_id) as client:
+        preview = await client.post("/appointment-confirmations", json=draft)
+        assert preview.status_code == 200
+        assert set(redis_client.scan_iter(match="booking:create:account:*")) == booking_keys_before
+
+        limiter = app.state.booking_runtime._rate_limiter
+        working_client = limiter._client
+        unavailable_client = redis.Redis(
+            host="127.0.0.1", port=1, socket_connect_timeout=0.1, socket_timeout=0.1
+        )
+        limiter._client = unavailable_client
+        try:
+            response = await client.post(
+                "/appointments",
+                headers={"Idempotency-Key": str(uuid4())},
+                json={
+                    "confirmation_token": preview.json()["confirmation_token"],
+                    "appointment": draft,
+                },
+            )
+        finally:
+            limiter._client = working_client
+            unavailable_client.close()
+    assert response.status_code == 429
+    assert response.json()["code"] == "RATE_LIMITED"
+    assert response.headers["content-type"].startswith("application/problem+json")
+    assert _table_counts(engine)["appointments"] == 0
 
 
 @pytest.mark.asyncio
@@ -299,6 +398,7 @@ async def test_confirmation_tampering_has_no_side_effect(real_stack) -> None:
 @pytest.mark.asyncio
 async def test_two_transactions_race_for_slots_ten_rounds(real_stack) -> None:
     engine, redis_client, app, settings = real_stack
+    booking_engine = app.state.booking_runtime._engine
     durations: list[float] = []
     for round_number in range(10):
         _reset_database(engine)
@@ -314,28 +414,67 @@ async def test_two_transactions_race_for_slots_ten_rounds(real_stack) -> None:
                     for client, draft in zip(clients, drafts, strict=True)
                 ]
             )
+            barrier = threading.Barrier(2)
+            backend_pids: list[int] = []
+            pid_lock = threading.Lock()
+
+            def observe_slot_lock(
+                _connection, cursor, statement, _parameters, _context, _executemany
+            ) -> None:
+                if "FROM appointment_slots" not in statement or "FOR UPDATE" not in statement:
+                    return
+                cursor.execute("SELECT pg_backend_pid()")
+                backend_pid = int(cursor.fetchone()[0])
+                with pid_lock:
+                    backend_pids.append(backend_pid)
+                barrier.wait(timeout=5)
+
+            event.listen(booking_engine, "before_cursor_execute", observe_slot_lock)
             started = time.perf_counter()
-            results = await asyncio.gather(
-                *[
-                    client.post(
-                        "/appointments",
-                        headers={"Idempotency-Key": str(uuid4())},
-                        json={
-                            "confirmation_token": preview.json()["confirmation_token"],
-                            "appointment": draft,
-                        },
-                    )
-                    for client, preview, draft in zip(clients, previews, drafts, strict=True)
-                ]
-            )
+            try:
+                results = await asyncio.gather(
+                    *[
+                        client.post(
+                            "/appointments",
+                            headers={"Idempotency-Key": str(uuid4())},
+                            json={
+                                "confirmation_token": preview.json()["confirmation_token"],
+                                "appointment": draft,
+                            },
+                        )
+                        for client, preview, draft in zip(clients, previews, drafts, strict=True)
+                    ]
+                )
+            finally:
+                event.remove(booking_engine, "before_cursor_execute", observe_slot_lock)
             durations.append(time.perf_counter() - started)
+            assert barrier.n_waiting == 0
+            assert len(backend_pids) == 2
+            assert len(set(backend_pids)) == 2
             assert sorted(response.status_code for response in results) == [201, 409]
             loser = next(response for response in results if response.status_code == 409)
             assert loser.json()["code"] == "SLOT_TAKEN"
             counts = _table_counts(engine)
-            assert counts["appointments"] == 1
-            assert counts["notification_events"] == 2
-            assert counts["audit_logs"] == 1
+            assert counts == {
+                "companies": 1,
+                "appointments": 1,
+                "appointment_slots": 3,
+                "notification_events": 2,
+                "audit_logs": 1,
+            }
+            winner = next(response for response in results if response.status_code == 201)
+            with engine.connect() as connection:
+                slot_rows = connection.execute(
+                    text(
+                        "SELECT status::text,appointment_id FROM appointment_slots "
+                        "ORDER BY start_at,id"
+                    )
+                ).mappings()
+                assert all(
+                    row["status"] == "booked"
+                    and str(row["appointment_id"]) == winner.json()["id"]
+                    for row in slot_rows
+                )
         finally:
             await asyncio.gather(*(client.aclose() for client in clients))
     assert max(durations) <= 1.5

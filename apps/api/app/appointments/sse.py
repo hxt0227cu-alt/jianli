@@ -13,7 +13,7 @@ import asyncio
 import json
 import time
 from datetime import UTC, datetime
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from fastapi import Request
 from fastapi.responses import StreamingResponse

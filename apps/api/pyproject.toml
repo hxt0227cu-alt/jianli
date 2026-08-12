@@ -36,6 +36,14 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# Chinese-language project: full-width punctuation is correct in CN strings/comments,
+# so disable the ambiguous-unicode rules that would otherwise flag every CN literal.
+ignore = ["RUF001", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest fixtures are injected by parameter name; the import-then-parameter pattern
+# trips F811 (redefinition of the imported fixture name), which is a false positive here.
+"tests/**" = ["F811"]
 
 [tool.mypy]
 python_version = "3.12"

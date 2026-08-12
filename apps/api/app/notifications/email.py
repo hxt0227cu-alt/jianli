@@ -128,7 +128,9 @@ class EmailSender:
         self._host = settings.smtp_host
         self._port = settings.smtp_port
         self._user = settings.smtp_user
-        self._password = settings.smtp_password.get_secret_value() if settings.smtp_password else None
+        self._password = (
+            settings.smtp_password.get_secret_value() if settings.smtp_password else None
+        )
         self._sender = settings.smtp_from or self._user
 
     def send(self, to: str, subject: str, text: str) -> None:
@@ -143,7 +145,9 @@ class EmailSender:
 
     def _connect(self) -> smtplib.SMTP:
         if self._port == 465:
-            return smtplib.SMTP_SSL(self._host, self._port, timeout=10, context=ssl.create_default_context())
+            return smtplib.SMTP_SSL(
+                self._host, self._port, timeout=10, context=ssl.create_default_context()
+            )
         client = smtplib.SMTP(self._host, self._port, timeout=10)
         client.starttls(context=ssl.create_default_context())
         return client

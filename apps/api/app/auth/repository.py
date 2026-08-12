@@ -162,7 +162,8 @@ class AuthRepository:
         return dict(row) if row else None
 
     def find_verification_token_user(self, token_hash: str) -> dict[str, Any] | None:
-        """Idempotency probe: a not-yet-expired token (consumed allowed) with its user's verified flag."""
+        """Idempotency probe: a not-yet-expired token (consumed allowed) with its
+        user's verified flag."""
 
         with self._engine.connect() as connection:
             row = (

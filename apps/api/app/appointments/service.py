@@ -634,7 +634,10 @@ class BookingService:
         sets: dict[str, bytes | None] = {}
         if update.meeting_platform is not None:
             sets["meeting_platform_ciphertext"] = self._cipher.encrypt(
-                update.meeting_platform, "appointments", "meeting_platform_ciphertext", appointment_id
+                update.meeting_platform,
+                "appointments",
+                "meeting_platform_ciphertext",
+                appointment_id,
             )
         if update.meeting_number is not None:
             sets["meeting_number_ciphertext"] = self._cipher.encrypt(
@@ -651,7 +654,10 @@ class BookingService:
             existing = (
                 json.loads(
                     self._cipher.decrypt(
-                        row["contact_ciphertext"], "appointments", "contact_ciphertext", appointment_id
+                        row["contact_ciphertext"],
+                        "appointments",
+                        "contact_ciphertext",
+                        appointment_id,
                     )
                 )
                 if row["contact_ciphertext"] is not None
@@ -672,7 +678,9 @@ class BookingService:
             )
         if update.notes is not None:
             sets["notes_ciphertext"] = (
-                self._cipher.encrypt(update.notes, "appointments", "notes_ciphertext", appointment_id)
+                self._cipher.encrypt(
+                    update.notes, "appointments", "notes_ciphertext", appointment_id
+                )
                 if update.notes
                 else None
             )

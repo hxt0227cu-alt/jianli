@@ -8,18 +8,18 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from .errors import AuthError
-from .models import Principal, UserRole, UserSummary
-from .passwords import PasswordHasher, PasswordPolicyError
-from .rate_limit import LoginRateLimiter
-from .repository import AuthRepository
-from .tokens import SessionTokens
 from app.notifications.email import (
     EmailSender,
     render_reset_email,
     render_verification_email,
     web_base_url,
 )
+from .errors import AuthError
+from .models import Principal, UserRole, UserSummary
+from .passwords import PasswordHasher, PasswordPolicyError
+from .rate_limit import LoginRateLimiter
+from .repository import AuthRepository
+from .tokens import SessionTokens
 
 SESSION_HOURS = 12
 REMEMBER_DAYS = 14
@@ -163,13 +163,13 @@ class AuthService:
             )
         try:
             password_hash = self._passwords.hash(password)
-        except PasswordPolicyError:
+        except PasswordPolicyError as err:
             raise AuthError(
                 "INVALID_REQUEST",
                 422,
                 "Weak password",
                 "Password must be 10-72 UTF-8 bytes",
-            )
+            ) from err
         user_id = uuid4()
         self._repository.create_user(
             user_id, email, password_hash, DEFAULT_ROLE, False
@@ -229,13 +229,13 @@ class AuthService:
 
         try:
             password_hash = self._passwords.hash(new_password)
-        except PasswordPolicyError:
+        except PasswordPolicyError as err:
             raise AuthError(
                 "INVALID_REQUEST",
                 422,
                 "Weak password",
                 "Password must be 10-72 UTF-8 bytes",
-            )
+            ) from err
         token_hash = self._tokens.digest(token)
         row = self._repository.find_reset_token(token_hash, datetime.now(UTC))
         if row is None:
@@ -252,7 +252,8 @@ class AuthService:
     def _send_verification_email(self, email: str, token: str) -> None:
         if self._email_sender is None:
             return
-        subject, body = render_verification_email(email, f"{web_base_url()}/verify-email?token={token}")
+        link = f"{web_base_url()}/verify-email?token={token}"
+        subject, body = render_verification_email(email, link)
         self._email_sender.send(email, subject, body)
 
     def _send_reset_email(self, email: str, token: str) -> None:

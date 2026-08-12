@@ -1,22 +1,17 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine, text
 
-from app.auth.router import CSRF_COOKIE, SESSION_COOKIE
-from app.auth.runtime import build_auth_runtime
-from app.config import Settings
-from app.factory import create_app
-
 # 复用同域已验证夹具与种子助手（单一来源，便于接手）
 from .test_booking import (  # noqa: F401
-    real_stack,
-    _seed_user,
     _seed_slots,
+    _seed_user,
+    real_stack,
     _authorized_client,
     _draft,
 )
@@ -46,10 +41,17 @@ async def test_list_my_returns_only_own_active_appointments(real_stack) -> None:
     async with _authorized_client(app, engine, settings, owner) as client, _authorized_client(
         app, engine, settings, other
     ) as other_client:
-        own_id, _ = await _create_appointment(client, engine, datetime(2030, 6, 3, 3, 0, tzinfo=UTC))
+        own_id, _ = await _create_appointment(
+            client, engine, datetime(2030, 6, 3, 3, 0, tzinfo=UTC)
+        )
         # 第二个不同用户的预约必须用不同公司名，否则会命中 uq_active_company
         # （一家公司同一时刻只能有一条 active 预约，见 domain-model §6.6 / 迁移 0002）
-        await _create_appointment(other_client, engine, datetime(2030, 6, 4, 3, 0, tzinfo=UTC), company="Other Corp")
+        await _create_appointment(
+            other_client,
+            engine,
+            datetime(2030, 6, 4, 3, 0, tzinfo=UTC),
+            company="Other Corp",
+        )
         response = await client.get("/appointments")
         assert response.status_code == 200
         items = response.json()["items"]
@@ -127,7 +129,10 @@ async def test_reschedule_atomically_swaps_slots(real_stack) -> None:
             text("SELECT start_at FROM appointments WHERE id=:id"), {"id": appointment_id}
         ).scalar_one()
     assert all(status == "available" for status in old_status)
-    assert all(row["status"] == "booked" and row["appointment_id"] == appointment_id for row in new_rows)
+    assert all(
+        row["status"] == "booked" and row["appointment_id"] == appointment_id
+        for row in new_rows
+    )
     assert start_at == datetime(2030, 7, 6, 3, 0, tzinfo=UTC)
 
 
@@ -262,9 +267,10 @@ async def test_reschedule_two_transactions_race_for_slots(real_stack) -> None:
     engine, redis_client, app, settings = real_stack
     redis_client.flushdb()
     users = [_seed_user(engine), _seed_user(engine)]
-    async with _authorized_client(app, engine, settings, users[0]) as first_client, _authorized_client(
-        app, engine, settings, users[1]
-    ) as second_client:
+    async with (
+        _authorized_client(app, engine, settings, users[0]) as first_client,
+        _authorized_client(app, engine, settings, users[1]) as second_client,
+    ):
         first_id, _ = await _create_appointment(
             first_client, engine, datetime(2031, 3, 2, 3, 0, tzinfo=UTC)
         )

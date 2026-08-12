@@ -8,13 +8,13 @@ import redis
 from sqlalchemy import Engine, create_engine
 
 from app.config import Settings
+from app.notifications.email import EmailSender
 
 from .passwords import PasswordHasher
 from .rate_limit import LoginRateLimiter, RedisClient
 from .repository import AuthRepository
 from .service import AuthService
 from .tokens import SessionTokens
-from app.notifications.email import EmailSender
 
 
 @dataclass(slots=True)

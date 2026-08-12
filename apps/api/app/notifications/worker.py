@@ -20,9 +20,9 @@ from uuid import UUID
 
 from sqlalchemy import Engine, text
 
+from app.appointments.service import BookingService
 from app.auth.repository import AuthRepository
 from app.config import Settings
-from app.appointments.service import BookingService
 
 from .email import EmailSender, render
 
@@ -40,7 +40,7 @@ def _claim_batch(engine: Engine) -> list[tuple[UUID, str, UUID]]:
                 "WHERE id IN ("
                 "  SELECT id FROM notification_events "
                 "  WHERE status='pending' AND (scheduled_at IS NULL OR scheduled_at <= now()) "
-                f"  ORDER BY created_at LIMIT :limit FOR UPDATE SKIP LOCKED"
+                "  ORDER BY created_at LIMIT :limit FOR UPDATE SKIP LOCKED"
                 ") RETURNING id, type, biz_id"
             ),
             {"limit": _CLAIM_LIMIT},
@@ -107,7 +107,7 @@ def run_notification_worker(
             try:
                 _process(engine, booking, auth_repo, sender, event_id, event_type, biz_id)
                 _mark(engine, event_id, "processed")
-            except Exception:  # noqa: BLE001 - one bad event must not kill the worker
+            except Exception:  # one bad event must not kill the worker
                 LOGGER.exception("notification_failed", extra={"event_id": str(event_id)})
                 _mark(engine, event_id, "failed")
         if claimed:

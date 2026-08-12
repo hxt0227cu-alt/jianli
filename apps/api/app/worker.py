@@ -10,9 +10,9 @@ import logging
 
 from sqlalchemy import Engine, create_engine
 
+from .appointments.runtime import build_booking_runtime
 from .auth.repository import AuthRepository
 from .auth.runtime import AuthRuntime, build_auth_runtime
-from .appointments.runtime import build_booking_runtime
 from .config import Settings
 from .logging_config import configure_logging
 from .notifications.worker import run_notification_worker

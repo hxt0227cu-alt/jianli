@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -15,9 +16,9 @@ from app.auth.models import Principal
 
 # 复用同域已验证夹具与种子助手（单一来源，便于接手）
 from .test_booking import (  # noqa: F401
-    real_stack,
-    _seed_user,
     _seed_slots,
+    _seed_user,
+    real_stack,
     _authorized_client,
     _draft,
 )
@@ -82,20 +83,18 @@ async def _collect_stream(
                         1 for f in frames if f.startswith("event: ")
                     ) >= limit:
                         return frames
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pass
     finally:
         if close:
-            try:
+            with contextlib.suppress(Exception):
                 await response.body_iterator.aclose()
-            except Exception:  # noqa: BLE001
-                pass
     return frames
 
 
 @pytest.mark.asyncio
 async def test_sse_ready_frame_and_connection_cap(real_stack) -> None:
-    engine, _, app, settings = real_stack
+    engine, _, app, _ = real_stack
     booking_service = app.state.booking_runtime
     owner = _seed_user(engine)
     principal = Principal(
@@ -119,10 +118,8 @@ async def test_sse_ready_frame_and_connection_cap(real_stack) -> None:
                 pass
     finally:
         for conn in (first, second):
-            try:
+            with contextlib.suppress(Exception):
                 await conn.body_iterator.aclose()
-            except Exception:  # noqa: BLE001
-                pass
 
 
 @pytest.mark.asyncio

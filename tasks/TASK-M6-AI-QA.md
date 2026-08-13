@@ -3,7 +3,7 @@
 > 合并同域主线：已批准 OpenAPI v0.2 中 AI 问答域（公开页内容 + RAG 流式回答 + 会话持久化 + 知识库摄取）归并为单一实现任务。
 > **治理节奏（与 M1–M5 一致，2026-08-12 提速口径）**：① 合并同域主线；② 风险分级——RAG 检索/越界拒答/人格层提示词属**高风险**（输出可控性、越界边界、提示注入），本任务不单列独立 REVIEW 任务（接手 Codex 模式），但实现须内联自审：匿名不持久化、带会话须 CSRF+同源、越界/无依据一律拒答不编造；③ 交付证据一次写全；④ 验证批处理（一轮 pytest+ruff+mypy）。
 > **DB 迁移铁律（高优先级）**：本任务实现**依赖 4 张尚未迁移的表**——`conversations` / `conversation_messages` / `knowledge_documents` / `knowledge_index_versions`。这些表**不在 migration 0001–0003**，须先走**独立迁移任务（人工审批建表）**再另开实现。本任务**不碰迁移、不碰加密/鉴权主体**。
-> **状态（2026-08-13，首轮完成）**：首轮无表子集（`getPageContent` + `listRecommendedQuestions` + 匿名 `streamAnswer`，基于静态页知识源 grounding + 人格层 + 越界拒答）已实现并通过 DB-free 门禁（ruff ✅ / mypy 40 文件 ✅ / aiqa 11 passed ✅）；会话持久化与知识库摄取轮次待 TASK-M6-DB 迁移批准后继续，任务**未关闭**。
+> **状态（2026-08-13，首轮 ✅ + 二轮已实现）**：首轮无表子集（`getPageContent` + `listRecommendedQuestions` + 匿名 `streamAnswer`，静态页知识源 grounding + 人格层 + 越界拒答）已实现并通过 DB-free 门禁（ruff ✅ / mypy ✅ / aiqa 11 passed ✅）。**二轮会话持久化已实现**（`c9c5721`：`listConversations`/`createConversation`/`listConversationMessages` + `streamAnswer` 带会话+conversation_id 落库，基于已批准迁移 0004；DB-free 14 passed ✅，真实集成 5 用例待 WSL 验证）。**三轮知识库摄取待做**（依赖 `knowledge_documents`/`knowledge_index_versions` 表，已在 0004 就绪）。任务**未关闭**。
 
 ## 任务类型
 - implementation（AI 问答域；前置依赖：TASK-M6-DB 迁移任务，待用户批准）
@@ -36,15 +36,16 @@
 - 上述任一如需实现：先 Change Request（若契约需改）→ 独立迁移任务（人工审批建表）→ 另开实现任务。本任务不碰迁移。
 - **限定 M6 首轮可实现范围（无新表依赖）**：`getPageContent` + `listRecommendedQuestions` + 匿名 `streamAnswer`（基于既有页面内容作为知识源，不持久化）。带会话的持久化 `streamAnswer` 与知识库摄取待迁移任务批准后补。
 
-## 允许修改路径（首轮：无新表依赖子集；**2026-08-13 实际执行记录**）
-- `apps/api/app/aiqa/` 包（新建 10 模块：`__init__` / `models` / `content`（静态页知识源+推荐问题）/ `persona`（人格层+越界策略）/ `retrieval`（纯 Python 检索）/ `gateway`（LLM 网关 Protocol + Stub + OpenAI httpx 惰性导入）/ `sse`（answer 帧）/ `service`（编排）/ `router`（3 operation）/ `runtime`（装配））——**规划时为 `app/ai/`，实施取 `aiqa` 更清晰；属命名偏差，如实登记**
-- `apps/api/app/config.py`（新增可选 LLM 设置 `JIANLI_LLM_*`，不设则 Stub 网关，**无新依赖**）
-- `apps/api/app/factory.py`（挂载 aiqa router（公开常挂）+ 校验异常处理器覆盖 `/answers:stream` 与 `/pages/`）
-- `apps/api/tests/aiqa/test_aiqa.py`（新建，DB-free 11 用例）
-- `apps/api/tests/test_app.py`（更新：无 auth 配置时公开面断言由"零路由"改为"3 公开路径"）
-- `docs/HANDOFF-CODEX.md`（新建，Codex 接手文档）
-- `PROJECT_STATE.md`（仅当前任务段）
-> 注：会话/知识库相关路径在 TASK-M6-DB 批准后于本任务后续轮次追加。
+## 允许修改路径（首轮+二轮实际执行记录，2026-08-13）
+**首轮（commit `f77c46c`）**：
+- `apps/api/app/aiqa/` 包（新建 10 模块：`__init__`/`models`/`content`（静态页知识源+推荐问题）/`persona`（人格层+越界策略）/`retrieval`（纯 Python 检索）/`gateway`（LLM 网关 Protocol + Stub + OpenAI httpx 惰性导入）/`sse`（answer 帧）/`service`（编排）/`router`/`runtime`）——**规划时为 `app/ai/`，实施取 `aiqa`；属命名偏差，如实登记**
+- `apps/api/app/config.py`（可选 `JIANLI_LLM_*`）、`apps/api/app/factory.py`（挂载 + 校验异常处理器覆盖 `/answers:stream`/`/pages/`）
+- `apps/api/tests/aiqa/test_aiqa.py`（DB-free 11 用例）、`apps/api/tests/test_app.py`（公开面断言更新）
+- 接手信息实际写入 `AGENTS.md` §10（规划中的 `docs/HANDOFF-CODEX.md` 未单独建，**如实登记差异**）；`PROJECT_STATE.md`
+**二轮（commit `c9c5721`，基于已批准 0004 表）**：
+- `apps/api/app/aiqa/repository.py`（新建，原生 SQL 会话仓库）、`models.py`（+Conversation/Message 模型）、`service.py`（+会话三件套 + streamAnswer 落库）、`router.py`（+3 会话端点）、`runtime.py`/`factory.py`（注入 auth engine 共享池）
+- `apps/api/tests/aiqa/test_conversations.py`（新建，真实集成 5 用例）、`test_aiqa.py`/`test_app.py` 更新
+> 注：三轮知识库摄取路径待做（`repository` 扩展 + 检索接入）。
 
 ## 禁止修改路径
 - `apps/api/migrations/**`（无 schema 变更；非目标项若被误触发立即 Stop & Report）
@@ -79,31 +80,32 @@
 - RAG 检索走既有索引/全文，避免全表扫
 - SSE 首字延迟受控（检索 + LLM 流式）
 
-## 变更预算（change_budget，首轮）
-- **预估**：max_files=8（ai 包 4 + public 扩展 1 + factory 1 + tests 1 + 本任务单 + PROJECT_STATE）；prod ~400 行；test ~200 行
-- **实际（2026-08-13 如实登记）**：17 个文件（aiqa 包 10 + config/factory 2 + tests 2 + 治理/接手文档 3）；prod ≈ 750 行；test ≈ 260 行
-- **账目结论**：实际路径数 > max_files 预估，**已超预算（预估偏差）**——按治理规则如实登记、不宣称未超预算、不改写历史。原因：为满足用户"Codex 可接手"显式要求，首轮拆分为 10 个分层模块（gateway/retrieval/sse/content/persona 各自独立成文件并带 Handoff 注释）；后续轮次预算另行核算。
+## 变更预算（change_budget，首轮+二轮实际累计）
+- **首轮预估**：max_files=8、prod ~400 行、test ~200 行
+- **首轮实际（如实登记）**：17 文件 / prod ≈750 / test ≈260——**超预估**（原因：Codex 接手要求拆 10 个分层模块）；后续轮次另行核算
+- **二轮实际（commit `c9c5721`，如实登记）**：9 文件 / +596（aiqa 包 6 模块扩展 + factory + 集成测试 + 2 测试更新）；二轮无独立预算预估，计入累计
 
 ## 必须运行的测试命令
-- `pytest apps/api/tests/ai/test_answer_stream.py`
-- `ruff check .` + `mypy`
+- `ruff check .` + `mypy app`
+- DB-free：`PYTHONPATH=. pytest tests/aiqa tests/test_app.py -q`
+- 真实集成（WSL）：`JIANLI_AIQA_TEST_DATABASE_URL=... JIANLI_AIQA_TEST_REDIS_URL=... PYTHONPATH=. pytest tests/aiqa/test_conversations.py -v`
 
 ## 回滚方法
-- 纯代码变更，无迁移；回滚 = `git revert` 本任务 commit
+- 纯代码变更 + 已批准迁移 0004；代码回滚 = `git revert`；迁移回滚 = `alembic downgrade -1`（未执行生产迁移）
 
 ## 强制停止条件
 - 出现未列明变更（新依赖未批/新迁移/改加密策略/改公开 API 字段语义/实现非目标 operation 中任一）→ 立即停止报告
 - 超出 change_budget → 拆任务
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
-## 交付证据（2026-08-13 首轮回填；**任务未关闭**，二/三轮依赖 TASK-M6-DB）
-- 首轮实现 commit：`f77c46c`（aiqa 包 10 模块 + config/factory + tests 2，15 files / +1062）+ 本治理回填 commit（TASK-M6 / PROJECT_STATE / AGENTS.md §10）
-- 门禁（沙箱 DB-free）：`ruff check .` All checks passed ✅ + `mypy app` 0 error（40 source files）✅ + `pytest tests/aiqa/test_aiqa.py` 11 passed ✅ + DB-free 全量子集 34 passed / 14 skipped（9 ERROR 为 `test_management.py` 沙箱无 Docker 的既有 env 阻塞，与首轮无关）
-- 契约对齐：3 operation（`getPageContent`/`listRecommendedQuestions`/`streamAnswer`）路径/operationId/状态码/SSE 帧格式与 `docs/api/openapi.yaml` + `docs/api/sse.md` §3 一致；**无新迁移/表/列/索引/枚举；无新运行时依赖**（httpx 惰性导入，仍为 dev extra）
-- 安全验收：匿名不持久化（started.conversation_id 恒 null）、携带无效 cookie → 401（不静默降级匿名）、匿名带 `conversation_id` → 401、有效会话强制同源+CSRF、越界/无依据 → `answer.completed` offtopic=true 拒答不编造、公开问答限频 429（内存窗口，单实例）
-- 人格层：`persona.py` 第一人称 system prompt + 问候/越界两条人格化回复常量；模型不得执行工具调用（system prompt 硬约束 + 输出为普通文本流）
-- 真实 PG/Redis 集成验证：**不适用（首轮零 DB 依赖）**，DB-free 门禁即为最终验证；WSL 可复跑 `PYTHONPATH=. pytest tests/aiqa/test_aiqa.py`（无需 Docker）
-- 待办（后续轮次）：二轮会话持久化三件套（`listConversations`/`createConversation`/`listConversationMessages` + streamAnswer 落库）、三轮知识库摄取三件套（list/upload/delete knowledge-documents + 向量/全文检索接入）——均依赖 TASK-M6-DB
+## 交付证据（2026-08-13 首轮+二轮回填；**任务未关闭**，三轮知识库摄取待做）
+- 首轮 commit：`f77c46c`（15 files / +1062）+ `ba468c9`（治理回填）
+- 二轮 commit：`c9c5721`（9 files / +596：repository/models/service/router/runtime/factory + test_conversations + 测试更新）
+- 门禁（沙箱 DB-free）：ruff ✅ + mypy 0 error（41 source files）✅ + `pytest tests/aiqa tests/test_app.py` 14 passed ✅（集成 5 用例正确 skip，待 WSL）
+- 契约对齐：6 operation（+`listConversations`/`createConversation`/`listConversationMessages`）路径/operationId/状态码与 openapi.yaml 一致；SSE 帧格式按 sse.md §3；**无新迁移/表/列/索引/枚举（复用已批准 0004）；无新运行时依赖**
+- 安全验收：匿名不持久化（无 conversation_id 恒不落库）、无效 cookie → 401 不静默降级、匿名带 conversation_id → 401、有效会话强制同源+CSRF、会话归属 owner-only（他人 403、未知 404）、越界 → assistant 消息 is_offtopic=true、公开问答限频 429
+- 真实 PG/Redis 集成验证：**待 WSL**（`tests/aiqa/test_conversations.py` 5 用例：创建/列表、匿名 401/无 CSRF 403、落库 grounded、落库 offtopic 标记、归属 403/404）
+- 待办：**三轮知识库摄取三件套**（`listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument` + 向量/全文检索接入 `streamAnswer`，表已就绪）
 
 ## 关联
 - **前置依赖（人工审批）**：`TASK-M6-DB` —— 迁移 `conversations`/`conversation_messages`/`knowledge_documents`/`knowledge_index_versions` 四表（含索引/约束/枚举），须用户批准 schema 后另开实现轮次

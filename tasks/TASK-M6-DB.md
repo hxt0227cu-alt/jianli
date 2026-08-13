@@ -127,7 +127,7 @@
 - **实现 commit**：`d2f4e42`（0004 迁移 + 测试）+ `57a7481`（FK 显式命名 + 形状断言归一化修复）+ `851742a`（0005 迁移）+ `2acb6c4`（0005 shape 断言补 embedding 列）
 - 本地门禁：ruff ✅ + mypy ✅ + `alembic heads` = `0005_knowledge_embeddings (head)` ✅ + py_compile ✅
 - **真实 PostgreSQL 迁移测试（用户 WSL，2026-08-13，pgvector/pg16 镜像）**：`tests/migrations/test_aiqa_schema.py` **5 passed**（0001–0005 up→down→up 可逆 + 4 表/5 枚举/索引/FK 形状 + 去重后重传 + 枚举拒绝 + 级联删除 + embedding 列）
-- **关闭（2026-08-13 用户显式授权）**：任务 Closed；**生产迁移执行已批准**——dev 库 `jianli_dev` 由用户 WSL 执行 `alembic upgrade head`（→0005）；回滚方法见 §11
+- **关闭（2026-08-13 用户显式授权）**：任务 Closed；**生产迁移执行已完成**——dev 库 `jianli_dev` 于 2026-08-13 由用户 WSL 执行 `alembic upgrade head` 升级至 0005，验证通过：`alembic_version=0005_knowledge_embeddings`、`pg_extension.vector` 存在、`knowledge_documents.embedding`（USER-DEFINED）存在、4 张知识库表就位（conversations/conversation_messages/knowledge_documents/knowledge_index_versions）；回滚方法见 §11
 
 ## 13. 关联
 - **前置任务**：领域模型 v1.1.5 已 approved（§6.13/6.14 建模即批准依据）

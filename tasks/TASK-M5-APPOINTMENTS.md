@@ -134,7 +134,8 @@
 - 规范影响结论：openapi clean（实现已批准 7 operation，未改契约，且已修正 createCompanyBookingException 偏离）；test_plan clean（admin TC `test_admin_actions.py` 真实 PG/Redis 6 passed，冻结 TC 断言全部满足）
 - spec_sync：clean（实现对齐 OpenAPI + 真实测试通过）
 - verified_commit：**cfb1854**（ruff/mypy 双绿 + 真实 PG/Redis 集成测试 6 passed，2026-08-13 用户 WSL 复跑确认）
-- 关闭门禁：① 测试通过 ✅（6 passed）② 规范影响已处理（spec_sync clean）✅ ③ verified_commit 已记录 ✅（cfb1854）→ **三项全绿，待用户授权关闭（AI 不得自批准）**
+- 关闭门禁：① 测试通过 ✅（6 passed）② 规范影响已处理（spec_sync clean）✅ ③ verified_commit 已记录 ✅（cfb1854）→ **三项全绿**
+- **关闭记录**：用户于 2026-08-13 显式授权关闭（"授权关闭 M5"）→ **Closed**。verified_commit=`cfb1854`；impl_commit=`5245cfa`；spec_sync=clean；无新迁移/表/列/索引/枚举值；契约偏离（createCompanyBookingException 多余 Idempotency-Key）已修正。后续非目标 4 operation 留待独立迁移任务（人工审批）。
 
 ## 关联
 - 依赖独立迁移任务（待用户批准，非本任务）：`page_announcements`（公告）、`notification_deliveries`（通知重发，M3 延后）、`knowledge_documents`+`knowledge_index_versions`（知识库，M6）

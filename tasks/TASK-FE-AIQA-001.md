@@ -38,8 +38,12 @@
 ## 8. 强制停止条件
 - 出现未列明变更（改后端/契约/删除既有断言）→ 停止报告
 
-## 9. 交付证据（关闭前填写）
-- *实现后回填*（commit / typecheck / vitest / build 结果）
+## 9. 交付证据（2026-08-13 已回填；任务未关闭，待 WSL 手动验证）
+- 实现 commit：`82d6c19`（5 files / +190：main.tsx ChatPanel 真实化 + styles.css + vite.config proxy + shell.test 新增锚点 + 本任务单）
+- 门禁：`npm run typecheck`（tsc --noEmit）✅ + `npm test`（vitest shell.test）1 passed ✅（旧断言全保留 + 6 个新锚点）+ `vite build` ✅（沙箱 safe-delete 拦截 dist 清空，改 `--outDir dist-check` 验证产物正常：JS 230.43kB / gzip 71.57kB，非代码问题）
+- 契约对齐：`POST /answers:stream` SSE 帧解析（started/delta/citations/completed/error）按 `docs/api/sse.md` §3；`GET /pages/{page_key}/recommendations` 加载推荐；带会话自动附 `X-CSRF-Token`；匿名免 CSRF
+- 手动验证（用户 WSL）：起 uvicorn(8000) + vite(5173) 后 resume 页提问 → 流式回答；越界问题显示拒答徽标；interview/mine 页保持静态降级（不发送真实请求）
+- 是否偏离 TASK：否（仅按允许路径；shell.test 为"仅新增断言"并如实登记）
 
 ## 10. 关联
 - 前置：M6 后端已关闭（`/answers:stream` 就绪）

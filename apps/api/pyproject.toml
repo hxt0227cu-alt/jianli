@@ -10,6 +10,7 @@ dependencies = [
     "fastapi==0.141.1",
     "psycopg==3.2.10",
     "python-multipart==0.0.20",  # M6 round 3: multipart uploads (uploadKnowledgeDocuments)
+    "pypdf==6.15.0",  # TASK-KB-PDF-001: PDF text extraction for resume uploads
     "redis==8.1.0",
     "SQLAlchemy==2.0.43",
     "uvicorn==0.52.1",

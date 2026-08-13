@@ -12,12 +12,15 @@ echoes that ``conversation_id``. Anonymous calls and logged-in calls without a
 ``conversation_id`` are never persisted.
 
 Round 3: knowledge-base ingestion (md/txt, local-disk storage, pgvector embeddings).
+Round 4 (TASK-KB-PDF-001): PDF uploads supported (pypdf text extraction, parse_mode=native)
+so the resume PDF itself can be indexed; md/txt stay parse_mode=text; docx stays failed.
 """
 
 from __future__ import annotations
 
 import asyncio
 import hashlib
+import io
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 from uuid import UUID, uuid4
@@ -55,7 +58,18 @@ from .storage import KnowledgeStorage
 _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
-_SUPPORTED_TYPES = {"md", "txt"}
+_SUPPORTED_TYPES = {"md", "txt", "pdf"}
+
+
+def _extract_pdf_text(raw: bytes) -> str:
+    """Extract text from a PDF via pypdf (TASK-KB-PDF-001)."""
+
+    try:
+        from pypdf import PdfReader
+    except ImportError as error:
+        raise ValueError("pypdf is required for PDF parsing") from error
+    reader = PdfReader(io.BytesIO(raw))
+    return "\n".join((page.extract_text() or "") for page in reader.pages)
 
 
 def _format_context(candidates: list[Candidate]) -> str:
@@ -174,7 +188,7 @@ class AnswerService:
         return KnowledgeDocumentList(items=items)
 
     async def upload_knowledge_documents(self, files: Sequence[Any]) -> None:
-        """Parse + index each md/txt upload (202 semantics; per-file status in list)."""
+        """Parse + index each md/txt/pdf upload (202 semantics; per-file status in list)."""
 
         repository, storage, embedder = self._require_knowledge()
         now = default_now()
@@ -197,7 +211,7 @@ class AnswerService:
                     size=len(raw),
                     content_checksum=checksum,
                     storage_key=f"knowledge/{document_id}.txt",
-                    parse_mode="text",
+                    parse_mode="native" if suffix == "pdf" else "text",
                     now=now,
                 )
             except IntegrityError:
@@ -212,11 +226,27 @@ class AnswerService:
                     repository.mark_failed, document_id, f"{suffix} parsing is not supported in MVP"
                 )
                 continue
-            try:
-                text = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                await asyncio.to_thread(repository.mark_failed, document_id, "not valid UTF-8 text")
-                continue
+            if suffix == "pdf":
+                try:
+                    text = await asyncio.to_thread(_extract_pdf_text, raw)
+                except Exception as error:  # pypdf failure or corrupt PDF -> failed with reason
+                    await asyncio.to_thread(
+                        repository.mark_failed, document_id, f"PDF parse failed: {error}"
+                    )
+                    continue
+                if not text.strip():
+                    await asyncio.to_thread(
+                        repository.mark_failed, document_id, "no extractable text in PDF"
+                    )
+                    continue
+            else:
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    await asyncio.to_thread(
+                        repository.mark_failed, document_id, "not valid UTF-8 text"
+                    )
+                    continue
             storage.save(document_id, text)
             try:
                 vector = embedder.embed([text])[0]

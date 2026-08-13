@@ -44,6 +44,34 @@ def _reset_database(engine: Engine) -> None:
         connection.execute(text("TRUNCATE TABLE users, knowledge_documents CASCADE"))
 
 
+def _pdf_bytes(text: str) -> bytes:
+    """Minimal valid single-page PDF with an ASCII text line (no extra deps)."""
+
+    content = f"BT /F1 12 Tf 50 760 Td ({text}) Tj ET".encode("ascii")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(content), content),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = b"%PDF-1.4\n"
+    offsets: list[int] = []
+    for index, obj in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f"{index} 0 obj\n".encode("ascii") + obj + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n".encode("ascii") + b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode("ascii")
+    out += (
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+        f"startxref\n{xref}\n%%EOF\n"
+    ).encode("ascii")
+    return out
+
+
 def _settings(storage_dir: str) -> Settings:
     assert DATABASE_URL and REDIS_URL
     return Settings(
@@ -221,6 +249,45 @@ async def test_delete_disables_retrieval(real_stack: Any) -> None:
         after = await _stream_answer(client, keyword)
         after_citations = next(d for name, d in after if name == "answer.citations")
         assert all(cite["doc"] != "unique.md" for cite in after_citations["citations"])
+
+
+@pytest.mark.asyncio
+async def test_upload_pdf_indexes_and_grounds(real_stack: Any) -> None:
+    """Resume PDFs upload with parse_mode=native and ground answers (TASK-KB-PDF-001)."""
+
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    pdf = _pdf_bytes("I am good at distributed systems and high concurrency services")
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client, [("resume.pdf", pdf)])
+        assert response.status_code == 202
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        by_name = {item["name"]: item for item in listed}
+        assert by_name["resume.pdf"]["status"] == "indexed"
+        assert by_name["resume.pdf"]["type"] == "pdf"
+        assert by_name["resume.pdf"]["parse_mode"] == "native"
+        # Same PDF content again is deduped (active checksum unique index).
+        await _upload(client, [("resume-copy.pdf", pdf)])
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        assert len([item for item in listed if item["name"].endswith(".pdf")]) == 1
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anon:
+        events = await _stream_answer(anon, "distributed systems")
+        assert events[-1][1]["grounded"] is True
+        citations = next(d for name, d in events if name == "answer.citations")
+        assert any(cite["doc"] == "resume.pdf" for cite in citations["citations"])
+
+
+@pytest.mark.asyncio
+async def test_upload_corrupt_pdf_fails_with_reason(real_stack: Any) -> None:
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client, [("broken.pdf", b"%PDF-1.4 not a real pdf")])
+        assert response.status_code == 202
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        broken = next(item for item in listed if item["name"] == "broken.pdf")
+        assert broken["status"] == "failed"
+        assert "PDF parse failed" in broken["failure_reason"]
 
 
 @pytest.mark.asyncio

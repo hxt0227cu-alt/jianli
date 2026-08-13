@@ -25,5 +25,10 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('answer-state grounded');
     expect(source).toContain('answer-state offtopic');
     expect(source).toContain('推荐追问');
+    // TASK-KB-PDF-001: knowledge-base admin view + resume PDF embed.
+    expect(source).toContain("'/admin/knowledge-documents'");
+    expect(source).toContain('resume.pdf');
+    expect(source).toContain('kb-status');
+    expect(source).toContain('知识库管理');
   });
 });

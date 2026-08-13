@@ -1,17 +1,18 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Archive, ArrowLeft, ArrowRight, Bot, CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, Clock, FileText, FolderOpen,
-  LayoutDashboard, LockKeyhole, MessageSquare, Play, Plus, Send, Sparkles,
+  Archive, ArrowLeft, ArrowRight, Bot, CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, Clock, Database, FileText, FolderOpen,
+  LayoutDashboard, LockKeyhole, MessageSquare, Play, Plus, Send, Sparkles, Trash2, UploadCloud,
   UserRound, X,
 } from 'lucide-react';
 import './styles.css';
 import './appointment.css';
 import { MyAppointmentsView } from './my-appointments';
 
-type Page = 'resume' | 'projects' | 'interview' | 'mine';
+type Page = 'resume' | 'projects' | 'interview' | 'mine' | 'admin';
 type ProjectId = 'jianli' | 'sleep';
 type PageKey = 'resume' | 'projects';
+type KnowledgeDoc = { id: string; name: string; type: string; size: number; status: 'indexing' | 'indexed' | 'failed'; parse_mode: string | null; failure_reason: string | null; created_at: string };
 type ChatMessage = {
   role: 'assistant' | 'user';
   text: string;
@@ -123,6 +124,7 @@ function HistoryRail({ page, onPage }: { page: Page; onPage: (page: Page) => voi
     <button className={page === 'projects' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('projects')}><FolderOpen size={16} /> 项目说明</button>
     <button className={page === 'interview' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('interview')}><CalendarDays size={16} /> 预约面试</button>
     <button className={page === 'mine' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('mine')}><CalendarCheck size={16} /> 我的预约</button>
+    <button className={page === 'admin' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('admin')}><Database size={16} /> 知识库管理</button>
     <div className="rail-label history-title">历史对话</div>
     <div className="session-list">{sessions.map((session) => <button className="session-item" key={session.title}><MessageSquare size={14} /><span><b>{session.title}</b><small>{session.meta}</small></span></button>)}</div>
     <div className="rail-bottom"><button className="rail-link"><Archive size={16} /> 已归档</button><div className="account"><span className="avatar">晓</span><span><b>用户</b><small>静态演示账号</small></span><ChevronDown size={15} /></div></div>
@@ -211,12 +213,12 @@ function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: Page
 }
 
 function TopBar({ page, onPage }: { page: Page; onPage: (page: Page) => void }) {
-  const title = page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : '预约面试';
-  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
+  const title = page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'admin' ? '知识库管理' : '预约面试';
+  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button><button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
-  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧预留可复制文字的 PDF 简历；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><span className="placeholder-badge">PDF 待补充</span><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历.pdf</span><span className="muted">文件待上传</span></div><div className="paper"><div className="paper-kicker">RESUME PLACEHOLDER</div><h2>PDF 简历将在这里显示</h2><p>后续补充 PDF 后，这里将保留可复制文本、页码和缩放控制。</p><div className="paper-lines"><span /><span /><span /><span /><span /></div><div className="paper-footer"><span>待补充</span><span>页 1 / 1</span></div></div></div></div></main>;
+  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF（放置于 apps/web/public/resume.pdf）；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><span className="placeholder-badge">PDF 简历</span><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历.pdf</span><span className="muted">PDF 简历将在这里显示 · 素材放于 public/resume.pdf</span></div><embed className="resume-embed" src="/resume.pdf" type="application/pdf" aria-label="简历 PDF" /></div></div></main>;
 }
 
 function ProjectView({ selected, onSelect, onInterview }: { selected: ProjectId; onSelect: (id: ProjectId) => void; onInterview: () => void }) {
@@ -322,10 +324,65 @@ function InterviewView() {
   </main>;
 }
 
+function AdminView() {
+  const [user, setUser] = useState<User | null>(null);
+  const [csrf, setCsrf] = useState('');
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [files, setFiles] = useState<FileList | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadDocs = async () => {
+    const data = await api<{ items: KnowledgeDoc[] }>('/admin/knowledge-documents');
+    setDocs(data.items);
+  };
+  useEffect(() => {
+    api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadDocs(); }).catch(() => undefined);
+  }, []);
+
+  const login = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError('');
+    const data = new FormData(event.currentTarget);
+    try {
+      const response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email: data.get('email'), password: data.get('password'), remember_me: Boolean(data.get('remember')) }) });
+      if (!response.ok) throw new Error((await response.json()).detail || '登录失败');
+      setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
+      const me = await api<User>('/auth/me'); setUser(me); await loadDocs();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '登录失败'); } finally { setBusy(false); }
+  };
+
+  const upload = async () => {
+    if (!files || files.length === 0) return; setBusy(true); setError('');
+    const form = new FormData();
+    for (const file of Array.from(files)) form.append('files', file);
+    try {
+      const response = await fetch('/admin/knowledge-documents', { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrf }, body: form });
+      if (!response.ok) throw new Error((await response.json()).detail || '上传失败');
+      setFiles(null);
+      await loadDocs();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '上传失败'); } finally { setBusy(false); }
+  };
+
+  const remove = async (id: string) => {
+    setBusy(true); setError('');
+    try { await api(`/admin/knowledge-documents/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': csrf } }); await loadDocs(); } catch (reason) { setError(reason instanceof Error ? reason.message : '删除失败'); } finally { setBusy(false); }
+  };
+
+  const sizeLabel = (size: number) => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
+  return <main className="workspace admin-view"><div className="workspace-heading"><div><span className="eyebrow">KNOWLEDGE BASE / ADMIN</span><h1>知识库管理。</h1><p>上传简历 PDF 与项目资料 md，问答将基于这些真实内容回答；支持删除（立即停止被检索）。</p></div><span className="placeholder-badge">owner_admin</span></div>
+    {error && <div className="booking-error">{error}</div>}
+    {!user && <section className="login-panel"><div><span className="eyebrow">OWNER SIGN IN</span><h2>管理员登录</h2><p>使用 owner_admin 账号进入知识库管理。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><button disabled={busy}>{busy ? '正在登录…' : '登录并管理知识库'}</button></form></section>}
+    {user && <>
+      <section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>
+      <section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section>
+    </>}
+  </main>;
+}
+
 function App() {
   const [page, setPage] = useState<Page>('resume');
   const [project, setProject] = useState<ProjectId>('jianli');
-  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : <InterviewView />;
+  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
   const live = page === 'resume' || page === 'projects';
   return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} /></div></div>;
 }

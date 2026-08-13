@@ -180,3 +180,46 @@ lint / typecheck：<结果>
 - **真正改变用户可观察行为** → **不允许直接改代码**；先 Change Request → 更新并 approve 规范 → 再创建 implementation TASK。
 
 本规则是 §1"规格变更、测试期望变更、业务实现不得在同一个 PR 一起完成"的完整展开：**依赖关系变化 → 触发下游 impact review；代码改变外部行为 → 无 Change Request 禁止 merge。**
+
+---
+
+## 10. AI 问答域（M6）实现地图与扩展点（2026-08-13 首轮）
+
+> 供后续接手 AI（含 Codex）快速定位：**已实现什么、契约在哪、下一步在哪、不许碰什么。**
+
+### 10.1 已实现（首轮无表子集，`apps/api/app/aiqa/`，10 模块）
+| 模块 | 职责 | 后续轮次扩展点 |
+|------|------|----------------|
+| `content.py` | 静态页知识源（resume/projects）+ 推荐问题；`PAGES` 注册表 | 三轮换 DB 加载（`knowledge_documents`） |
+| `retrieval.py` | 纯 Python 词元重叠检索（CJK 单字保留、≥2 词元命中才候选） | 三轮换 pgvector/全文检索 |
+| `persona.py` | 第一人称人格层 system prompt + 问候/越界人格化回复 | 素材到位后可配置化 |
+| `gateway.py` | `LLMGateway` Protocol + `StubGateway`（默认）+ `OpenAIGateway`（httpx **惰性导入**，dev extra） | 新增 Anthropic/vLLM 等 provider |
+| `sse.py` | answer.started/delta/citations/completed/error 帧 | 随会话轮次加 conversation_id 回显 |
+| `service.py` | 编排：检索→边界（问候/越界）→流式→帧 | 二轮加会话持久化 |
+| `router.py` | 3 operation：`GET /pages/{page_key}`、`GET /pages/{page_key}/recommendations`、`POST /answers:stream` | 二/三轮挂会话与知识库端点 |
+| `rate_limit.py` | 内存固定窗口限频（公开问答 429） | 多实例换 Redis（复用 auth 模式） |
+| `models.py` / `runtime.py` | 契约请求/响应模型；`build_aiqa_runtime(settings)` 装配 | 随轮次增模型 |
+
+### 10.2 契约真相源
+- `docs/api/openapi.yaml`（operationId：`getPageContent` / `listRecommendedQuestions` / `streamAnswer`）
+- `docs/api/sse.md` §3（帧顺序：started → delta* → citations → completed；异常 error）
+- 已实现**严格对齐**：路径/operationId/状态码/字段；无新迁移/表/列/索引/枚举；无新运行时依赖。
+
+### 10.3 首轮安全不变量（不得放宽）
+- 匿名 `streamAnswer`：不持久化（`conversation_id` 恒 null）；**携带无效/过期 cookie → 401，绝不静默降级匿名**；**匿名携带 `conversation_id` → 401**。
+- 有效会话：强制同源 Origin/Referer + `X-CSRF-Token`（复用 `app/auth/router.py` 的 `_require_csrf`）。
+- 越界/无依据 → `answer.completed` `offtopic=true` 拒答，不编造；模型不得执行预约/工具调用（system prompt 硬约束）。
+- 公开问答限频 429（`AnswerRateLimiter`，默认 20 次/60s/IP）。
+
+### 10.4 配置（可选，不设则 Stub 网关）
+`JIANLI_LLM_BASE_URL` / `JIANLI_LLM_API_KEY` / `JIANLI_LLM_MODEL` / `JIANLI_LLM_TIMEOUT_SECONDS` → 走 OpenAI 兼容 `/chat/completions` 流式；缺省用确定性 `StubGateway`（测试与无模型环境可跑）。
+
+### 10.5 测试
+- `cd apps/api && PYTHONPATH=. pytest tests/aiqa/test_aiqa.py -v`（DB-free，11 用例；无 Docker 需求）
+- 门禁：`ruff check . && mypy app`（40 source files）
+- 全量 DB-free：`pytest tests/test_app.py tests/test_config.py tests/auth tests/appointments tests/aiqa`（`test_management.py` 需真实 PG/Redis，沙箱无 Docker 会 ERROR，属既有 env 阻塞）
+
+### 10.6 M6 后续轮次（均依赖 `TASK-M6-DB` 迁移批准，**不得擅自建表**）
+- 二轮：会话持久化三件套 `listConversations` / `createConversation` / `listConversationMessages` + `streamAnswer` 落库（需 `conversations` / `conversation_messages` 表）
+- 三轮：知识库摄取三件套 `listKnowledgeDocuments` / `uploadKnowledgeDocuments` / `deleteKnowledgeDocument` + 向量/全文检索接入 `streamAnswer`（需 `knowledge_documents` / `knowledge_index_versions` 表）
+- 本轮 change_budget 实际 17 文件 > 预估 8，**已如实登记超预算（预估偏差）**；后续轮次预算另行核算。

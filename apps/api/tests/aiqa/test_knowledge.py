@@ -188,16 +188,17 @@ async def test_upload_index_dedupe_and_unsupported(real_stack: Any) -> None:
         # Same content again is deduped (active checksum unique index) -> still 1 active row.
         response = await _upload(client, [("resume-copy.md", content)])
         assert response.status_code == 202
-        # Unsupported type is recorded as failed, not rejected.
-        response = await _upload(client, [("notes.pdf", b"%PDF-1.4 fake")])
+        # Unsupported type is recorded as failed, not rejected. docx is still unsupported
+        # (PDF became supported in TASK-KB-PDF-001; corrupt-PDF handling has its own case).
+        response = await _upload(client, [("notes.docx", b"PK fake docx")])
         assert response.status_code == 202
 
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         by_name = {item["name"]: item for item in listed}
         assert by_name["resume.md"]["status"] == "indexed"
         assert by_name["resume.md"]["type"] == "md"
-        assert by_name["notes.pdf"]["status"] == "failed"
-        assert "not supported" in by_name["notes.pdf"]["failure_reason"]
+        assert by_name["notes.docx"]["status"] == "failed"
+        assert "not supported" in by_name["notes.docx"]["failure_reason"]
         assert "resume-copy.md" not in by_name
 
 

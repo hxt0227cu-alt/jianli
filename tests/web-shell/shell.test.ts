@@ -16,5 +16,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('AI 面试协作站');
     expect(source).toContain('Sleep AIoT Agent');
     expect(source).toContain('不会发送真实请求');
+    // TASK-FE-AIQA-001: ChatPanel live SSE answers (resume page), static fallback kept
+    // for interview/mine (hence the old static copy assertion above still holds).
+    expect(source).toContain("fetch('/answers:stream'");
+    expect(source).toContain("event === 'answer.delta'");
+    expect(source).toContain("event === 'answer.citations'");
+    expect(source).toContain("event === 'answer.completed'");
+    expect(source).toContain('answer-state grounded');
+    expect(source).toContain('answer-state offtopic');
+    expect(source).toContain('推荐追问');
   });
 });

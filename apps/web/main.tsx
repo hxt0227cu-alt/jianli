@@ -11,6 +11,16 @@ import { MyAppointmentsView } from './my-appointments';
 
 type Page = 'resume' | 'projects' | 'interview' | 'mine';
 type ProjectId = 'jianli' | 'sleep';
+type PageKey = 'resume' | 'projects';
+type ChatMessage = {
+  role: 'assistant' | 'user';
+  text: string;
+  pending?: boolean;
+  citations?: { doc: string; fragment: number }[];
+  grounded?: boolean;
+  offtopic?: boolean;
+  error?: boolean;
+};
 type BookingStep = 'login' | 'slots' | 'details' | 'confirm' | 'done';
 type SlotStatus = 'available' | 'booked' | 'owner_locked' | 'unavailable';
 type Slot = { id: string; start_at: string; end_at: string; status: SlotStatus; resource_version: number; ownership: 'none' | 'self' | 'other' };
@@ -35,6 +45,46 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(problem.detail || problem.title || `请求失败 (${response.status})`);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+}
+
+// POST /answers:stream (SSE over fetch, sse.md §3). EventSource only does GET, so the
+// stream is read with fetch + ReadableStream and frames are parsed from the buffer.
+// Anonymous calls need no CSRF; with a session cookie the X-CSRF-Token header is sent.
+async function streamAnswer(
+  body: Record<string, unknown>,
+  onEvent: (event: string, data: Record<string, unknown>) => void,
+): Promise<void> {
+  const response = await fetch('/answers:stream', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfCookie() },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok || !response.body) {
+    const problem = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(problem.detail || `回答请求失败 (${response.status})`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary = buffer.indexOf('\n\n');
+    while (boundary !== -1) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      let event = 'message';
+      const dataLines: string[] = [];
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+      }
+      if (dataLines.length) onEvent(event, JSON.parse(dataLines.join('\n')));
+      boundary = buffer.indexOf('\n\n');
+    }
+  }
 }
 
 const sessions = [
@@ -79,18 +129,84 @@ function HistoryRail({ page, onPage }: { page: Page; onPage: (page: Page) => voi
   </aside>;
 }
 
-function ChatPanel({ context }: { context: string }) {
+function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId }) {
   const [draft, setDraft] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
+
+  useEffect(() => {
+    setMessages([]);
+    setRecommendations([]);
+    if (!live) return;
+    api<{ items: string[] }>(`/pages/${pageKey}/recommendations`).then((data) => setRecommendations(data.items)).catch(() => undefined);
+  }, [live, pageKey, projectKey]);
+
+  const send = async (question?: string) => {
+    const text = (question ?? draft).trim();
+    if (!text || busy) return;
+    setDraft('');
+    setBusy(true);
+    const body: Record<string, unknown> = { question: text, page_key: pageKey };
+    if (projectKey) body.project_key = projectKey;
+    setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
+    try {
+      let assistantText = '';
+      await streamAnswer(body, (event, data) => {
+        if (event === 'answer.delta') {
+          assistantText += String(data.text ?? '');
+          setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, text: assistantText }; return next; });
+        } else if (event === 'answer.citations') {
+          const citations = (data.citations as { doc: string; fragment: number }[] | undefined) ?? [];
+          setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, citations }; return next; });
+        } else if (event === 'answer.completed') {
+          setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, grounded: Boolean(data.grounded), offtopic: Boolean(data.offtopic) }; return next; });
+        } else if (event === 'answer.error') {
+          setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: String(data.detail ?? '回答失败，请稍后重试') }; return next; });
+        }
+      });
+    } catch (reason) {
+      setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: reason instanceof Error ? reason.message : '回答失败，请稍后重试' }; return next; });
+    } finally { setBusy(false); }
+  };
+
+  if (!live) {
+    // 静态降级（interview / mine 页）：与既有占位一致，不发送真实请求。
+    return <section className="chat-panel">
+      <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>静态演示</small></div><button aria-label="关闭对话"><X size={17} /></button></div>
+      <div className="chat-context"><Sparkles size={14} /><span>当前上下文：{context}</span></div>
+      <div className="chat-body">
+        <div className="message assistant"><span className="message-icon"><Bot size={16} /></span><div><b>你好，我是项目数字分身。</b><p>我会基于已公开的项目证据回答问题，当前不会发送真实请求。</p></div></div>
+        <div className="message user"><span>你可以从左侧历史对话开始，也可以直接提出一个问题。</span></div>
+        <div className="suggested"><span>推荐追问</span><button>我的核心技术取舍是什么？<ArrowRight size={14} /></button><button>有哪些可验证的工程证据？<ArrowRight size={14} /></button></div>
+      </div>
+      <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="输入你想追问的问题…" rows={1} /><button aria-label="发送问题"><Send size={17} /></button></div>
+      <div className="chat-foot"><LockKeyhole size={12} /> 当前为静态交互，不连接真实模型</div>
+    </section>;
+  }
+
   return <section className="chat-panel">
-    <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>静态演示</small></div><button aria-label="关闭对话"><X size={17} /></button></div>
+    <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>实时回答</small></div></div>
     <div className="chat-context"><Sparkles size={14} /><span>当前上下文：{context}</span></div>
     <div className="chat-body">
-      <div className="message assistant"><span className="message-icon"><Bot size={16} /></span><div><b>你好，我是项目数字分身。</b><p>我会基于已公开的项目证据回答问题，当前不会发送真实请求。</p></div></div>
-      <div className="message user"><span>你可以从左侧历史对话开始，也可以直接提出一个问题。</span></div>
-      <div className="suggested"><span>推荐追问</span><button>我的核心技术取舍是什么？<ArrowRight size={14} /></button><button>有哪些可验证的工程证据？<ArrowRight size={14} /></button></div>
+      {messages.length === 0 && <>
+        <div className="message assistant"><span className="message-icon"><Bot size={16} /></span><div><b>你好，我是项目数字分身。</b><p>我会基于已公开的知识库与页面证据流式回答你的问题；无关或越界的问题会被拒绝。</p></div></div>
+        {recommendations.length > 0 && <div className="suggested"><span>推荐追问</span>{recommendations.map((item) => <button key={item} onClick={() => send(item)}>{item}<ArrowRight size={14} /></button>)}</div>}
+      </>}
+      {messages.map((message, index) => {
+        if (message.role === 'user') return <div className="message user" key={index}><span>{message.text}</span></div>;
+        return <div className="message assistant" key={index}><span className="message-icon"><Bot size={16} /></span><div>
+          {message.pending && message.text === '' ? <p className="typing-hint">正在思考…</p> : <p>{message.text}</p>}
+          {!message.pending && message.citations && message.citations.length > 0 && <div className="citations"><span>引用</span>{message.citations.map((cite, citeIndex) => <code key={citeIndex}>{cite.doc} · {cite.fragment + 1}</code>)}</div>}
+          {!message.pending && message.grounded && <small className="answer-state grounded">已基于资料回答</small>}
+          {!message.pending && message.offtopic && <small className="answer-state offtopic">越界问题已拒绝</small>}
+          {message.error && <small className="answer-state error">回答失败</small>}
+        </div></div>;
+      })}
     </div>
-    <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="输入你想追问的问题…" rows={1} /><button aria-label="发送问题"><Send size={17} /></button></div>
-    <div className="chat-foot"><LockKeyhole size={12} /> 当前为静态交互，不连接真实模型</div>
+    <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="输入你想追问的问题…" rows={1} disabled={busy} /><button disabled={busy} onClick={() => send()} aria-label="发送问题">{busy ? '回答中…' : <Send size={17} />}</button></div>
+    <div className="chat-foot"><LockKeyhole size={12} /> 回答基于知识库与公开页面，越界问题将被拒绝</div>
   </section>;
 }
 
@@ -103,14 +219,12 @@ function ResumeView({ onInterview }: { onInterview: () => void }) {
   return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧预留可复制文字的 PDF 简历；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><span className="placeholder-badge">PDF 待补充</span><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历.pdf</span><span className="muted">文件待上传</span></div><div className="paper"><div className="paper-kicker">RESUME PLACEHOLDER</div><h2>PDF 简历将在这里显示</h2><p>后续补充 PDF 后，这里将保留可复制文本、页码和缩放控制。</p><div className="paper-lines"><span /><span /><span /><span /><span /></div><div className="paper-footer"><span>待补充</span><span>页 1 / 1</span></div></div></div></div></main>;
 }
 
-function ProjectView({ onInterview }: { onInterview: () => void }) {
-  const [selected, setSelected] = useState<ProjectId>('jianli');
+function ProjectView({ selected, onSelect, onInterview }: { selected: ProjectId; onSelect: (id: ProjectId) => void; onInterview: () => void }) {
   const [step, setStep] = useState(0);
   const project = projects[selected];
   const currentStep = project.steps[step];
-  const context = useMemo(() => project.name, [project.name]);
-  const selectProject = (id: ProjectId) => { setSelected(id); setStep(0); };
-  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>用播放式演示讲清楚项目。</h1><p>每个项目都按招聘方的阅读路径拆成几个可验证的章节，不把技术名词堆成清单。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => selectProject('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => selectProject('sleep')}>项目 02 · sleep AIoT</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label}</span><span>演示占位 · {currentStep.mark} / 03</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2><p>{currentStep.body}</p></div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一页</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 内容占位</span><p>后续可替换为项目架构图、页面录屏、成本估算和真实验证证据。</p></div></main>;
+  useEffect(() => { setStep(0); }, [selected]);
+  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>用播放式演示讲清楚项目。</h1><p>每个项目都按招聘方的阅读路径拆成几个可验证的章节，不把技术名词堆成清单。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label}</span><span>演示占位 · {currentStep.mark} / 03</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2><p>{currentStep.body}</p></div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一页</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 内容占位</span><p>后续可替换为项目架构图、页面录屏、成本估算和真实验证证据。</p></div></main>;
 }
 
 function InterviewView() {
@@ -210,9 +324,10 @@ function InterviewView() {
 
 function App() {
   const [page, setPage] = useState<Page>('resume');
-  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : <InterviewView />;
-  const context = page === 'resume' ? '简历与全部项目' : page === 'projects' ? '当前项目说明' : '面试预约流程';
-  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel context={context} /></div></div>;
+  const [project, setProject] = useState<ProjectId>('jianli');
+  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : <InterviewView />;
+  const live = page === 'resume' || page === 'projects';
+  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} /></div></div>;
 }
 
 export default App;

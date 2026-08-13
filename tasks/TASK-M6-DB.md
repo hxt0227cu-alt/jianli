@@ -1,7 +1,7 @@
 # TASK-M6-DB AI 问答域迁移（人工审批建表）
 
 > **任务类型**：migration（**DB 迁移铁律：建表须用户人工审批**；本任务单即审批材料，schema 见 §7）
-> **状态**：Open（待用户审批 schema 与授权编写迁移；**不执行生产迁移**，执行另行批准）
+> **状态（2026-08-13）**：✅ 用户已批准 schema（含 RecommendedQuestionCache 不纳入）；✅ 迁移 `0004_aiqa_schema.py` + 迁移测试已编写；⏳ 待 WSL 真实 PG 验证；**不执行生产迁移**（执行另行批准）
 > **前置**：领域模型 v1.1.5 已 approved（§6.13/6.14 已建模 4 张表）→ 本迁移只是把已批准建模落地为 DDL
 
 ## 1. 基线版本与基线 commit
@@ -122,8 +122,12 @@
 ## 11. 回滚方法
 - 迁移未执行：`alembic downgrade base`（可逆）；已执行：逆序 `downgrade -1`
 
-## 12. 交付证据（任务关闭前必须填写）
-- *待用户批准后编写迁移并测试后回填*（approval_commit / verified_commit / 迁移测试结果）
+## 12. 交付证据（2026-08-13 部分回填；任务未关闭）
+- **用户批准**：2026-08-13（schema 4 表 + 5 枚举 + 索引/约束；RecommendedQuestionCache 不纳入）
+- **实现 commit**：`<commit>`（`migrations/versions/0004_aiqa_schema.py` + `tests/migrations/test_aiqa_schema.py`）
+- 本地门禁：ruff All checks passed ✅ + mypy 0 error（40 source files）✅ + `alembic heads` = `0004_aiqa_schema (head)` ✅ + py_compile ✅
+- 真实 PostgreSQL 迁移测试：**PENDING（沙箱无 Docker）**——WSL 建 `jianli_tc_aiqa_001_db` 后跑 `JIANLI_TEST_DATABASE_URL=... PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v`，预期 6 passed
+- 生产迁移执行：**未执行，另行批准**
 
 ## 13. 关联
 - **前置任务**：领域模型 v1.1.5 已 approved（§6.13/6.14 建模即批准依据）

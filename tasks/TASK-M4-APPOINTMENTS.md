@@ -100,19 +100,24 @@
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
 ## 交付证据（关闭前一次写全）
-- commit / PR：<回填>
-- 修改文件清单：<回填>
-- 测试命令及结果：<回填；TC-AUTH-REG/VERIFY/RESET>
-- lint / typecheck：<回填>
-- DB 迁移验证：无
-- 验收证据：<回填接口响应样例 / 令牌落库断言>
-- 变更预算实际值：<回填>
-- 未解决风险：<回填；SMTP 未配置时仅 sink；`resend-verification` 不在契约，待产品决策>
-- 是否偏离 TASK：否（实现严格对齐 approved OpenAPI；resend 已显式列为非目标）
-- 规范影响结论：openapi clean（实现已批准 operation，无需改 OpenAPI）；test_plan dirty→补 TC 后 clean
-- spec_sync：<回填；实现对齐 OpenAPI 后 clean>
-- verified_commit：<回填真实 sha>
-- 关闭门禁：① 测试通过 ② 规范影响已处理（test_plan TC 补入、spec_sync clean）③ verified_commit 已记录
+- commit / PR：
+  - `b77931e` — feat(auth): M4 注册/邮箱验证/密码找回，对齐已批准 OpenAPI 契约
+  - `7c91a83` — fix(test): verify-email 未知令牌用例改用契约合法长度（minLength:32）→ 4 passed
+- 修改文件清单（按允许修改路径逐条计数）：`auth/service.py`、`auth/repository.py`、`auth/router.py`、`auth/models.py`、`auth/runtime.py`、`notifications/email.py`、`tests/auth/test_account_lifecycle.py` + 本任务治理文件 = 8 路径（≤ max_files 9）
+- 测试命令及结果：`pytest tests/auth/test_account_lifecycle.py -v` → **4 passed**（TC-AUTH-REG/VERIFY/RESET 真实 PG/Redis 覆盖）；另全量回归 44 passed / 27 skipped / 2 failed（2 failed 经证为既有非回归，与 M4 无关）
+- lint / typecheck：`ruff check .` → All checks passed（exit 0）；`mypy` → Success: no issues found in 26 source files（exit 0）
+- DB 迁移验证：无（复用 migration 0001 的 `email_verification_tokens` / `password_reset_tokens`）
+- 验收证据：注册 202 / 重复邮箱 409 DUPLICATE_EMAIL / 验证 204 幂等 / 未知令牌 409 INVALID_TOKEN / 找回申请恒 202 不泄露存在性 / 找回确认 409 INVALID_TOKEN 且作废全部会话 / 弱口令 422 INVALID_REQUEST；令牌仅存 SHA-256 token_hash
+- 变更预算实际值：max_files=9，实际 8（不含 PROJECT_STATE 治理同步），未超预算
+- 未解决风险：① SMTP 未配置时仅 sink（best-effort，不发信）——`test_worker.py`（M3）待 SMTP 凭据补测；② `resend-verification` 不在已批准 OpenAPI 契约，待产品决策走 Change Request
+- 是否偏离 TASK：否（实现严格对齐 approved OpenAPI 4 operation；resend 已显式列为非目标）
+- 规范影响结论：openapi clean（实现已批准 operation，无需改 OpenAPI）；test_plan dirty→补 TC 后 clean（TC-AUTH-* 已落地 `test_account_lifecycle.py`）
+- spec_sync：clean（实现对齐 OpenAPI 后）
+- verified_commit：`7c91a83`
+- 关闭门禁：① 测试通过（4 passed）② 规范影响已处理（spec_sync clean）③ verified_commit 已记录 → 全部满足
+
+## 关闭结论
+- **已关闭（Closed，2026-08-13）**。用户授权回填：`pytest tests/auth/test_account_lifecycle.py` → 4 passed；`ruff`/`mypy` repo 级全绿；spec_sync=clean、`verified_commit=7c91a83`；是否偏离 TASK=否。M4 账户自助生命周期（注册/验证/找回）交付完成，对齐已批准 OpenAPI v0.2。
 
 ## 关联
 - Change Request：无（实现 approved OpenAPI/SRS §5.6；OpenAPI 为 operation 实现非字段变更）

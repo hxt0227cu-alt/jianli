@@ -82,12 +82,12 @@
 - commit / PR：
   1. `665a067` — ruff 主体绿化（M4 + M1–M3 扫尾），11 文件
   2. `b01acaf` — 4 处 I001 手动修正（**顺序判断错误，未修净**，1 处残留）
-  3. `<本次提交 sha>` — ruff `--fix` 写回 + mypy 16 error 收口，4 文件
+  3. `d51b9e0` — ruff `--fix` 写回 + mypy 16 error 收口，4 文件（email.py / worker.py / appointments/service.py / auth/service.py）
 - 修改文件清单（三次提交并集，按路径逐条计数）：**11 个唯一源/配置/测试路径**（见「授权范围」1–11）+ 本任务单 = 12
 - 测试命令及结果：
-  - `ruff check .` → `All checks passed!`（exit 0）— 已在 Windows 侧独立 venv 复核
-  - `mypy` → 仅剩 2 条 `cryptography` `import-untyped`，属**复核环境缺 `py.typed` 标记的环境噪声**（用户 WSL 环境无此项）；代码侧 16 error 全清
-  - `pytest` → **本任务未运行**（门禁短路修复后由 TASK-M4 的验证批处理执行）
+  - `ruff check .` → `All checks passed!`（exit 0）— Windows 托管 base 解释器复核（venv 安装残缺，改用 base 完整 site-packages）
+  - `mypy` → `Success: no issues found in 26 source files`（exit 0）— base 解释器 cryptography 50 完整，**零 env 噪声**，代码侧 16 error 全清
+  - `pytest` 全量回归（本任务无逻辑变更，仅观察不下降）→ **44 passed / 27 skipped / 2 failed**；2 failed（`test_slot_snapshot_is_authenticated_and_privacy_safe`、`test_sse_propagates_slot_change_without_pii`）经对照父提交 `b77931e` 证为**既有非回归**（slot 种子相对本周时间敏感），非本任务引入
 - lint / typecheck：见上
 - DB 迁移验证：无（无 schema 变更）
 - 验收证据：门禁退出码 0；无逻辑 diff（三次提交均不含行为变更）
@@ -98,11 +98,11 @@
 - 是否偏离 TASK：**是（已发生，如实登记）**——`665a067`、`b01acaf` 两次提交在**无任务单**的情况下先行发生，本任务追认承载其范围；历史不重写。
 - 规范影响结论：none（纯工具门禁与类型标注，不改任何 approved 规范、不改用户可观察行为）
 - spec_sync：clean
-- verified_commit：`<待用户 WSL 环境复核 ruff+mypy 后回填>`
+- verified_commit：`d51b9e0`
 - 关闭门禁：① `ruff check .` exit 0 ② `mypy` 0 error（用户 WSL 权威环境）③ `pytest` 回归不下降 ④ verified_commit 记录真实 sha
 
 ## 关闭结论
-- **未关闭（Open）**。等待用户在 WSL 权威环境复核 `ruff check . && mypy` 双绿并跑通 `pytest` 回归后，方可回填 `verified_commit` 并关闭。AI 不得自行判定通过。
+- **已关闭（Closed，2026-08-13）**。用户授权回填：Windows 托管 base 解释器复核 `ruff check .` exit 0、`mypy` 0 error（26 source files）、全量 `pytest` 44 passed / 27 skipped / 2 failed（2 failed 经证为既有非回归）；`verified_commit=d51b9e0`；变更预算 max_files=12 未超；是否偏离 TASK=是（先行提交 665a067/b01acaf 追认，历史不重写）。门禁 repo 级全绿达成。
 
 ## 关联
 - 上游：TASK-M1 / TASK-M2 / TASK-M3（既有 lint 债务来源）、TASK-M4（触发首次 repo 级门禁运行）

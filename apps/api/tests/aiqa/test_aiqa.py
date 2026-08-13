@@ -165,6 +165,7 @@ def test_stream_answer_invalid_cookie_401() -> None:
         def __init__(self) -> None:
             self.service = _FakeAuthService()
             self.allowed_origins: frozenset[str] = frozenset()
+            self.engine = None  # factory reads runtime.engine for aiqa persistence wiring
 
     app = create_app(Settings(), auth_runtime=_FakeRuntime())
     with TestClient(app) as invalid_client:

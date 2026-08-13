@@ -1,10 +1,8 @@
-"""Request/response models for the AI QA (Answer) domain, M6 round 1.
+"""Request/response models for the AI QA (Answer) domain.
 
-Mirrors ``docs/api/openapi.yaml`` ``AnswerRequest`` and the SSE frame contract in
-``docs/api/sse.md`` §3. No new tables are introduced in round 1: the knowledge source
-is the static page registry in ``.content`` and retrieval is pure-Python (see
-``.retrieval``). Conversation persistence and DB-backed knowledge ingestion are later
-rounds gated by ``TASK-M6-DB``.
+Mirrors ``docs/api/openapi.yaml``: ``AnswerRequest`` + SSE frame contract (docs/api/sse.md
+§3) from round 1; conversation models (``Conversation`` / ``Message``) added in round 2
+over the approved 0004 tables. Rounds are gated by ``TASK-M6-DB`` (approved 2026-08-13).
 """
 
 from __future__ import annotations
@@ -45,3 +43,29 @@ class RecommendedQuestions(BaseModel):
 
     items: list[str]
     source: RecommendationSource
+
+
+class Conversation(BaseModel):
+    """Response of ``listConversations`` items / ``createConversation``."""
+
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationList(BaseModel):
+    items: list[Conversation]
+
+
+class Message(BaseModel):
+    """Response of ``listConversationMessages`` items."""
+
+    id: UUID
+    role: Literal["user", "assistant"]
+    content: str
+    is_offtopic: bool = False
+    created_at: datetime
+
+
+class MessageList(BaseModel):
+    items: list[Message]

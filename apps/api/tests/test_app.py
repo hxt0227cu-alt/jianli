@@ -13,12 +13,15 @@ def test_factory_uses_settings_and_mounts_only_public_routes() -> None:
     assert isinstance(app, FastAPI)
     assert app.title == "Test API"
     assert app.version == "9.9.9"
-    # Without auth settings the app exposes exactly the public Answer domain (M6 round 1):
-    # page content, recommended questions and the anonymous answer stream.
+    # Without auth settings the app exposes exactly the Answer domain surface: pages,
+    # recommendations, the anonymous answer stream, and (routed but 401 without a
+    # session) the conversation endpoints.
     assert set(app.openapi()["paths"]) == {
         "/pages/{page_key}",
         "/pages/{page_key}/recommendations",
         "/answers:stream",
+        "/conversations",
+        "/conversations/{conversation_id}/messages",
     }
 
 
@@ -34,6 +37,8 @@ async def test_framework_openapi_endpoint_lists_public_paths() -> None:
         "/pages/{page_key}",
         "/pages/{page_key}/recommendations",
         "/answers:stream",
+        "/conversations",
+        "/conversations/{conversation_id}/messages",
     }
 
 

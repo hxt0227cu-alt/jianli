@@ -1,6 +1,6 @@
 # TASK-KB-PDF-001 知识库 PDF 支持 + 前端管理页（合并任务）
 
-> **状态**：Open（2026-08-13 建；用户批准：引入 `pypdf` 依赖 + 前后端一起做——简历是 PDF、项目资料是 md）
+> **状态（2026-08-13，✅ 已关闭 Closed，用户验证通过并授权关闭）**：PDF 上传（pypdf）+ 前端管理页 + 页面一 PDF 展示全部实现并验证，2026-08-13 用户授权关闭。
 > **依赖**：M6 已关闭（upload/知识库检索就绪）；TASK-FE-AIQA-001 已关闭（前端问答页就绪）
 
 ## 1. 任务类型
@@ -48,8 +48,12 @@
 ## 9. 强制停止条件
 - 未列明变更（新依赖/改契约/改鉴权）→ 停止报告
 
-## 10. 交付证据（关闭前填写）
-- *实现后回填*（commit / 门禁 / WSL 验证）
+## 10. 交付证据（2026-08-13 已回填；✅ 任务已关闭）
+- 实现 commit：`cb4d16e`（7 files / +232：pyproject+service+test_knowledge PDF 用例 + main.tsx AdminView/styles/入口 + shell.test 锚点）+ `5525cb6`（修复：不支持类型用例 notes.pdf→notes.docx，PDF 已支持的语义演进）
+- 后端门禁：ruff ✅ + mypy 43 files ✅ + DB-free 14 passed ✅
+- **用户 WSL 验证（2026-08-13）**：`pytest tests/aiqa/test_knowledge.py` **6 passed in 10.48s** ✅（含 PDF indexed/去重/检索命中 + 损坏 PDF failed）；前端 `pnpm run typecheck` ✅ + `pnpm test` 1 passed ✅ + `pnpm run build` ✅（JS 234.99kB / gzip 72.65kB）；`verified_commit=5525cb6`
+- 手动验证（管理页上传 PDF 简历 → indexed → 问答命中引用）：用户后续自行操作（素材 `apps/web/public/resume.pdf`）
+- 环境说明：前端门禁在用户 WSL 执行（沙箱 Windows 缺 win32 平台包，pnpm 平台隔离——node_modules 被用户 WSL 重装为 linux 平台）
 
 ## 11. 关联
 - 前置：M6（upload API 就绪）、TASK-FE-AIQA-001（前端问答就绪）

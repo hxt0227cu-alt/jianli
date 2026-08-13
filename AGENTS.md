@@ -183,45 +183,50 @@ lint / typecheck：<结果>
 
 ---
 
-## 10. AI 问答域（M6）实现地图与扩展点（2026-08-13，首轮+二轮）
+## 10. AI 问答域（M6）实现地图与扩展点（2026-08-13，首轮+二轮+三轮）
 
 > 供后续接手 AI（含 Codex）快速定位：**已实现什么、契约在哪、下一步在哪、不许碰什么。**
 
-### 10.1 已实现（`apps/api/app/aiqa/`，首轮 10 模块 + 二轮扩展）
-| 模块 | 职责 | 后续轮次扩展点 |
-|------|------|----------------|
-| `content.py` | 静态页知识源（resume/projects）+ 推荐问题；`PAGES` 注册表 | 三轮换 DB 加载（`knowledge_documents`） |
-| `retrieval.py` | 纯 Python 词元重叠检索（CJK 单字保留、≥2 词元命中才候选） | 三轮换 pgvector/全文检索 |
+### 10.1 已实现（`apps/api/app/aiqa/`，首轮 10 模块 + 二/三轮扩展）
+| 模块 | 职责 | 后续扩展点 |
+|------|------|------------|
+| `content.py` | 静态页知识源（resume/projects）+ 推荐问题；`PAGES` 注册表 | 知识库优先后的静态兜底 |
+| `retrieval.py` | 纯 Python 词元重叠检索（CJK 单字保留、≥2 词元命中才候选） | 静态兜底（知识库未命中时） |
 | `persona.py` | 第一人称人格层 system prompt + 问候/越界人格化回复 | 素材到位后可配置化 |
 | `gateway.py` | `LLMGateway` Protocol + `StubGateway`（默认）+ `OpenAIGateway`（httpx **惰性导入**，dev extra） | 新增 Anthropic/vLLM 等 provider |
+| `embeddings.py` | **三轮新增**：`EmbeddingGateway` Protocol + `LocalEmbeddingGateway`（哈希 768 维，零依赖）+ `OpenAIEmbeddingGateway`（httpx 惰性，维度不符显式报错） | 加专用 embedding 配置/模型 |
+| `storage.py` | **三轮新增**：本地磁盘对象存储（`knowledge/{doc_id}.txt`） | 换 S3/COS 后端 |
 | `sse.py` | answer.started/delta/citations/completed/error 帧 | 已支持 conversation_id 回显 |
-| `service.py` | 编排：检索→边界（问候/越界）→流式→帧；**二轮**：会话三件套 + 落库钩子 | 三轮加知识库摄取/检索接入 |
-| `router.py` | **6 operation**：3 公开 + `listConversations`/`createConversation`/`listConversationMessages` | 三轮挂知识库端点 |
-| `repository.py` | **二轮新增**：会话/消息原生 SQL（0004 表，180d purge） | 三轮加文档仓库（knowledge 表） |
-| `rate_limit.py` | 内存固定窗口限频（公开问答 429） | 多实例换 Redis（复用 auth 模式） |
-| `models.py` / `runtime.py` | 契约请求/响应模型（+Conversation/Message）；`build_aiqa_runtime(settings, engine=None)` | 随轮次增模型 |
+| `service.py` | 编排：知识库优先→静态兜底→边界→流式→帧；会话持久化；知识库三件套（202 语义状态机） | 分块检索（后续迁移） |
+| `router.py` | **9 operation**：3 公开 + 3 会话 + 3 知识库（admin，写强制 CSRF） | — |
+| `repository.py` | 会话/消息仓库 + **知识文档仓库（pgvector 余弦检索带 score）** | 分块表（后续） |
+| `rate_limit.py` | 内存固定窗口限频（公开问答 429） | 多实例换 Redis |
+| `models.py` / `runtime.py` | 契约模型；`build_aiqa_runtime(settings, engine=None)` 装配全部依赖 | 随轮次增模型 |
 
 ### 10.2 契约真相源
-- `docs/api/openapi.yaml`（operationId：`getPageContent` / `listRecommendedQuestions` / `streamAnswer` / `listConversations` / `createConversation` / `listConversationMessages`）
+- `docs/api/openapi.yaml`（9 operationId：3 公开 + 3 会话 + `listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument`）
 - `docs/api/sse.md` §3（帧顺序：started → delta* → citations → completed；异常 error）
-- 已实现**严格对齐**：路径/operationId/状态码/字段；**无新运行时依赖**（httpx 惰性导入仍 dev extra）；迁移仅复用已批准 0004。
+- 已实现**严格对齐**：路径/operationId/状态码/字段。**运行时新依赖仅 `python-multipart`**（multipart 上传框架配套，已登记）；httpx 仍 dev extra（惰性导入）。
 
 ### 10.3 安全不变量（不得放宽）
 - 匿名 `streamAnswer`：不持久化（`conversation_id` 恒 null）；**携带无效/过期 cookie → 401，绝不静默降级匿名**；**匿名携带 `conversation_id` → 401**。
 - 有效会话：强制同源 Origin/Referer + `X-CSRF-Token`（复用 `app/auth/router.py` 的 `_require_csrf`）。
 - 持久化规则：仅**有效会话 + `conversation_id`** 才落库（user 消息流前、assistant 消息流后含 `is_offtopic` 标记）；会话归属 owner-only（他人 403、未知 404）。
-- 越界/无依据 → `answer.completed` `offtopic=true` 拒答，不编造；模型不得执行预约/工具调用（system prompt 硬约束）。
+- 知识库端点 **owner_admin**（写强制 CSRF）；上传 202 语义（逐文件状态机：indexed/failed）、活跃 checksum 去重、10MB 上限、删除即禁检索（`retrieval_disabled_at`）。
+- 越界/无依据 → `answer.completed` `offtopic=true` 拒答，不编造；模型不得执行预约/工具调用。
 - 公开问答限频 429（`AnswerRateLimiter`，默认 20 次/60s/IP）。
 
-### 10.4 配置（可选，不设则 Stub 网关）
-`JIANLI_LLM_BASE_URL` / `JIANLI_LLM_API_KEY` / `JIANLI_LLM_MODEL` / `JIANLI_LLM_TIMEOUT_SECONDS` → 走 OpenAI 兼容 `/chat/completions` 流式；缺省用确定性 `StubGateway`（测试与无模型环境可跑）。
+### 10.4 配置
+- `JIANLI_LLM_BASE_URL`/`JIANLI_LLM_API_KEY`/`JIANLI_LLM_MODEL`/`JIANLI_LLM_TIMEOUT_SECONDS` → 走 OpenAI 兼容 `/chat/completions` 流式 + `/embeddings`；缺省 Stub 网关 + 本地哈希 embedding（可测可跑）。
+- `JIANLI_KNOWLEDGE_STORAGE_DIR`（默认 `./var/knowledge`）、`JIANLI_LLM_EMBEDDING_DIM`（默认 768，**须与迁移 0005 `vector(768)` 一致**）。
 
 ### 10.5 测试
 - DB-free：`cd apps/api && PYTHONPATH=. pytest tests/aiqa tests/test_app.py -q`（14 用例；无 Docker）
-- 真实集成（二轮会话，WSL，需真实 PG/Redis）：`JIANLI_AIQA_TEST_DATABASE_URL`（指向 `jianli_tc_aiqa_001_db`，schema 已在 head）+ `JIANLI_AIQA_TEST_REDIS_URL` + CSRF/RATE_LIMIT HMAC key（raw ≥32 字符）→ `PYTHONPATH=. pytest tests/aiqa/test_conversations.py -v`（5 用例）
-- 门禁：`ruff check . && mypy app`（41 source files）
+- 真实集成（WSL，需真实 PG/Redis + **pgvector/pg16 镜像**）：`JIANLI_AIQA_TEST_DATABASE_URL`（`jianli_tc_aiqa_001_db`）+ `JIANLI_AIQA_TEST_REDIS_URL` + CSRF/RATE_LIMIT key（raw ≥32）→ `PYTHONPATH=. pytest tests/aiqa/test_conversations.py tests/aiqa/test_knowledge.py -v`（会话 5 + 知识库 4）
+- 迁移测试：`JIANLI_TEST_DATABASE_URL=... PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v`（0001–0005，含 embedding 列断言）
+- 门禁：`ruff check . && mypy app`（43 source files）
 
-### 10.6 M6 剩余轮次
-- **二轮（会话持久化）已实现**（commit `c9c5721`），待 WSL 真实集成验证（`test_conversations.py` 5 用例）
-- 三轮：知识库摄取三件套 `listKnowledgeDocuments` / `uploadKnowledgeDocuments` / `deleteKnowledgeDocument` + 向量/全文检索接入 `streamAnswer`（`knowledge_documents` / `knowledge_index_versions` 表已在 0004 就绪；检索依赖变更另行审批）
-- change_budget 实际累计（首轮 17 文件 + 二轮 9 文件）**已如实登记超预估**；后续轮次预算另行核算。
+### 10.6 M6 剩余
+- 二轮 ✅ 已验证（`c9c5721`，WSL 5 passed）；三轮 ✅ 已实现（`851742a`），**待 WSL 集成验证**（先换 pgvector 镜像重建 PG → 跑 0005 迁移测试 + test_knowledge）
+- 全部验证通过后：回填 verified_commit → 用户授权关闭 M6（含 TASK-M6-DB）
+- change_budget 实际累计（首轮 17 + 二轮 9 + 三轮 15 文件）**已如实登记超预估**；不再逐轮细算。

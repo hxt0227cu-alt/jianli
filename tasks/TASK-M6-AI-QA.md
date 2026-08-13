@@ -3,7 +3,7 @@
 > 合并同域主线：已批准 OpenAPI v0.2 中 AI 问答域（公开页内容 + RAG 流式回答 + 会话持久化 + 知识库摄取）归并为单一实现任务。
 > **治理节奏（与 M1–M5 一致，2026-08-12 提速口径）**：① 合并同域主线；② 风险分级——RAG 检索/越界拒答/人格层提示词属**高风险**（输出可控性、越界边界、提示注入），本任务不单列独立 REVIEW 任务（接手 Codex 模式），但实现须内联自审：匿名不持久化、带会话须 CSRF+同源、越界/无依据一律拒答不编造；③ 交付证据一次写全；④ 验证批处理（一轮 pytest+ruff+mypy）。
 > **DB 迁移铁律（高优先级）**：本任务实现**依赖 4 张尚未迁移的表**——`conversations` / `conversation_messages` / `knowledge_documents` / `knowledge_index_versions`。这些表**不在 migration 0001–0003**，须先走**独立迁移任务（人工审批建表）**再另开实现。本任务**不碰迁移、不碰加密/鉴权主体**。
-> **状态（2026-08-13，首轮 ✅ + 二轮已实现）**：首轮无表子集（`getPageContent` + `listRecommendedQuestions` + 匿名 `streamAnswer`，静态页知识源 grounding + 人格层 + 越界拒答）已实现并通过 DB-free 门禁（ruff ✅ / mypy ✅ / aiqa 11 passed ✅）。**二轮会话持久化已实现**（`c9c5721`：`listConversations`/`createConversation`/`listConversationMessages` + `streamAnswer` 带会话+conversation_id 落库，基于已批准迁移 0004；DB-free 14 passed ✅，真实集成 5 用例待 WSL 验证）。**三轮知识库摄取待做**（依赖 `knowledge_documents`/`knowledge_index_versions` 表，已在 0004 就绪）。任务**未关闭**。
+> **状态（2026-08-13，首轮 ✅ + 二轮 ✅ + 三轮已实现）**：首轮无表子集（公开页 + 匿名 `streamAnswer` + 人格层/越界拒答）✅；**二轮会话持久化已验证（WSL 5 passed）**；**三轮知识库摄取已实现**（`851742a`：md/txt 上传 + 本地磁盘存储 + pgvector 检索 + `listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument`，用户已批准 PG 换 pgvector/pg16 镜像 + 0005 迁移 + embedding 策略）；**9 个 operation 全部实现**，集成测试待 WSL（需 pgvector 镜像）。任务**未关闭**。
 
 ## 任务类型
 - implementation（AI 问答域；前置依赖：TASK-M6-DB 迁移任务，待用户批准）
@@ -105,8 +105,10 @@
 - **二轮真实 PG/Redis 集成验证（用户 WSL，2026-08-13）**：`PYTHONPATH=. pytest tests/aiqa/test_conversations.py -v` **5 passed in 9.21s** ✅；`verified_commit=c9c5721`
 - 契约对齐：6 operation（+`listConversations`/`createConversation`/`listConversationMessages`）路径/operationId/状态码与 openapi.yaml 一致；SSE 帧格式按 sse.md §3；**无新迁移/表/列/索引/枚举（复用已批准 0004）；无新运行时依赖**
 - 安全验收：匿名不持久化（无 conversation_id 恒不落库）、无效 cookie → 401 不静默降级、匿名带 conversation_id → 401、有效会话强制同源+CSRF、会话归属 owner-only（他人 403、未知 404）、越界 → assistant 消息 is_offtopic=true、公开问答限频 429
-- 真实 PG/Redis 集成验证：**✅ 5 passed in 9.21s（用户 WSL，2026-08-13）**——创建/列表、匿名 401/无 CSRF 403、落库 grounded、落库 offtopic 标记、归属 403/404
-- 待办：**三轮知识库摄取三件套**（`listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument` + 检索接入 `streamAnswer`，表已就绪；上传格式/存储/检索方案待用户拍板——见三轮启动决策）
+- 真实 PG/Redis 集成验证：二轮 **✅ 5 passed in 9.21s（用户 WSL，2026-08-13）**；三轮 **待 WSL**（`tests/aiqa/test_knowledge.py` 4 用例：上传/去重/失败态、知识库 grounding、删除即禁检索、权限 401/403——**需先换 pgvector 镜像并跑 0005**）
+- 三轮 commit：`851742a`（15 files / +778：0005 迁移 + embeddings/storage/repository 扩展/service/router + config/pyproject/docker-compose + test_knowledge + 测试更新）
+- **三轮已批准变更（用户 2026-08-13 批准）**：PG 镜像 postgres:16-alpine → pgvector/pgvector:pg16（基础设施）；迁移 0005（CREATE EXTENSION vector + embedding vector(768) NULL）；embedding=OpenAI 兼容 /embeddings 优先 + 本地哈希降级；`python-multipart` 运行时依赖（multipart 上传框架配套，如实登记）
+- 待办：**WSL 集成验证三轮**（换镜像 → 重建 PG → 0005 迁移测试 + test_knowledge）→ 全绿后回填 verified_commit → 用户授权关闭 M6（含 TASK-M6-DB）
 
 ## 关联
 - **前置依赖（人工审批）**：`TASK-M6-DB` —— 迁移 `conversations`/`conversation_messages`/`knowledge_documents`/`knowledge_index_versions` 四表（含索引/约束/枚举），须用户批准 schema 后另开实现轮次

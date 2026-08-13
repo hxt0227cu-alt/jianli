@@ -197,11 +197,30 @@ async def test_delete_disables_retrieval(real_stack: Any) -> None:
         doc_id = (await client.get("/admin/knowledge-documents")).json()["items"][0]["id"]
         before = await _stream_answer(client, keyword)
         assert before[-1][1]["grounded"] is True
+        before_citations = next(d for name, d in before if name == "answer.citations")
+        assert any(cite["doc"] == "unique.md" for cite in before_citations["citations"])
+
         deleted = await client.delete(f"/admin/knowledge-documents/{doc_id}")
         assert deleted.status_code == 204
+
+        # Retrieval is disabled at the DB level (domain model §6.14: delete = immediately
+        # disable retrieval).
+        with engine.connect() as connection:
+            disabled = connection.scalar(
+                text(
+                    "SELECT retrieval_disabled_at IS NOT NULL "
+                    "FROM knowledge_documents WHERE id=:id"
+                ),
+                {"id": doc_id},
+            )
+        assert disabled is True
+
+        # The deleted document must never appear as a citation again. NOTE: the static
+        # page fallback may still ground a query (e.g. "检索" overlaps resume content),
+        # so we assert absence of the document, not offtopic.
         after = await _stream_answer(client, keyword)
-        # Without the document the keyword is off-topic (static pages don't contain it).
-        assert after[-1][1]["offtopic"] is True
+        after_citations = next(d for name, d in after if name == "answer.citations")
+        assert all(cite["doc"] != "unique.md" for cite in after_citations["citations"])
 
 
 @pytest.mark.asyncio

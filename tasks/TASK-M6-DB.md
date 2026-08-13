@@ -122,12 +122,12 @@
 ## 11. 回滚方法
 - 迁移未执行：`alembic downgrade base`（可逆）；已执行：逆序 `downgrade -1`
 
-## 12. 交付证据（2026-08-13 部分回填；任务未关闭）
+## 12. 交付证据（2026-08-13 已回填；任务待用户授权关闭）
 - **用户批准**：2026-08-13（schema 4 表 + 5 枚举 + 索引/约束；RecommendedQuestionCache 不纳入）
-- **实现 commit**：`<commit>`（`migrations/versions/0004_aiqa_schema.py` + `tests/migrations/test_aiqa_schema.py`）
+- **实现 commit**：`d2f4e42`（迁移 + 测试）+ `57a7481`（修复：FK 显式命名 + 形状断言 bool/int 归一化；WSL 首跑 3/2，修复后全绿）
 - 本地门禁：ruff All checks passed ✅ + mypy 0 error（40 source files）✅ + `alembic heads` = `0004_aiqa_schema (head)` ✅ + py_compile ✅
-- 真实 PostgreSQL 迁移测试：**PENDING（沙箱无 Docker）**——WSL 建 `jianli_tc_aiqa_001_db` 后跑 `JIANLI_TEST_DATABASE_URL=... PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v`，预期 6 passed
-- 生产迁移执行：**未执行，另行批准**
+- **真实 PostgreSQL 迁移测试（用户 WSL，2026-08-13）**：`PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v` **5 passed in 1.32s** ✅（up→down→up 可逆 + 4 表/5 枚举/索引/FK 形状 + 去重后重传 + 枚举拒绝 + 级联删除）；`verified_commit=57a7481`
+- 生产迁移执行：**未执行，另行批准**（本地 dev 库 `jianli_dev` 升级 head 亦须用户授权）
 
 ## 13. 关联
 - **前置任务**：领域模型 v1.1.5 已 approved（§6.13/6.14 建模即批准依据）

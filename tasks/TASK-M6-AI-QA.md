@@ -101,11 +101,12 @@
 ## 交付证据（2026-08-13 首轮+二轮回填；**任务未关闭**，三轮知识库摄取待做）
 - 首轮 commit：`f77c46c`（15 files / +1062）+ `ba468c9`（治理回填）
 - 二轮 commit：`c9c5721`（9 files / +596：repository/models/service/router/runtime/factory + test_conversations + 测试更新）
-- 门禁（沙箱 DB-free）：ruff ✅ + mypy 0 error（41 source files）✅ + `pytest tests/aiqa tests/test_app.py` 14 passed ✅（集成 5 用例正确 skip，待 WSL）
+- 门禁（沙箱 DB-free）：ruff ✅ + mypy 0 error（41 source files）✅ + `pytest tests/aiqa tests/test_app.py` 14 passed ✅
+- **二轮真实 PG/Redis 集成验证（用户 WSL，2026-08-13）**：`PYTHONPATH=. pytest tests/aiqa/test_conversations.py -v` **5 passed in 9.21s** ✅；`verified_commit=c9c5721`
 - 契约对齐：6 operation（+`listConversations`/`createConversation`/`listConversationMessages`）路径/operationId/状态码与 openapi.yaml 一致；SSE 帧格式按 sse.md §3；**无新迁移/表/列/索引/枚举（复用已批准 0004）；无新运行时依赖**
 - 安全验收：匿名不持久化（无 conversation_id 恒不落库）、无效 cookie → 401 不静默降级、匿名带 conversation_id → 401、有效会话强制同源+CSRF、会话归属 owner-only（他人 403、未知 404）、越界 → assistant 消息 is_offtopic=true、公开问答限频 429
-- 真实 PG/Redis 集成验证：**待 WSL**（`tests/aiqa/test_conversations.py` 5 用例：创建/列表、匿名 401/无 CSRF 403、落库 grounded、落库 offtopic 标记、归属 403/404）
-- 待办：**三轮知识库摄取三件套**（`listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument` + 向量/全文检索接入 `streamAnswer`，表已就绪）
+- 真实 PG/Redis 集成验证：**✅ 5 passed in 9.21s（用户 WSL，2026-08-13）**——创建/列表、匿名 401/无 CSRF 403、落库 grounded、落库 offtopic 标记、归属 403/404
+- 待办：**三轮知识库摄取三件套**（`listKnowledgeDocuments`/`uploadKnowledgeDocuments`/`deleteKnowledgeDocument` + 检索接入 `streamAnswer`，表已就绪；上传格式/存储/检索方案待用户拍板——见三轮启动决策）
 
 ## 关联
 - **前置依赖（人工审批）**：`TASK-M6-DB` —— 迁移 `conversations`/`conversation_messages`/`knowledge_documents`/`knowledge_index_versions` 四表（含索引/约束/枚举），须用户批准 schema 后另开实现轮次

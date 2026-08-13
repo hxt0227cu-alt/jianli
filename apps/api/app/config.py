@@ -36,6 +36,12 @@ class Settings(BaseModel):
     smtp_user: str | None = None
     smtp_password: SecretStr | None = None
     smtp_from: str | None = None
+    # Optional LLM gateway (Answer domain, M6). When unset the Answer service uses a
+    # deterministic in-process StubGateway so the site runs and is testable with no LLM.
+    llm_base_url: str | None = None
+    llm_api_key: SecretStr | None = None
+    llm_model: str | None = None
+    llm_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
 
     @property
     def auth_configured(self) -> bool:
@@ -97,6 +103,10 @@ class Settings(BaseModel):
             "smtp_user": "JIANLI_SMTP_USER",
             "smtp_password": "JIANLI_SMTP_PASSWORD",
             "smtp_from": "JIANLI_SMTP_FROM",
+            "llm_base_url": "JIANLI_LLM_BASE_URL",
+            "llm_api_key": "JIANLI_LLM_API_KEY",
+            "llm_model": "JIANLI_LLM_MODEL",
+            "llm_timeout_seconds": "JIANLI_LLM_TIMEOUT_SECONDS",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

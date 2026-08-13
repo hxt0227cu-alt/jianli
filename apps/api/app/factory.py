@@ -14,6 +14,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from .admin.router import create_admin_router
+from .aiqa.router import create_aiqa_router
+from .aiqa.runtime import build_aiqa_runtime
 from .appointments.router import create_appointment_router
 from .appointments.runtime import build_booking_runtime
 from .appointments.service import BookingService
@@ -98,6 +100,12 @@ def create_app(
             app.include_router(create_appointment_router(runtime, appointments))
             app.include_router(create_admin_router(runtime, appointments))
 
+    # AI QA domain is public by contract: mounted for every configuration. Anonymous
+    # answers never require a session; a present-but-invalid cookie still resolves to a
+    # 401 via the (optional) auth runtime. No new tables or dependencies are introduced.
+    aiqa_service = build_aiqa_runtime(config)
+    app.include_router(create_aiqa_router(runtime, aiqa_service))
+
     @app.exception_handler(AuthError)
     async def handle_auth_error(request: Request, error: AuthError) -> JSONResponse:
         request_id = getattr(request.state, "auth_request_id", str(uuid4()))
@@ -113,6 +121,8 @@ def create_app(
             or request.url.path == "/slots/snapshot"
             or request.url.path == "/appointment-confirmations"
             or request.url.path == "/appointments"
+            or request.url.path == "/answers:stream"
+            or request.url.path.startswith("/pages/")
         ):
             return await request_validation_exception_handler(request, error)
         request_id = str(uuid4())

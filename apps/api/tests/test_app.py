@@ -7,24 +7,34 @@ from app.config import Settings
 from app.factory import create_app
 
 
-def test_factory_uses_settings_and_has_no_project_routes() -> None:
+def test_factory_uses_settings_and_mounts_only_public_routes() -> None:
     app = create_app(Settings(app_title="Test API", app_version="9.9.9"))
 
     assert isinstance(app, FastAPI)
     assert app.title == "Test API"
     assert app.version == "9.9.9"
-    assert app.openapi()["paths"] == {}
+    # Without auth settings the app exposes exactly the public Answer domain (M6 round 1):
+    # page content, recommended questions and the anonymous answer stream.
+    assert set(app.openapi()["paths"]) == {
+        "/pages/{page_key}",
+        "/pages/{page_key}/recommendations",
+        "/answers:stream",
+    }
 
 
 @pytest.mark.asyncio
-async def test_framework_openapi_endpoint_starts_without_custom_paths() -> None:
+async def test_framework_openapi_endpoint_lists_public_paths() -> None:
     app = create_app()
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert response.json()["paths"] == {}
+    assert set(response.json()["paths"]) == {
+        "/pages/{page_key}",
+        "/pages/{page_key}/recommendations",
+        "/answers:stream",
+    }
 
 
 def test_api_entrypoint_runs_configured_app(monkeypatch) -> None:

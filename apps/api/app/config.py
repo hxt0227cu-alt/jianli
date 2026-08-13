@@ -42,6 +42,13 @@ class Settings(BaseModel):
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # Optional embedding gateway, independent of the chat LLM (TASK-DEPLOY-001). Providers
+    # like DeepSeek expose chat but no /embeddings, so keeping these separate lets the
+    # knowledge base keep working (deterministic local hash embedding) while chat uses the
+    # LLM. When unset, the local embedding gateway is used.
+    llm_embedding_base_url: str | None = None
+    llm_embedding_api_key: SecretStr | None = None
+    llm_embedding_model: str | None = None
     # Knowledge base (M6 round 3): local-disk object storage for parsed text and the
     # embedding dimension (must match the vector(768) column of migration 0005).
     knowledge_storage_dir: str = Field(default="./var/knowledge", min_length=1)
@@ -111,6 +118,9 @@ class Settings(BaseModel):
             "llm_api_key": "JIANLI_LLM_API_KEY",
             "llm_model": "JIANLI_LLM_MODEL",
             "llm_timeout_seconds": "JIANLI_LLM_TIMEOUT_SECONDS",
+            "llm_embedding_base_url": "JIANLI_LLM_EMBEDDING_BASE_URL",
+            "llm_embedding_api_key": "JIANLI_LLM_EMBEDDING_API_KEY",
+            "llm_embedding_model": "JIANLI_LLM_EMBEDDING_MODEL",
             "knowledge_storage_dir": "JIANLI_KNOWLEDGE_STORAGE_DIR",
             "llm_embedding_dim": "JIANLI_LLM_EMBEDDING_DIM",
         }

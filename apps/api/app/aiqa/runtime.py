@@ -38,13 +38,13 @@ def build_aiqa_runtime(
         timeout=settings.llm_timeout_seconds,
     )
     embedder = build_embedding_gateway(
-        base_url=settings.llm_base_url,
+        base_url=settings.llm_embedding_base_url,
         api_key=(
-            settings.llm_api_key.get_secret_value()
-            if settings.llm_api_key is not None
+            settings.llm_embedding_api_key.get_secret_value()
+            if settings.llm_embedding_api_key is not None
             else None
         ),
-        model=settings.llm_model,
+        model=settings.llm_embedding_model,
         dimension=settings.llm_embedding_dim,
         timeout=settings.llm_timeout_seconds,
     )

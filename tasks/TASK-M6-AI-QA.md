@@ -3,7 +3,7 @@
 > 合并同域主线：已批准 OpenAPI v0.2 中 AI 问答域（公开页内容 + RAG 流式回答 + 会话持久化 + 知识库摄取）归并为单一实现任务。
 > **治理节奏（与 M1–M5 一致，2026-08-12 提速口径）**：① 合并同域主线；② 风险分级——RAG 检索/越界拒答/人格层提示词属**高风险**（输出可控性、越界边界、提示注入），本任务不单列独立 REVIEW 任务（接手 Codex 模式），但实现须内联自审：匿名不持久化、带会话须 CSRF+同源、越界/无依据一律拒答不编造；③ 交付证据一次写全；④ 验证批处理（一轮 pytest+ruff+mypy）。
 > **DB 迁移铁律（高优先级）**：本任务实现**依赖 4 张尚未迁移的表**——`conversations` / `conversation_messages` / `knowledge_documents` / `knowledge_index_versions`。这些表**不在 migration 0001–0003**，须先走**独立迁移任务（人工审批建表）**再另开实现。本任务**不碰迁移、不碰加密/鉴权主体**。
-> **状态（2026-08-13，全部轮次完成并验证 ✅）**：首轮（公开页 + 匿名 `streamAnswer` + 人格层/越界拒答）✅、二轮（会话持久化，WSL 5 passed）✅、**三轮（知识库摄取：md/txt + 本地存储 + pgvector + 三件套，WSL 集成 14 passed）✅**——**9 个 operation 全部实现并验证**，`verified_commit=851742a`。任务待用户授权关闭（AI 不自批准）。
+> **状态（2026-08-13，✅ 已关闭 Closed，用户显式授权）**：首轮（公开页 + 匿名 `streamAnswer` + 人格层/越界拒答）✅、二轮（会话持久化，WSL 5 passed）✅、**三轮（知识库摄取：md/txt + 本地存储 + pgvector + 三件套，WSL 集成 14 passed）✅**——**9 个 operation 全部实现并验证**，`verified_commit=851742a`。**2026-08-13 用户显式授权关闭**（含生产迁移执行批准）；收口至 `master` 分支。
 
 ## 任务类型
 - implementation（AI 问答域；前置依赖：TASK-M6-DB 迁移任务，待用户批准）
@@ -109,7 +109,7 @@
 - 三轮 commit：`851742a`（15 files / +778：0005 迁移 + embeddings/storage/repository 扩展/service/router + config/pyproject/docker-compose + test_knowledge + 测试更新）
 - **三轮已批准变更（用户 2026-08-13 批准）**：PG 镜像 postgres:16-alpine → pgvector/pgvector:pg16（基础设施）；迁移 0005（CREATE EXTENSION vector + embedding vector(768) NULL）；embedding=OpenAI 兼容 /embeddings 优先 + 本地哈希降级；`python-multipart` 运行时依赖（multipart 上传框架配套，如实登记）
 - **WSL 验证过程中修复（均为测试/环境问题，非功能缺陷）**：`python-multipart` 未装（9 ERROR，教训已入治理纪律第 13 条）；迁移 shape 断言缺 embedding 列（vector→nulltype）；删除禁检索断言与静态兜底耦合（改断言 citations 不含被删文档 + DB 层 retrieval_disabled_at）
-- 待办：**用户授权关闭 M6**（含 TASK-M6-DB）；生产迁移执行（dev 库 upgrade head）另行批准
+- 待办：**✅ 已完成（2026-08-13 用户授权关闭）**：M6 关闭（Closed）+ 生产迁移执行批准（dev 库 `alembic upgrade head` → 0005，由用户 WSL 执行）；主线收口至 `master`
 
 ## 关联
 - **前置依赖（人工审批）**：`TASK-M6-DB` —— 迁移 `conversations`/`conversation_messages`/`knowledge_documents`/`knowledge_index_versions` 四表（含索引/约束/枚举），须用户批准 schema 后另开实现轮次

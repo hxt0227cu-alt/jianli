@@ -1,7 +1,7 @@
 # TASK-M6-DB AI 问答域迁移（人工审批建表）
 
 > **任务类型**：migration（**DB 迁移铁律：建表须用户人工审批**；本任务单即审批材料，schema 见 §7）
-> **状态（2026-08-13）**：✅ 用户已批准 schema（含 RecommendedQuestionCache 不纳入）；✅ 迁移 `0004_aiqa_schema.py` + 迁移测试已编写；⏳ 待 WSL 真实 PG 验证；**不执行生产迁移**（执行另行批准）
+> **状态（2026-08-13，✅ 已关闭 Closed，用户显式授权）**：schema 已批准（含 RecommendedQuestionCache 不纳入）；迁移 `0004_aiqa_schema` + `0005_knowledge_embeddings`（扩展 + embedding 列，用户 2026-08-13 批准）编写完成；WSL 真实 PG 验证 **14 passed**；**2026-08-13 用户显式授权关闭，并批准生产迁移执行**（dev 库 `alembic upgrade head` → 0005，由用户 WSL 执行）。
 > **前置**：领域模型 v1.1.5 已 approved（§6.13/6.14 已建模 4 张表）→ 本迁移只是把已批准建模落地为 DDL
 
 ## 1. 基线版本与基线 commit
@@ -106,9 +106,9 @@
 `upgrade`：5 枚举 → 4 表 → 后置 FK → 索引/约束；`downgrade` 完全逆序（删 FK/索引/约束 → 表 → 枚举）。空库 `up → down base → up` 必须通过（迁移测试套件执行）。
 
 ## 8. 已批准的 DB / API / 依赖变更（本任务自身即 DB 变更，逐项列明）
-- DB：**仅新增** 4 表 + 5 枚举 + 上列索引/约束；不改既有任何对象；不引入 pgvector
-- API：无（纯 schema）
-- 依赖：无
+- 0004：**仅新增** 4 表 + 5 枚举 + 上列索引/约束；不改既有任何对象
+- 0005（2026-08-13 用户批准追加）：`CREATE EXTENSION IF NOT EXISTS vector` + `knowledge_documents` 加 `embedding vector(768) NULL`（pgvector/pg16 镜像，基础设施变更同批批准）
+- API：无（纯 schema）；依赖：无（pgvector 扩展由 PG 镜像提供，不引入 pip 依赖）
 
 ## 9. 验收标准
 - `alembic upgrade head` 从 0001 起全链通过；`downgrade base` 逆序全部撤销；空库 `up→down base→up` 通过
@@ -122,12 +122,12 @@
 ## 11. 回滚方法
 - 迁移未执行：`alembic downgrade base`（可逆）；已执行：逆序 `downgrade -1`
 
-## 12. 交付证据（2026-08-13 已回填；任务待用户授权关闭）
-- **用户批准**：2026-08-13（schema 4 表 + 5 枚举 + 索引/约束；RecommendedQuestionCache 不纳入）
-- **实现 commit**：`d2f4e42`（迁移 + 测试）+ `57a7481`（修复：FK 显式命名 + 形状断言 bool/int 归一化；WSL 首跑 3/2，修复后全绿）
-- 本地门禁：ruff All checks passed ✅ + mypy 0 error（40 source files）✅ + `alembic heads` = `0004_aiqa_schema (head)` ✅ + py_compile ✅
-- **真实 PostgreSQL 迁移测试（用户 WSL，2026-08-13）**：`PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v` **5 passed in 1.32s** ✅（up→down→up 可逆 + 4 表/5 枚举/索引/FK 形状 + 去重后重传 + 枚举拒绝 + 级联删除）；`verified_commit=57a7481`
-- 生产迁移执行：**未执行，另行批准**（本地 dev 库 `jianli_dev` 升级 head 亦须用户授权）
+## 12. 交付证据（2026-08-13 已回填；✅ 任务已关闭 Closed，用户显式授权）
+- **用户批准**：2026-08-13（schema 4 表 + 5 枚举 + 索引/约束；RecommendedQuestionCache 不纳入；追加 0005 pgvector 扩展 + embedding 列）
+- **实现 commit**：`d2f4e42`（0004 迁移 + 测试）+ `57a7481`（FK 显式命名 + 形状断言归一化修复）+ `851742a`（0005 迁移）+ `2acb6c4`（0005 shape 断言补 embedding 列）
+- 本地门禁：ruff ✅ + mypy ✅ + `alembic heads` = `0005_knowledge_embeddings (head)` ✅ + py_compile ✅
+- **真实 PostgreSQL 迁移测试（用户 WSL，2026-08-13，pgvector/pg16 镜像）**：`tests/migrations/test_aiqa_schema.py` **5 passed**（0001–0005 up→down→up 可逆 + 4 表/5 枚举/索引/FK 形状 + 去重后重传 + 枚举拒绝 + 级联删除 + embedding 列）
+- **关闭（2026-08-13 用户显式授权）**：任务 Closed；**生产迁移执行已批准**——dev 库 `jianli_dev` 由用户 WSL 执行 `alembic upgrade head`（→0005）；回滚方法见 §11
 
 ## 13. 关联
 - **前置任务**：领域模型 v1.1.5 已 approved（§6.13/6.14 建模即批准依据）

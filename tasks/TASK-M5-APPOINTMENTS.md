@@ -106,7 +106,7 @@
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：`5245cfa`（M5 实现 + 契约偏离修正 + 证据回填；8 files / +1000）
+- commit / PR：`5245cfa`（M5 实现 + 契约偏离修正；8 files / +1000）→ `a201578`（交付证据回填）→ `24665fb`（集成测试 3 处失败修正：1 生产枚举 + 2 测试）→ `cfb1854`（ruff F821 UUID 导入回归修复；verified_commit）
 - 修改文件清单：
   - `apps/api/app/admin/__init__.py`（新建，包标记）
   - `apps/api/app/admin/models.py`（新建，请求/响应 schema 严格对齐 OpenAPI `AvailabilityOverride`/`AvailabilityOverrideInput`/`CompanyBookingException`/`CompanyBookingExceptionInput`）
@@ -118,21 +118,23 @@
   - `ruff check .`：**All checks passed ✅**
   - `mypy`：**Success: no issues found in 29 source files ✅**
   - DB-free wiring smoke：BookingService 8 方法齐全、router 注册全部 7 operationId ✅
-  - **真实 PG/Redis 集成测试 `pytest tests/admin/test_admin_actions.py`：BLOCKED ❌** ——本环境无 Docker（`docker`/`docker-compose` 二进制缺失）、无本地 PG/Redis（`127.0.0.1:55432` 与 `127.0.0.1:63790` 均 CLOSED），dev 栈（`docker-compose.dev.yml`）无法启动，集成测试无法执行。待用户在含 Docker 环境启动 dev 栈后复跑。
+  - **真实 PG/Redis 集成测试 `pytest tests/admin/test_admin_actions.py`：6 passed in 10.78s ✅**（用户 WSL 环境，Python 3.12.3 / pytest-9.1.1；dev 栈 PG@55432+Redis@63790 已起，`JIANLI_BOOKING_TEST_DATABASE_URL`+`JIANLI_BOOKING_TEST_REDIS_URL`+8 密钥 env 齐备）：`test_admin_reads_enforce_owner_role` / `test_force_cancel_locks_appointment_slots` / `test_availability_override_crud_rematerializes_slots` / `test_override_rejects_invalid_range` / `test_create_company_exception_and_duplicate` / `test_interviewer_cannot_mutate_overrides` 全绿）
 - lint / typecheck：ruff ✅ + mypy ✅（见上）
 - DB 迁移验证：无 schema 变更（复用 `appointments`/`appointment_slots`/`availability_overrides`/`company_booking_exceptions`/`audit_logs`/`users` 既有表，未新建迁移/表/列/索引）✅
-- 验收证据：DB-free wiring smoke 已验证路由注册与模型构建；RBAC/审计/物化逻辑经代码内联自审（owner_admin 强制、写操作落 audit_logs、override 与 Slot 物化同事务、force-cancel 占用 `owner_locked` 原子回滚、company exception 一次性 HMAC 去重 + 过期校验）；**真实 RBAC 403 / 审计落库 / 物化断言待集成测试执行**（env 阻塞）。
+- 验收证据：路由注册与模型构建经 DB-free wiring smoke 验证；**真实 RBAC 403（interviewer 拒改 override、非 owner_admin 写操作 403）/ 审计落库（admin 动作写 audit_logs）/ override–Slot 物化同事务（创建/改/删后受影响 Slot status 重算）/ force-cancel 占用 `owner_locked` 原子回滚 / company exception 一次性 HMAC 去重 + 过期校验** 均经 `test_admin_actions.py` 真实 PG/Redis 断言通过（6 passed）。
 - 变更预算实际值：max_files 预算 12，实际 6 文件（admin 3 新建 + appointments/service 改 + factory 改 + test 新建）+ 本任务单 + PROJECT_STATE，未超预算 ✅
 - 未解决风险：
-  - ① 真实 PG/Redis 集成测试因本环境无 Docker 被阻塞，无 `verified_commit`，任务依关闭门禁不得标 Closed；
+  - ① 【已解决】真实 PG/Redis 集成测试已通过（用户 WSL，`cfb1854`），`verified_commit` 已回填，关闭门禁三项全绿；
   - ② 非目标 4 operation（`updateAnnouncement` / `notification-deliveries` 增删 / `knowledge-documents` 增删）因缺表留待独立迁移任务（人工审批）；
-  - ③ override–Slot 物化一致性需并发验证（集成测试覆盖单连接路径，缺并发竞争 case）；
-  - ④ 【已修复】`createCompanyBookingException` 契约偏离：误加必填 `Idempotency-Key` 头已删除，现对齐 OpenAPI v0.2。
+  - ③ override–Slot 物化一致性当前覆盖单连接路径，缺并发竞争 case（与前序 M1/M2 同口径，非 M5 回归；后续可补并发 TC）；
+  - ④ 【已修复】`createCompanyBookingException` 契约偏离：误加必填 `Idempotency-Key` 头已删除，现对齐 OpenAPI v0.2；
+  - ⑤ 【已修复】`24665fb` force-cancel 误写非法枚举 `appointment_force_cancelled` → 复用 `appointment_cancelled`（守无新枚举值/迁移铁律）；
+  - ⑥ 【已修复】`cfb1854` 误删 `UUID` 导入导致 ruff F821 → 恢复 `from uuid import UUID, uuid4`。
 - 是否偏离 TASK：实现架构微调——admin 业务方法挂在 `BookingService`（复用引擎/解密/审计/释放逻辑），`admin/` 包仅含 `models.py`+`router.py`（未单列规划中的 `service.py`/`repository.py`/`runtime.py`）；属实现组织优化，功能与 OpenAPI 7 operation 完全对齐，未偏离范围/预算。非目标 4 operation 未实现（如实登记）。
-- 规范影响结论：openapi clean（实现已批准 7 operation，未改契约，且已修正 createCompanyBookingException 偏离）；test_plan dirty（admin TC 已写 `test_admin_actions.py`，待真实测试通过转 clean）
-- spec_sync：实现对齐 OpenAPI 后 clean（集成测试通过前维持 dirty→待 clean）
-- verified_commit：**PENDING**（待集成测试在含 Docker 环境通过后再回填真实 sha）
-- 关闭门禁：① 测试通过 ❌（env 阻塞）② 规范影响已处理（spec_sync clean）⏳ ③ verified_commit 已记录 ❌（pending）→ **当前不得关闭，待用户启动 dev 栈复跑测试并授权关闭**
+- 规范影响结论：openapi clean（实现已批准 7 operation，未改契约，且已修正 createCompanyBookingException 偏离）；test_plan clean（admin TC `test_admin_actions.py` 真实 PG/Redis 6 passed，冻结 TC 断言全部满足）
+- spec_sync：clean（实现对齐 OpenAPI + 真实测试通过）
+- verified_commit：**cfb1854**（ruff/mypy 双绿 + 真实 PG/Redis 集成测试 6 passed，2026-08-13 用户 WSL 复跑确认）
+- 关闭门禁：① 测试通过 ✅（6 passed）② 规范影响已处理（spec_sync clean）✅ ③ verified_commit 已记录 ✅（cfb1854）→ **三项全绿，待用户授权关闭（AI 不得自批准）**
 
 ## 关联
 - 依赖独立迁移任务（待用户批准，非本任务）：`page_announcements`（公告）、`notification_deliveries`（通知重发，M3 延后）、`knowledge_documents`+`knowledge_index_versions`（知识库，M6）

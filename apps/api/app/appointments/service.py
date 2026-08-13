@@ -826,3 +826,340 @@ class BookingService:
                 "now": now,
             },
         )
+
+    # ---- 管理后台（M5，owner_admin only）----
+
+    def admin_list_appointments(self) -> list[Appointment]:
+        """Owner-only decrypted read of every appointment (emergency admin view).
+
+        Returns the full ``Appointment`` projection so the owner can inspect
+        company/meeting/contact/notes that are otherwise ciphertext at rest.
+        """
+
+        with self._engine.connect() as connection:
+            rows = list(
+                connection.execute(
+                    text(
+                        "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                        "company_name_fingerprint,meeting_platform_ciphertext,"
+                        "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                        "FROM appointments ORDER BY start_at DESC"
+                    )
+                ).mappings()
+            )
+            return [
+                self._decrypt_appointment(row, self._slot_ids_for(connection, row["id"]))
+                for row in rows
+            ]
+
+    def force_cancel(self, actor: Principal, appointment_id: UUID) -> None:
+        """Admin emergency cancel: terminate the appointment and hard-lock its slots.
+
+        Unlike the owner self-cancel (which releases slots back to available/unavailable
+        per overrides), a force-cancel leaves the slots ``owner_locked`` so they cannot
+        be silently rebooked. Idempotent for already-cancelled appointments.
+        """
+
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            row = connection.execute(
+                text("SELECT id,status,version FROM appointments WHERE id=:id FOR UPDATE"),
+                {"id": appointment_id},
+            ).mappings().first()
+            if row is None:
+                raise AuthError("NOT_FOUND", 404, "Not found", "Appointment not found")
+            if row["status"] == "cancelled":
+                return None
+            if row["status"] == "completed":
+                raise AuthError("TERMINAL_STATE", 409, "Cannot cancel", "Appointment is completed")
+            connection.execute(
+                text(
+                    "UPDATE appointments SET status='cancelled',cancelled_at=:now,"
+                    "version=version+1 WHERE id=:id"
+                ),
+                {"id": appointment_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "UPDATE notification_events SET status='cancelled',cancelled_at=:now "
+                    "WHERE biz_id=:id AND type='reminder_due' AND status='pending'"
+                ),
+                {"id": appointment_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "UPDATE appointment_slots SET status='owner_locked',appointment_id=NULL,"
+                    "version=version+1 WHERE appointment_id=:id"
+                ),
+                {"id": appointment_id},
+            )
+            self._write_event(
+                connection,
+                appointment_id,
+                "appointment_force_cancelled",
+                None,
+                now,
+                f"appointment:{appointment_id}:appointment_force_cancelled",
+            )
+            self._write_audit(
+                connection,
+                actor.id,
+                "appointment.force_cancelled",
+                appointment_id,
+                now,
+                "categories=company,meeting,contact,notes",
+            )
+
+    def list_overrides(self) -> list[dict[str, Any]]:
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT id,start_at,end_at,action::text AS action,reason,created_at "
+                    "FROM availability_overrides ORDER BY start_at"
+                )
+            ).mappings()
+            return [dict(row) for row in rows]
+
+    def create_override(
+        self,
+        actor_id: UUID,
+        start_at: datetime,
+        end_at: datetime,
+        action: str,
+        reason: str | None,
+    ) -> dict[str, Any]:
+        start_at = _as_utc(start_at)
+        end_at = _as_utc(end_at)
+        if end_at <= start_at:
+            raise AuthError("INVALID_REQUEST", 422, "Invalid range", "end_at must exceed start_at")
+        override_id = uuid4()
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO availability_overrides "
+                    "(id,start_at,end_at,action,reason,created_by,created_at) "
+                    "VALUES (:id,:start_at,:end_at,"
+                    "CAST(:action AS availability_override_action),:reason,:created_by,:created_at)"
+                ),
+                {
+                    "id": override_id,
+                    "start_at": start_at,
+                    "end_at": end_at,
+                    "action": action,
+                    "reason": reason,
+                    "created_by": actor_id,
+                    "created_at": now,
+                },
+            )
+            # Rematerialize affected free slots in the same transaction so the SSE
+            # snapshot path (which reads committed DB state) reflects the change.
+            self._rematerialize_window(connection, start_at, end_at)
+            self._write_audit(
+                connection,
+                actor_id,
+                "availability_override.created",
+                override_id,
+                now,
+                f"action={action}",
+            )
+        return {
+            "id": override_id,
+            "start_at": start_at,
+            "end_at": end_at,
+            "action": action,
+            "reason": reason,
+            "created_at": now,
+        }
+
+    def update_override(
+        self,
+        actor_id: UUID,
+        override_id: UUID,
+        start_at: datetime,
+        end_at: datetime,
+        action: str,
+        reason: str | None,
+    ) -> dict[str, Any]:
+        start_at = _as_utc(start_at)
+        end_at = _as_utc(end_at)
+        if end_at <= start_at:
+            raise AuthError("INVALID_REQUEST", 422, "Invalid range", "end_at must exceed start_at")
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            existing = connection.execute(
+                text(
+                    "SELECT start_at,end_at,created_at FROM availability_overrides "
+                    "WHERE id=:id FOR UPDATE"
+                ),
+                {"id": override_id},
+            ).mappings().first()
+            if existing is None:
+                raise AuthError("NOT_FOUND", 404, "Not found", "Override not found")
+            old_start: datetime = existing["start_at"]
+            old_end: datetime = existing["end_at"]
+            created_at: datetime = existing["created_at"]
+            connection.execute(
+                text(
+                    "UPDATE availability_overrides SET start_at=:start_at,end_at=:end_at,"
+                    "action=CAST(:action AS availability_override_action),reason=:reason "
+                    "WHERE id=:id"
+                ),
+                {
+                    "start_at": start_at,
+                    "end_at": end_at,
+                    "action": action,
+                    "reason": reason,
+                    "id": override_id,
+                },
+            )
+            # Recompute both the old and new windows so no slot is left stale.
+            self._rematerialize_window(
+                connection, min(old_start, start_at), max(old_end, end_at)
+            )
+            self._write_audit(
+                connection,
+                actor_id,
+                "availability_override.updated",
+                override_id,
+                now,
+                f"action={action}",
+            )
+        return {
+            "id": override_id,
+            "start_at": start_at,
+            "end_at": end_at,
+            "action": action,
+            "reason": reason,
+            "created_at": created_at,
+        }
+
+    def delete_override(self, actor_id: UUID, override_id: UUID) -> None:
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            existing = connection.execute(
+                text("SELECT start_at,end_at FROM availability_overrides WHERE id=:id FOR UPDATE"),
+                {"id": override_id},
+            ).mappings().first()
+            if existing is None:
+                raise AuthError("NOT_FOUND", 404, "Not found", "Override not found")
+            old_start: datetime = existing["start_at"]
+            old_end: datetime = existing["end_at"]
+            connection.execute(
+                text("DELETE FROM availability_overrides WHERE id=:id"), {"id": override_id}
+            )
+            self._rematerialize_window(connection, old_start, old_end)
+            self._write_audit(
+                connection,
+                actor_id,
+                "availability_override.deleted",
+                override_id,
+                now,
+                "action=delete",
+            )
+
+    def create_company_exception(
+        self,
+        actor_id: UUID,
+        interviewer_user_id: UUID,
+        company_name: str,
+        reason: str,
+        expires_at: datetime,
+    ) -> dict[str, Any]:
+        expires_at = _as_utc(expires_at)
+        if expires_at <= datetime.now(UTC):
+            raise AuthError(
+                "INVALID_REQUEST", 422, "Invalid expiry", "expires_at must be in the future"
+            )
+        exception_id = uuid4()
+        now = datetime.now(UTC)
+        fingerprint = self._secrets.company_fingerprint(company_name)
+        try:
+            with self._engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "INSERT INTO company_booking_exceptions "
+                        "(id,interviewer_user_id,company_fingerprint,approved_by,reason,"
+                        "expires_at,created_at) "
+                        "VALUES (:id,:uid,:fingerprint,:approved_by,:reason,"
+                        ":expires_at,:created_at)"
+                    ),
+                    {
+                        "id": exception_id,
+                        "uid": interviewer_user_id,
+                        "fingerprint": fingerprint,
+                        "approved_by": actor_id,
+                        "reason": reason,
+                        "expires_at": expires_at,
+                        "created_at": now,
+                    },
+                )
+                self._write_audit(
+                    connection,
+                    actor_id,
+                    "company_booking_exception.created",
+                    exception_id,
+                    now,
+                    f"interviewer={interviewer_user_id}",
+                )
+        except IntegrityError as error:
+            diagnostic = getattr(error.orig, "diag", None)
+            constraint = getattr(diagnostic, "constraint_name", None)
+            if constraint == "uq_exception_open":
+                raise AuthError(
+                    "DUP_EXCEPTION",
+                    409,
+                    "Duplicate exception",
+                    "An open exception already exists for this interviewer and company",
+                ) from error
+            raise
+        return {
+            "id": exception_id,
+            "interviewer_user_id": interviewer_user_id,
+            "company_name": company_name,
+            "reason": reason,
+            "expires_at": expires_at,
+            "created_at": now,
+        }
+
+    def _rematerialize_window(
+        self, connection: Any, start_at: datetime, end_at: datetime
+    ) -> None:
+        """Recompute free-slot status across [start_at, end_at] after an override change.
+
+        Only 'available'/'unavailable' slots are recomputed; 'booked' slots keep their
+        appointment and 'owner_locked' slots (from force-cancel) are intentionally left
+        untouched. A slot takes the action of the most restrictive covering override
+        (``force_unavailable`` wins over ``force_available``); with no override it returns
+        to 'available'.
+        """
+
+        slots = connection.execute(
+            text(
+                "SELECT id,start_at,end_at FROM appointment_slots "
+                "WHERE status IN ('available','unavailable') "
+                "AND start_at < :end AND end_at > :start FOR UPDATE"
+            ),
+            {"start": start_at, "end": end_at},
+        ).mappings()
+        for slot in slots:
+            override = connection.execute(
+                text(
+                    "SELECT action::text FROM availability_overrides "
+                    "WHERE start_at<=:slot_start AND end_at>=:slot_end "
+                    "ORDER BY CASE WHEN action='force_unavailable' THEN 0 ELSE 1 END LIMIT 1"
+                ),
+                {"slot_start": slot["start_at"], "slot_end": slot["end_at"]},
+            ).scalar_one_or_none()
+            target = "unavailable" if override == "force_unavailable" else "available"
+            connection.execute(
+                text(
+                    "UPDATE appointment_slots SET status=CAST(:target AS slot_status),"
+                    "version=version+1 WHERE id=:id"
+                ),
+                {"target": target, "id": slot["id"]},
+            )
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)

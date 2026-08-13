@@ -13,6 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
+from .admin.router import create_admin_router
 from .appointments.router import create_appointment_router
 from .appointments.runtime import build_booking_runtime
 from .appointments.service import BookingService
@@ -95,6 +96,7 @@ def create_app(
         if appointments is not None:
             app.state.booking_runtime = appointments
             app.include_router(create_appointment_router(runtime, appointments))
+            app.include_router(create_admin_router(runtime, appointments))
 
     @app.exception_handler(AuthError)
     async def handle_auth_error(request: Request, error: AuthError) -> JSONResponse:

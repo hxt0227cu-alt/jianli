@@ -106,19 +106,33 @@
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填>
-- 修改文件清单：<回填>
-- 测试命令及结果：<回填；真实 PG/Redis admin 套件 pass 数>
-- lint / typecheck：<回填>
-- DB 迁移验证：无（无 schema 变更）
-- 验收证据：<回填接口响应样例 / RBAC 403 / 审计落库断言>
-- 变更预算实际值：<回填>
-- 未解决风险：<回填；非目标 4 operation 待迁移任务；override-Slot 物化一致性需并发验证>
-- 是否偏离 TASK：<回填；非目标项未实现，如实登记>
-- 规范影响结论：openapi clean（实现已批准 7 operation）；test_plan dirty→补 TC 后 clean
-- spec_sync：<回填；实现对齐 OpenAPI 后 clean>
-- verified_commit：<回填真实 sha>
-- 关闭门禁：① 测试通过 ② 规范影响已处理（spec_sync clean）③ verified_commit 已记录
+- commit / PR：<回填真实 sha，见下方提交>
+- 修改文件清单：
+  - `apps/api/app/admin/__init__.py`（新建，包标记）
+  - `apps/api/app/admin/models.py`（新建，请求/响应 schema 严格对齐 OpenAPI `AvailabilityOverride`/`AvailabilityOverrideInput`/`CompanyBookingException`/`CompanyBookingExceptionInput`）
+  - `apps/api/app/admin/router.py`（新建，7 operation 路由 + `owner_admin` RBAC + CSRF 拆分；**修正契约偏离**：`createCompanyBookingException` 原误加必填 `Idempotency-Key` 头，已删除以对齐 OpenAPI v0.2 该 operation 仅声明 `CsrfToken`）
+  - `apps/api/app/appointments/service.py`（扩展 8 方法：`admin_list_appointments`/`force_cancel`/`list_overrides`/`create_override`/`update_override`/`delete_override`/`create_company_exception`/`_rematerialize_window`；复用引擎/解密/审计/释放）
+  - `apps/api/app/factory.py`（扩展：挂载 `create_admin_router`）
+  - `apps/api/tests/admin/test_admin_actions.py`（新建，真实 PG/Redis 集成测试 7 case）
+- 测试命令及结果：
+  - `ruff check .`：**All checks passed ✅**
+  - `mypy`：**Success: no issues found in 29 source files ✅**
+  - DB-free wiring smoke：BookingService 8 方法齐全、router 注册全部 7 operationId ✅
+  - **真实 PG/Redis 集成测试 `pytest tests/admin/test_admin_actions.py`：BLOCKED ❌** ——本环境无 Docker（`docker`/`docker-compose` 二进制缺失）、无本地 PG/Redis（`127.0.0.1:55432` 与 `127.0.0.1:63790` 均 CLOSED），dev 栈（`docker-compose.dev.yml`）无法启动，集成测试无法执行。待用户在含 Docker 环境启动 dev 栈后复跑。
+- lint / typecheck：ruff ✅ + mypy ✅（见上）
+- DB 迁移验证：无 schema 变更（复用 `appointments`/`appointment_slots`/`availability_overrides`/`company_booking_exceptions`/`audit_logs`/`users` 既有表，未新建迁移/表/列/索引）✅
+- 验收证据：DB-free wiring smoke 已验证路由注册与模型构建；RBAC/审计/物化逻辑经代码内联自审（owner_admin 强制、写操作落 audit_logs、override 与 Slot 物化同事务、force-cancel 占用 `owner_locked` 原子回滚、company exception 一次性 HMAC 去重 + 过期校验）；**真实 RBAC 403 / 审计落库 / 物化断言待集成测试执行**（env 阻塞）。
+- 变更预算实际值：max_files 预算 12，实际 6 文件（admin 3 新建 + appointments/service 改 + factory 改 + test 新建）+ 本任务单 + PROJECT_STATE，未超预算 ✅
+- 未解决风险：
+  - ① 真实 PG/Redis 集成测试因本环境无 Docker 被阻塞，无 `verified_commit`，任务依关闭门禁不得标 Closed；
+  - ② 非目标 4 operation（`updateAnnouncement` / `notification-deliveries` 增删 / `knowledge-documents` 增删）因缺表留待独立迁移任务（人工审批）；
+  - ③ override–Slot 物化一致性需并发验证（集成测试覆盖单连接路径，缺并发竞争 case）；
+  - ④ 【已修复】`createCompanyBookingException` 契约偏离：误加必填 `Idempotency-Key` 头已删除，现对齐 OpenAPI v0.2。
+- 是否偏离 TASK：实现架构微调——admin 业务方法挂在 `BookingService`（复用引擎/解密/审计/释放逻辑），`admin/` 包仅含 `models.py`+`router.py`（未单列规划中的 `service.py`/`repository.py`/`runtime.py`）；属实现组织优化，功能与 OpenAPI 7 operation 完全对齐，未偏离范围/预算。非目标 4 operation 未实现（如实登记）。
+- 规范影响结论：openapi clean（实现已批准 7 operation，未改契约，且已修正 createCompanyBookingException 偏离）；test_plan dirty（admin TC 已写 `test_admin_actions.py`，待真实测试通过转 clean）
+- spec_sync：实现对齐 OpenAPI 后 clean（集成测试通过前维持 dirty→待 clean）
+- verified_commit：**PENDING**（待集成测试在含 Docker 环境通过后再回填真实 sha）
+- 关闭门禁：① 测试通过 ❌（env 阻塞）② 规范影响已处理（spec_sync clean）⏳ ③ verified_commit 已记录 ❌（pending）→ **当前不得关闭，待用户启动 dev 栈复跑测试并授权关闭**
 
 ## 关联
 - 依赖独立迁移任务（待用户批准，非本任务）：`page_announcements`（公告）、`notification_deliveries`（通知重发，M3 延后）、`knowledge_documents`+`knowledge_index_versions`（知识库，M6）

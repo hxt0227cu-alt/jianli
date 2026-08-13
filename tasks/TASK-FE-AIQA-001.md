@@ -1,6 +1,6 @@
 # TASK-FE-AIQA-001 前端 AI 问答页（ChatPanel 真实化）
 
-> **状态**：Open（2026-08-13 建，用户选定"前端 AI 问答页"为下一步方向，加速口径=主线代码开发、验证一轮跑完）
+> **状态（2026-08-13，✅ 已关闭 Closed，用户验证通过）**：ChatPanel 真实 SSE 问答已实现并**用户 WSL 验证通过**（流式回答/越界拒答/推荐问题正常），2026-08-13 用户授权关闭。
 > **依赖**：后端 M6 已关闭（9 operation 全实现验证，`/answers:stream` SSE 契约见 `docs/api/sse.md` §3）
 
 ## 1. 任务类型
@@ -42,8 +42,9 @@
 - 实现 commit：`82d6c19`（5 files / +190：main.tsx ChatPanel 真实化 + styles.css + vite.config proxy + shell.test 新增锚点 + 本任务单）
 - 门禁：`npm run typecheck`（tsc --noEmit）✅ + `npm test`（vitest shell.test）1 passed ✅（旧断言全保留 + 6 个新锚点）+ `vite build` ✅（沙箱 safe-delete 拦截 dist 清空，改 `--outDir dist-check` 验证产物正常：JS 230.43kB / gzip 71.57kB，非代码问题）
 - 契约对齐：`POST /answers:stream` SSE 帧解析（started/delta/citations/completed/error）按 `docs/api/sse.md` §3；`GET /pages/{page_key}/recommendations` 加载推荐；带会话自动附 `X-CSRF-Token`；匿名免 CSRF
-- 手动验证（用户 WSL）：起 uvicorn(8000) + vite(5173) 后 resume 页提问 → 流式回答；越界问题显示拒答徽标；interview/mine 页保持静态降级（不发送真实请求）
+- 手动验证（用户 WSL，2026-08-13）：✅ **验证通过**（uvicorn 8000 + vite 5173；修复过程：vite8/rolldown native binding 缺失 → `rm -rf node_modules && pnpm install` + npmmirror registry（npmjs ECONNRESET）→ vite 正常）；resume 页流式回答、越界拒答、推荐问题均正常
 - 是否偏离 TASK：否（仅按允许路径；shell.test 为"仅新增断言"并如实登记）
+- **环境教训（2026-08-13 固化）**：vite 8 + pnpm + Linux：rolldown native binding 可能未装 → `pnpm install @rolldown/binding-linux-x64-gnu` 或重装；npmjs 源 ECONNRESET → `pnpm config set registry https://registry.npmmirror.com`；`pnpm-lock.yaml` 保留时 `pnpm install` 自动重写 resolved 地址（版本不漂移）
 
 ## 10. 关联
 - 前置：M6 后端已关闭（`/answers:stream` 就绪）

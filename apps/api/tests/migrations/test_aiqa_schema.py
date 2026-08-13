@@ -89,7 +89,14 @@ def aiqa_engine() -> Iterator[Engine]:
 def _shape(engine: Engine, table: str) -> dict[str, tuple[str, bool]]:
     def type_name(column: Any) -> str:
         name = type(column["type"]).__name__.lower()
-        return "timestamptz" if name == "timestamp" and column["type"].timezone else name
+        if name == "timestamp" and column["type"].timezone:
+            return "timestamptz"
+        # SQLAlchemy dialect names: BOOLEAN/INTEGER -> bool/int for readability.
+        if name == "boolean":
+            return "bool"
+        if name == "integer":
+            return "int"
+        return name
 
     return {
         column["name"]: (type_name(column), column["nullable"])

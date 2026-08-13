@@ -47,7 +47,12 @@ def upgrade() -> None:
     op.create_table(
         "conversations",
         sa.Column("id", sa.Uuid(), primary_key=True, nullable=False),
-        sa.Column("user_id", sa.Uuid(), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column(
+            "user_id",
+            sa.Uuid(),
+            sa.ForeignKey("users.id", name="fk_conversations_user_id"),
+            nullable=False,
+        ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("deleted_at", sa.DateTime(timezone=True)),
@@ -71,7 +76,9 @@ def upgrade() -> None:
         sa.Column(
             "conv_id",
             sa.Uuid(),
-            sa.ForeignKey("conversations.id", ondelete="CASCADE"),
+            sa.ForeignKey(
+                "conversations.id", name="fk_conversation_messages_conv_id", ondelete="CASCADE"
+            ),
             nullable=False,
         ),
         sa.Column("role", enums["message_role"], nullable=False),
@@ -122,7 +129,11 @@ def upgrade() -> None:
         sa.Column(
             "doc_id",
             sa.Uuid(),
-            sa.ForeignKey("knowledge_documents.id", ondelete="CASCADE"),
+            sa.ForeignKey(
+                "knowledge_documents.id",
+                name="fk_knowledge_index_versions_doc_id",
+                ondelete="CASCADE",
+            ),
             nullable=False,
         ),
         sa.Column("version", sa.Integer(), nullable=False),

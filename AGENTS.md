@@ -227,6 +227,6 @@ lint / typecheck：<结果>
 - 门禁：`ruff check . && mypy app`（43 source files）
 
 ### 10.6 M6 剩余
-- 二轮 ✅ 已验证（`c9c5721`，WSL 5 passed）；三轮 ✅ 已实现（`851742a`），**待 WSL 集成验证**（先换 pgvector 镜像重建 PG → 跑 0005 迁移测试 + test_knowledge）
-- 全部验证通过后：回填 verified_commit → 用户授权关闭 M6（含 TASK-M6-DB）
+- **M6 全部轮次完成并验证（2026-08-13）**：二轮 `c9c5721`（WSL 5 passed）、三轮 `851742a`（WSL 全套 14 passed：迁移 5 + 会话 5 + 知识库 4），`verified_commit=851742a`；9 个 operation 全部落地。**待用户授权关闭 M6（含 TASK-M6-DB）**；生产迁移执行（dev 库 upgrade head）另行批准。
+- 已知无害警告已消除：alembic.ini 加 `path_separator = os`；pytest filter 忽略 pgvector `vector` 类型 SAWarning（保持零 pgvector pip 依赖）。
 - change_budget 实际累计（首轮 17 + 二轮 9 + 三轮 15 文件）**已如实登记超预估**；不再逐轮细算。

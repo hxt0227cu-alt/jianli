@@ -30,6 +30,11 @@ dev = [
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-config"
+# Known harmless: SQLAlchemy has no built-in pgvector type, so the inspector reports
+# the 0005 embedding column as unrecognized. We keep zero dependencies on pgvector.
+filterwarnings = [
+    "ignore:Did not recognize type 'vector' of column 'embedding':sqlalchemy.exc.SAWarning",
+]
 
 [tool.ruff]
 target-version = "py312"

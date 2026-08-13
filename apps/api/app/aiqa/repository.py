@@ -116,3 +116,115 @@ class ConversationRepository:
 
 def default_now() -> datetime:
     return _now_utc()
+
+
+def _vector_literal(vector: list[float]) -> str:
+    return "[" + ",".join(repr(value) for value in vector) + "]"
+
+
+class KnowledgeRepository:
+    """Knowledge-document metadata + pgvector retrieval (M6 round 3, migration 0005)."""
+
+    def __init__(self, engine: Engine) -> None:
+        self._engine = engine
+
+    def list_documents(self) -> list[dict[str, Any]]:
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT id,name,type,size,status,parse_mode,failure_reason,created_at "
+                    "FROM knowledge_documents ORDER BY created_at DESC"
+                ),
+            ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def get_document(self, document_id: UUID) -> dict[str, Any] | None:
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT id,name,type,size,status,parse_mode,failure_reason,"
+                    "retrieval_disabled_at FROM knowledge_documents WHERE id=:document_id"
+                ),
+                {"document_id": document_id},
+            ).mappings().one_or_none()
+        return dict(row) if row else None
+
+    def create_document(
+        self,
+        *,
+        document_id: UUID,
+        name: str,
+        doc_type: str,
+        size: int,
+        content_checksum: str,
+        storage_key: str,
+        parse_mode: str,
+        now: datetime,
+    ) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO knowledge_documents "
+                    "(id,name,type,size,content_checksum,storage_key,status,parse_mode,"
+                    "version,created_at) "
+                    "VALUES (:id,:name,:type,:size,:checksum,:storage_key,'indexing',"
+                    ":parse_mode,1,:now)"
+                ),
+                {
+                    "id": document_id,
+                    "name": name,
+                    "type": doc_type,
+                    "size": size,
+                    "checksum": content_checksum,
+                    "storage_key": storage_key,
+                    "parse_mode": parse_mode,
+                    "now": now,
+                },
+            )
+
+    def mark_indexed(self, document_id: UUID, embedding: list[float]) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE knowledge_documents SET status='indexed', "
+                    "embedding=:embedding, failure_reason=NULL WHERE id=:document_id"
+                ),
+                {"document_id": document_id, "embedding": _vector_literal(embedding)},
+            )
+
+    def mark_failed(self, document_id: UUID, reason: str) -> None:
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE knowledge_documents SET status='failed', failure_reason=:reason "
+                    "WHERE id=:document_id"
+                ),
+                {"document_id": document_id, "reason": reason},
+            )
+
+    def disable_retrieval(self, document_id: UUID, now: datetime) -> None:
+        """Soft delete: immediately disables retrieval (domain model §6.14)."""
+
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE knowledge_documents SET retrieval_disabled_at=:now "
+                    "WHERE id=:document_id"
+                ),
+                {"document_id": document_id, "now": now},
+            )
+
+    def search(self, embedding: list[float], top_k: int = 3) -> list[dict[str, Any]]:
+        """Cosine retrieval over active, indexed documents (pgvector). Score = 1 - distance."""
+
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT id,name, 1 - (embedding <=> :query) AS score "
+                    "FROM knowledge_documents "
+                    "WHERE retrieval_disabled_at IS NULL AND embedding IS NOT NULL "
+                    "ORDER BY embedding <=> :query LIMIT :top_k"
+                ),
+                {"query": _vector_literal(embedding), "top_k": top_k},
+            ).mappings().all()
+        return [dict(row) for row in rows]

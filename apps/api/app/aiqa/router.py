@@ -19,9 +19,10 @@ the stream is anonymous and never persisted.
 
 from __future__ import annotations
 
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, File, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.auth.errors import AuthError
@@ -33,6 +34,7 @@ from .models import (
     AnswerRequest,
     Conversation,
     ConversationList,
+    KnowledgeDocumentList,
     MessageList,
     PageContent,
     RecommendedQuestions,
@@ -40,6 +42,7 @@ from .models import (
 from .service import AnswerService
 
 _VALID_PAGE_KEYS = ("resume", "projects")
+_MAX_UPLOAD_FILES = 20  # openapi uploadKnowledgeDocuments files.maxItems
 
 
 def create_aiqa_router(auth_runtime: AuthRuntime | None, service: AnswerService) -> APIRouter:
@@ -67,6 +70,17 @@ def create_aiqa_router(auth_runtime: AuthRuntime | None, service: AnswerService)
             raise AuthError("AUTH_EXPIRED", 401, "Authentication required", "Login required")
         _require_csrf(request, auth_runtime)
         return auth_runtime.service.require_role(_principal(request, auth_runtime), "interviewer")
+
+    def _admin_session(request: Request) -> Principal:
+        if auth_runtime is None:
+            raise AuthError("AUTH_EXPIRED", 401, "Authentication required", "Login required")
+        return auth_runtime.service.require_role(_principal(request, auth_runtime), "owner_admin")
+
+    def _admin_write(request: Request) -> Principal:
+        if auth_runtime is None:
+            raise AuthError("AUTH_EXPIRED", 401, "Authentication required", "Login required")
+        _require_csrf(request, auth_runtime)
+        return auth_runtime.service.require_role(_principal(request, auth_runtime), "owner_admin")
 
     def _require_page_key(page_key: str) -> None:
         if page_key not in _VALID_PAGE_KEYS:
@@ -149,5 +163,39 @@ def create_aiqa_router(auth_runtime: AuthRuntime | None, service: AnswerService)
     )
     def list_conversation_messages(conversation_id: UUID, request: Request) -> MessageList:
         return service.list_messages(_require_session(request).id, conversation_id)
+
+    # -- knowledge-base endpoints (round 3, owner_admin) ----------------------------------
+
+    @router.get(
+        "/admin/knowledge-documents",
+        response_model=KnowledgeDocumentList,
+        operation_id="listKnowledgeDocuments",
+    )
+    def list_knowledge_documents(request: Request) -> KnowledgeDocumentList:
+        _admin_session(request)
+        return service.list_knowledge_documents()
+
+    @router.post(
+        "/admin/knowledge-documents",
+        status_code=202,
+        operation_id="uploadKnowledgeDocuments",
+    )
+    async def upload_knowledge_documents(
+        request: Request,
+        files: Annotated[list[UploadFile], File(description="md/txt documents")],
+    ) -> None:
+        _admin_write(request)
+        if len(files) > _MAX_UPLOAD_FILES:
+            raise AuthError("INVALID_REQUEST", 400, "Too many files", "max 20 files per request")
+        await service.upload_knowledge_documents(files)
+
+    @router.delete(
+        "/admin/knowledge-documents/{document_id}",
+        status_code=204,
+        operation_id="deleteKnowledgeDocument",
+    )
+    def delete_knowledge_document(document_id: UUID, request: Request) -> None:
+        _admin_write(request)
+        service.delete_knowledge_document(document_id)
 
     return router

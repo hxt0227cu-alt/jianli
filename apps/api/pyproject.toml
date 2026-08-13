@@ -9,6 +9,7 @@ dependencies = [
     "cryptography==46.0.7",
     "fastapi==0.141.1",
     "psycopg==3.2.10",
+    "python-multipart==0.0.20",  # M6 round 3: multipart uploads (uploadKnowledgeDocuments)
     "redis==8.1.0",
     "SQLAlchemy==2.0.43",
     "uvicorn==0.52.1",

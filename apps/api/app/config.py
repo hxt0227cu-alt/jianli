@@ -42,6 +42,10 @@ class Settings(BaseModel):
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # Knowledge base (M6 round 3): local-disk object storage for parsed text and the
+    # embedding dimension (must match the vector(768) column of migration 0005).
+    knowledge_storage_dir: str = Field(default="./var/knowledge", min_length=1)
+    llm_embedding_dim: int = Field(default=768, ge=64, le=4096)
 
     @property
     def auth_configured(self) -> bool:
@@ -107,6 +111,8 @@ class Settings(BaseModel):
             "llm_api_key": "JIANLI_LLM_API_KEY",
             "llm_model": "JIANLI_LLM_MODEL",
             "llm_timeout_seconds": "JIANLI_LLM_TIMEOUT_SECONDS",
+            "knowledge_storage_dir": "JIANLI_KNOWLEDGE_STORAGE_DIR",
+            "llm_embedding_dim": "JIANLI_LLM_EMBEDDING_DIM",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

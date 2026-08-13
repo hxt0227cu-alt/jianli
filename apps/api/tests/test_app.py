@@ -15,13 +15,15 @@ def test_factory_uses_settings_and_mounts_only_public_routes() -> None:
     assert app.version == "9.9.9"
     # Without auth settings the app exposes exactly the Answer domain surface: pages,
     # recommendations, the anonymous answer stream, and (routed but 401 without a
-    # session) the conversation endpoints.
+    # session) the conversation and knowledge-document endpoints.
     assert set(app.openapi()["paths"]) == {
         "/pages/{page_key}",
         "/pages/{page_key}/recommendations",
         "/answers:stream",
         "/conversations",
         "/conversations/{conversation_id}/messages",
+        "/admin/knowledge-documents",
+        "/admin/knowledge-documents/{document_id}",
     }
 
 
@@ -39,6 +41,8 @@ async def test_framework_openapi_endpoint_lists_public_paths() -> None:
         "/answers:stream",
         "/conversations",
         "/conversations/{conversation_id}/messages",
+        "/admin/knowledge-documents",
+        "/admin/knowledge-documents/{document_id}",
     }
 
 

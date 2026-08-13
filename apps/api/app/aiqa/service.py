@@ -1,35 +1,47 @@
-"""Answer service orchestration (M6 rounds 1-2).
+"""Answer service orchestration (M6 rounds 1-3).
 
-Pipeline: retrieve grounded chunks from the static page registry → boundary check
-(greeting / off-topic refusal, persona voice) → stream model deltas through the LLM
-gateway → emit SSE frames exactly as docs/api/sse.md §3 defines.
+Pipeline: retrieve grounded chunks (knowledge base via pgvector when available, else the
+static page registry) → boundary check (greeting / off-topic refusal, persona voice) →
+stream model deltas through the LLM gateway → emit SSE frames exactly as docs/api/sse.md
+§3 defines.
 
-Round 2 adds conversation persistence over the approved 0004 tables: with a valid
-session **and** a ``conversation_id`` the user question is stored before the stream and
-the assistant answer (with its ``is_offtopic`` flag) afterwards; the ``answer.started``
-frame echoes that ``conversation_id``. Anonymous calls and logged-in calls without a
+Round 2: conversation persistence over the approved 0004 tables — with a valid session
+**and** a ``conversation_id`` the user question is stored before the stream and the
+assistant answer (with its ``is_offtopic`` flag) afterwards; the ``answer.started`` frame
+echoes that ``conversation_id``. Anonymous calls and logged-in calls without a
 ``conversation_id`` are never persisted.
 
-Handoff note for Codex: round 3 (knowledge ingestion) plugs a document repository and a
-vector/full-text retriever into this same service; the public methods keep their shape.
+Round 3: knowledge-base ingestion (md/txt, local-disk storage, pgvector embeddings).
 """
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+import hashlib
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 from uuid import UUID, uuid4
+
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.errors import AuthError
 from app.auth.models import Principal
 
 from .content import PAGES, PageContentData
+from .embeddings import EmbeddingError, EmbeddingGateway
 from .gateway import GatewayError, LLMGateway
-from .models import Conversation, ConversationList, Message, MessageList, RecommendationSource
+from .models import (
+    Conversation,
+    ConversationList,
+    KnowledgeDocument,
+    KnowledgeDocumentList,
+    Message,
+    MessageList,
+    RecommendationSource,
+)
 from .persona import GREETING_REPLY, OFFTOPIC_REPLY, build_system_prompt, is_greeting
 from .rate_limit import AnswerRateLimiter
-from .repository import ConversationRepository, default_now
+from .repository import ConversationRepository, KnowledgeRepository, default_now
 from .retrieval import Candidate, retrieve
 from .sse import (
     citations_frame,
@@ -38,9 +50,12 @@ from .sse import (
     error_frame,
     started_frame,
 )
+from .storage import KnowledgeStorage
 
 _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
+_SUPPORTED_TYPES = {"md", "txt"}
 
 
 def _format_context(candidates: list[Candidate]) -> str:
@@ -66,17 +81,23 @@ def _message_from(row: dict[str, Any]) -> Message:
 
 
 class AnswerService:
-    """Per-request orchestration; holds the gateway, rate limiter and (optional) repository."""
+    """Per-request orchestration; holds the gateway, rate limiter and optional stores."""
 
     def __init__(
         self,
         gateway: LLMGateway,
         rate_limiter: AnswerRateLimiter,
         repository: ConversationRepository | None = None,
+        embedder: EmbeddingGateway | None = None,
+        knowledge_repository: KnowledgeRepository | None = None,
+        storage: KnowledgeStorage | None = None,
     ) -> None:
         self._gateway = gateway
         self._rate_limiter = rate_limiter
         self._repository = repository
+        self._embedder = embedder
+        self._knowledge_repository = knowledge_repository
+        self._storage = storage
 
     # -- synchronous helpers used by the router before streaming -------------------------
 
@@ -127,6 +148,91 @@ class AnswerService:
         rows = repository.list_messages(conversation_id)
         return MessageList(items=[_message_from(row) for row in rows])
 
+    # -- knowledge-base endpoints (round 3) -----------------------------------------------
+
+    def _require_knowledge(self) -> tuple[KnowledgeRepository, KnowledgeStorage, EmbeddingGateway]:
+        if self._knowledge_repository is None or self._storage is None or self._embedder is None:
+            raise AuthError("MODEL_UNAVAILABLE", 503, "Knowledge base unavailable", "Retry later")
+        return self._knowledge_repository, self._storage, self._embedder
+
+    def list_knowledge_documents(self) -> KnowledgeDocumentList:
+        repository, _, _ = self._require_knowledge()
+        items: list[KnowledgeDocument] = []
+        for row in repository.list_documents():
+            items.append(
+                KnowledgeDocument(
+                    id=row["id"],
+                    name=row["name"],
+                    type=row["type"],
+                    size=row["size"],
+                    status=row["status"],
+                    parse_mode=row.get("parse_mode"),
+                    failure_reason=row.get("failure_reason"),
+                    created_at=row["created_at"],
+                )
+            )
+        return KnowledgeDocumentList(items=items)
+
+    async def upload_knowledge_documents(self, files: Sequence[Any]) -> None:
+        """Parse + index each md/txt upload (202 semantics; per-file status in list)."""
+
+        repository, storage, embedder = self._require_knowledge()
+        now = default_now()
+        for file in files:
+            filename = (file.filename or "document").rsplit("/", 1)[-1]
+            suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+            if suffix not in {"md", "pdf", "docx", "txt"}:
+                continue  # unknown extension: nothing to index
+            document_id = uuid4()
+            try:
+                raw = await file.read()
+            except Exception:  # pragma: no cover - defensive
+                continue
+            checksum = hashlib.sha256(raw).hexdigest()
+            try:
+                repository.create_document(
+                    document_id=document_id,
+                    name=filename,
+                    doc_type=suffix,
+                    size=len(raw),
+                    content_checksum=checksum,
+                    storage_key=f"knowledge/{document_id}.txt",
+                    parse_mode="text",
+                    now=now,
+                )
+            except IntegrityError:
+                continue  # active checksum duplicate (uq_knowledge_documents_active_checksum)
+            if len(raw) > _MAX_UPLOAD_BYTES:
+                await asyncio.to_thread(
+                    repository.mark_failed, document_id, "file exceeds 10MB limit"
+                )
+                continue
+            if suffix not in _SUPPORTED_TYPES:
+                await asyncio.to_thread(
+                    repository.mark_failed, document_id, f"{suffix} parsing is not supported in MVP"
+                )
+                continue
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                await asyncio.to_thread(repository.mark_failed, document_id, "not valid UTF-8 text")
+                continue
+            storage.save(document_id, text)
+            try:
+                vector = embedder.embed([text])[0]
+            except EmbeddingError as error:
+                await asyncio.to_thread(repository.mark_failed, document_id, str(error))
+                continue
+            await asyncio.to_thread(repository.mark_indexed, document_id, vector)
+
+    def delete_knowledge_document(self, document_id: UUID) -> None:
+        repository, storage, _ = self._require_knowledge()
+        document = repository.get_document(document_id)
+        if document is None:
+            raise AuthError("INVALID_REQUEST", 404, "Document not found", "Unknown document")
+        repository.disable_retrieval(document_id, default_now())
+        storage.delete(document_id)
+
     # -- streaming pipeline ---------------------------------------------------------------
 
     async def stream_answer(
@@ -171,7 +277,9 @@ class AnswerService:
             )
 
         deltas: list[str] = []
-        candidates = retrieve(question, page_key, project_key)
+        candidates = await self._knowledge_candidates(question)
+        if not candidates:
+            candidates = retrieve(question, page_key, project_key)
         if candidates:
             messages = [
                 {"role": "system", "content": build_system_prompt()},
@@ -247,6 +355,26 @@ class AnswerService:
         if persist:
             assert conversation_id is not None
             await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
+
+    async def _knowledge_candidates(self, question: str) -> list[Candidate]:
+        """pgvector retrieval over uploaded documents; empty list falls back to pages."""
+
+        if self._knowledge_repository is None or self._embedder is None or self._storage is None:
+            return []
+        try:
+            vector = (await asyncio.to_thread(self._embedder.embed, [question]))[0]
+            rows = await asyncio.to_thread(self._knowledge_repository.search, vector)
+        except EmbeddingError:
+            return []
+        candidates: list[Candidate] = []
+        for row in rows:
+            try:
+                text = await asyncio.to_thread(self._storage.load, row["id"])
+            except FileNotFoundError:
+                continue
+            score = float(row["score"]) if row.get("score") is not None else 0.0
+            candidates.append(Candidate(doc=str(row["name"]), fragment=0, text=text, score=score))
+        return candidates
 
     async def _persist_assistant(
         self, conversation_id: UUID, content: str, is_offtopic: bool

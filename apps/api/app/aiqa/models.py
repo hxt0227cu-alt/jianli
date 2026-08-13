@@ -69,3 +69,20 @@ class Message(BaseModel):
 
 class MessageList(BaseModel):
     items: list[Message]
+
+
+class KnowledgeDocument(BaseModel):
+    """Response item of ``listKnowledgeDocuments`` (openapi ``KnowledgeDocument``)."""
+
+    id: UUID
+    name: str
+    type: Literal["md", "pdf", "docx", "txt"]
+    size: int
+    status: Literal["indexing", "indexed", "failed"]
+    parse_mode: Literal["text", "ocr", "native"] | None = None
+    failure_reason: str | None = None
+    created_at: datetime
+
+
+class KnowledgeDocumentList(BaseModel):
+    items: list[KnowledgeDocument]

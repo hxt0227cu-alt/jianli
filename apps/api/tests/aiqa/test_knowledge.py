@@ -1,0 +1,221 @@
+"""Round-3 integration tests: knowledge-base ingestion + pgvector grounding.
+
+Requires a real PostgreSQL with the pgvector extension (0005) + Redis. Same env as
+``test_conversations.py``: ``JIANLI_AIQA_TEST_DATABASE_URL`` (``jianli_tc_aiqa_001_db``,
+already at head) + ``JIANLI_AIQA_TEST_REDIS_URL`` + CSRF/RATE_LIMIT HMAC keys.
+
+Covers: md/txt upload → indexing status, active-checksum dedupe, unsupported-type
+failure, admin-only permissions, knowledge grounding in ``streamAnswer``, and delete
+(immediately disabled from retrieval).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import secrets
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from uuid import UUID, uuid4
+
+import pytest
+import redis
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Engine, create_engine, text
+
+from app.auth.passwords import PasswordHasher
+from app.auth.router import CSRF_COOKIE, SESSION_COOKIE
+from app.auth.runtime import AuthRuntime, build_auth_runtime
+from app.config import Settings
+from app.factory import create_app
+
+DATABASE_URL = os.environ.get("JIANLI_AIQA_TEST_DATABASE_URL")
+REDIS_URL = os.environ.get("JIANLI_AIQA_TEST_REDIS_URL")
+ORIGIN = "https://aiqa.test"
+
+pytestmark = pytest.mark.skipif(
+    not DATABASE_URL or not REDIS_URL, reason="real PostgreSQL and Redis are required"
+)
+
+
+def _reset_database(engine: Engine) -> None:
+    with engine.begin() as connection:
+        connection.execute(text("TRUNCATE TABLE users, knowledge_documents CASCADE"))
+
+
+def _settings(storage_dir: str) -> Settings:
+    assert DATABASE_URL and REDIS_URL
+    return Settings(
+        database_url=DATABASE_URL,
+        redis_url=REDIS_URL,
+        csrf_hmac_key=os.environ["JIANLI_CSRF_HMAC_KEY"],
+        rate_limit_hmac_key=os.environ["JIANLI_RATE_LIMIT_HMAC_KEY"],
+        allowed_origins=(ORIGIN,),
+        knowledge_storage_dir=storage_dir,
+    )
+
+
+@pytest.fixture
+def real_stack(tmp_path: Any) -> Iterator[tuple[Engine, Any, Settings]]:
+    settings = _settings(str(tmp_path / "knowledge"))
+    engine = create_engine(settings.database_url)
+    redis_client = redis.Redis.from_url(settings.redis_url)
+    redis_client.flushdb()
+    _reset_database(engine)
+    auth_runtime = build_auth_runtime(settings)
+    app = create_app(settings, auth_runtime)
+    try:
+        yield engine, app, settings
+    finally:
+        auth_runtime.close()
+        redis_client.close()
+        _reset_database(engine)
+        engine.dispose()
+
+
+def _seed_user(engine: Engine, role: str = "interviewer") -> UUID:
+    user_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users (id,email,password_hash,role,verified) "
+                "VALUES (:id,:email,:password_hash,:role,true)"
+            ),
+            {
+                "id": user_id,
+                "email": f"{user_id}@example.invalid",
+                "password_hash": PasswordHasher().hash("correct-password"),
+                "role": role,
+            },
+        )
+    return user_id
+
+
+def _authorized_client(
+    app: Any, engine: Engine, settings: Settings, user_id: UUID
+) -> AsyncClient:
+    session_token = secrets.token_urlsafe(32)
+    auth_runtime: AuthRuntime = app.state.auth_runtime
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO auth_sessions "
+                "(id,user_id,session_token_hash,expires_at,revoked_at) "
+                "VALUES (:id,:user_id,:token_hash,:expires_at,NULL)"
+            ),
+            {
+                "id": uuid4(),
+                "user_id": user_id,
+                "token_hash": auth_runtime.tokens.digest(session_token),
+                "expires_at": datetime.now(UTC) + timedelta(hours=1),
+            },
+        )
+    csrf = auth_runtime.tokens.csrf(session_token)
+    client = AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN)
+    client.cookies.set(SESSION_COOKIE, session_token)
+    client.cookies.set(CSRF_COOKIE, csrf)
+    client.headers.update({"Origin": ORIGIN, "X-CSRF-Token": csrf})
+    return client
+
+
+def _upload(client: AsyncClient, files: list[tuple[str, bytes]]) -> Any:
+    payload = [("files", (name, content, "text/markdown")) for name, content in files]
+    return client.post("/admin/knowledge-documents", files=payload)
+
+
+def _events(body: str) -> list[tuple[str, dict[str, object]]]:
+    events: list[tuple[str, dict[str, object]]] = []
+    for block in body.strip().split("\n\n"):
+        event = ""
+        data_lines: list[str] = []
+        for line in block.split("\n"):
+            if line.startswith("event:"):
+                event = line[len("event:") :].strip()
+            elif line.startswith("data:"):
+                data_lines.append(line[len("data:") :].strip())
+        if event and data_lines:
+            events.append((event, json.loads("".join(data_lines))))
+    return events
+
+
+async def _stream_answer(
+    client: AsyncClient, question: str
+) -> list[tuple[str, dict[str, object]]]:
+    response = await client.post(
+        "/answers:stream", json={"question": question, "page_key": "resume"}
+    )
+    assert response.status_code == 200
+    return _events(response.text)
+
+
+@pytest.mark.asyncio
+async def test_upload_index_dedupe_and_unsupported(real_stack: Any) -> None:
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    content = "# 简介\n我擅长分布式系统设计与高并发服务。".encode()
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client, [("resume.md", content)])
+        assert response.status_code == 202
+        # Same content again is deduped (active checksum unique index) -> still 1 active row.
+        response = await _upload(client, [("resume-copy.md", content)])
+        assert response.status_code == 202
+        # Unsupported type is recorded as failed, not rejected.
+        response = await _upload(client, [("notes.pdf", b"%PDF-1.4 fake")])
+        assert response.status_code == 202
+
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        by_name = {item["name"]: item for item in listed}
+        assert by_name["resume.md"]["status"] == "indexed"
+        assert by_name["resume.md"]["type"] == "md"
+        assert by_name["notes.pdf"]["status"] == "failed"
+        assert "not supported" in by_name["notes.pdf"]["failure_reason"]
+        assert "resume-copy.md" not in by_name
+
+
+@pytest.mark.asyncio
+async def test_knowledge_grounds_answer(real_stack: Any) -> None:
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    skills = "# 技能\n我擅长分布式系统设计与高并发服务。".encode()
+    async with _authorized_client(app, engine, settings, owner) as client:
+        await _upload(client, [("skills.md", skills)])
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anon:
+        events = await _stream_answer(anon, "你擅长什么技术？")
+        assert events[-1][1]["grounded"] is True
+        citations = next(d for name, d in events if name == "answer.citations")
+        assert any(cite["doc"] == "skills.md" for cite in citations["citations"])
+
+
+@pytest.mark.asyncio
+async def test_delete_disables_retrieval(real_stack: Any) -> None:
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    keyword = "云原生向量检索独角兽"
+    async with _authorized_client(app, engine, settings, owner) as client:
+        await _upload(client, [("unique.md", f"# 秘密\n{keyword} 是我的独家关键词。".encode())])
+        doc_id = (await client.get("/admin/knowledge-documents")).json()["items"][0]["id"]
+        before = await _stream_answer(client, keyword)
+        assert before[-1][1]["grounded"] is True
+        deleted = await client.delete(f"/admin/knowledge-documents/{doc_id}")
+        assert deleted.status_code == 204
+        after = await _stream_answer(client, keyword)
+        # Without the document the keyword is off-topic (static pages don't contain it).
+        assert after[-1][1]["offtopic"] is True
+
+
+@pytest.mark.asyncio
+async def test_knowledge_permissions(real_stack: Any) -> None:
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    interviewer = _seed_user(engine)
+    async with _authorized_client(app, engine, settings, owner) as owner_client:
+        await _upload(owner_client, [("a.md", b"owner content")])
+        async with _authorized_client(app, engine, settings, interviewer) as viewer:
+            assert (await viewer.get("/admin/knowledge-documents")).status_code == 403
+            assert (await _upload(viewer, [("b.md", b"x")])).status_code == 403
+            doc_id = (await owner_client.get("/admin/knowledge-documents")).json()["items"][0]["id"]
+            assert (await viewer.delete(f"/admin/knowledge-documents/{doc_id}")).status_code == 403
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anon:
+        assert (await anon.get("/admin/knowledge-documents")).status_code == 401
+        assert (await _upload(anon, [("c.md", b"y")])).status_code == 401

@@ -40,8 +40,10 @@ pytestmark = pytest.mark.skipif(
 
 def _reset_database(engine: Engine) -> None:
     with engine.begin() as connection:
-        # users CASCADE truncates auth_sessions/conversations (→ messages) transitively.
-        connection.execute(text("TRUNCATE TABLE users CASCADE"))
+        # users CASCADE truncates auth_sessions/conversations (-> messages) transitively;
+        # knowledge_documents CASCADE covers index versions. Cross-file isolation now that
+        # round 3 grounds answers on the knowledge base.
+        connection.execute(text("TRUNCATE TABLE users, knowledge_documents CASCADE"))
 
 
 def _settings() -> Settings:

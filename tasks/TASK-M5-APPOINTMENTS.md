@@ -106,7 +106,7 @@
 - 冻结 TC 断言失败 → 停止，不改断言/不 skip
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<回填真实 sha，见下方提交>
+- commit / PR：`5245cfa`（M5 实现 + 契约偏离修正 + 证据回填；8 files / +1000）
 - 修改文件清单：
   - `apps/api/app/admin/__init__.py`（新建，包标记）
   - `apps/api/app/admin/models.py`（新建，请求/响应 schema 严格对齐 OpenAPI `AvailabilityOverride`/`AvailabilityOverrideInput`/`CompanyBookingException`/`CompanyBookingExceptionInput`）

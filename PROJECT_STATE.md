@@ -145,6 +145,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **最新验证锚点（门禁绿化 GOV-007）**：`d51b9e0` ——ruff/mypy 16 error 收口 + ruff `--fix` 写回（email.py / worker.py / appointments/service.py / auth/service.py）；repo 级双门禁 exit 0；TASK-GOV-007 Closed（先行提交 665a067/b01acaf 追认，历史不重写）。
 
-- **M5 实现快照（部分验证，集成测试 env 阻塞）**：`<sha 回填>` ——M5 管理后台 7 operation 实现（`admin/` 包 + `appointments/service.py` 扩展 8 方法 + `factory.py` 挂载 + `tests/admin/test_admin_actions.py`）；ruff/mypy repo 级全绿 + DB-free wiring smoke 通过；**真实 PG/Redis 集成测试因本环境无 Docker 被阻塞**，无 verified_commit，任务待用户启动 dev 栈复跑并授权关闭（AI 不得自批准关闭）。
+- **M5 实现快照（部分验证，集成测试 env 阻塞）**：`5245cfa` ——M5 管理后台 7 operation 实现（`admin/` 包 + `appointments/service.py` 扩展 8 方法 + `factory.py` 挂载 + `tests/admin/test_admin_actions.py`）；ruff/mypy repo 级全绿 + DB-free wiring smoke 通过；**真实 PG/Redis 集成测试因本环境无 Docker 被阻塞**，无 verified_commit，任务待用户启动 dev 栈复跑并授权关闭（AI 不得自批准关闭）。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

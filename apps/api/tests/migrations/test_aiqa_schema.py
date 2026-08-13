@@ -147,6 +147,9 @@ def test_aiqa_schema_shape(aiqa_engine: Engine) -> None:
         "active_index_version_id": ("uuid", True),
         "version": ("int", False),
         "created_at": ("timestamptz", False),
+        # 0005: pgvector vector(768) column. SQLAlchemy does not recognize the
+        # extension type, so the inspector reports it as the generic NullType.
+        "embedding": ("nulltype", True),
     }
     assert _shape(aiqa_engine, "knowledge_index_versions") == {
         "id": ("uuid", False),
@@ -155,9 +158,6 @@ def test_aiqa_schema_shape(aiqa_engine: Engine) -> None:
         "status": ("enum", False),
         "indexed_at": ("timestamptz", False),
     }
-    # 0005: pgvector embedding column (nullable, populated at index time). The dialect
-    # type name varies across drivers, so only presence and nullability are asserted.
-    assert _shape(aiqa_engine, "knowledge_documents")["embedding"][1] is True
     for name, labels in {
         "message_role": ["user", "assistant"],
         "knowledge_document_type": ["md", "pdf", "docx", "txt"],

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 import secrets
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 import redis
@@ -277,37 +277,37 @@ async def test_availability_override_crud_rematerializes_slots(real_stack) -> No
                 "reason": "maintenance",
             },
         )
-    assert created.status_code == 201
-    body = created.json()
-    assert body["action"] == "force_unavailable"
-    assert body["reason"] == "maintenance"
-    override_id = body["id"]
-    # First two slots now unavailable; the third (outside the window) stays available.
-    assert _slot_status(engine, slot_ids[0]) == "unavailable"
-    assert _slot_status(engine, slot_ids[1]) == "unavailable"
-    assert _slot_status(engine, slot_ids[2]) == "available"
+        assert created.status_code == 201
+        body = created.json()
+        assert body["action"] == "force_unavailable"
+        assert body["reason"] == "maintenance"
+        override_id = body["id"]
+        # First two slots now unavailable; the third (outside the window) stays available.
+        assert _slot_status(engine, slot_ids[0]) == "unavailable"
+        assert _slot_status(engine, slot_ids[1]) == "unavailable"
+        assert _slot_status(engine, slot_ids[2]) == "available"
 
-    listed = await client.get("/admin/availability-overrides")
-    assert listed.status_code == 200
-    assert any(item["id"] == override_id for item in listed.json()["items"])
+        listed = await client.get("/admin/availability-overrides")
+        assert listed.status_code == 200
+        assert any(item["id"] == override_id for item in listed.json()["items"])
 
-    updated = await client.patch(
-        f"/admin/availability-overrides/{override_id}",
-        json={
-            "start_at": window_start.isoformat(),
-            "end_at": window_end.isoformat(),
-            "action": "force_available",
-        },
-    )
-    assert updated.status_code == 200
-    assert updated.json()["action"] == "force_available"
-    assert _slot_status(engine, slot_ids[0]) == "available"
-    assert _slot_status(engine, slot_ids[1]) == "available"
-    assert _slot_status(engine, slot_ids[2]) == "available"
+        updated = await client.patch(
+            f"/admin/availability-overrides/{override_id}",
+            json={
+                "start_at": window_start.isoformat(),
+                "end_at": window_end.isoformat(),
+                "action": "force_available",
+            },
+        )
+        assert updated.status_code == 200
+        assert updated.json()["action"] == "force_available"
+        assert _slot_status(engine, slot_ids[0]) == "available"
+        assert _slot_status(engine, slot_ids[1]) == "available"
+        assert _slot_status(engine, slot_ids[2]) == "available"
 
-    deleted = await client.delete(f"/admin/availability-overrides/{override_id}")
-    assert deleted.status_code == 204
-    assert _slot_status(engine, slot_ids[0]) == "available"
+        deleted = await client.delete(f"/admin/availability-overrides/{override_id}")
+        assert deleted.status_code == 204
+        assert _slot_status(engine, slot_ids[0]) == "available"
 
     with engine.connect() as connection:
         assert connection.execute(
@@ -317,7 +317,7 @@ async def test_availability_override_crud_rematerializes_slots(real_stack) -> No
             text(
                 "SELECT action FROM audit_logs WHERE target=:id ORDER BY created_at"
             ),
-            {"id": UUID(override_id)},
+            {"id": override_id},
         ).scalars().all()
         assert audit == [
             "availability_override.created",
@@ -402,7 +402,7 @@ async def test_create_company_exception_and_duplicate(real_stack) -> None:
             text(
                 "SELECT action FROM audit_logs WHERE target=:id"
             ),
-            {"id": UUID(exception_id)},
+            {"id": exception_id},
         ).scalar_one() == "company_booking_exception.created"
 
 

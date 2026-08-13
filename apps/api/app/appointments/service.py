@@ -896,10 +896,10 @@ class BookingService:
             self._write_event(
                 connection,
                 appointment_id,
-                "appointment_force_cancelled",
+                "appointment_cancelled",
                 None,
                 now,
-                f"appointment:{appointment_id}:appointment_force_cancelled",
+                f"appointment:{appointment_id}:appointment_cancelled",
             )
             self._write_audit(
                 connection,

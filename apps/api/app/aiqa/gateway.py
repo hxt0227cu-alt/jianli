@@ -91,7 +91,15 @@ class OpenAIGateway:
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
         }
-        payload = {"model": self._model, "messages": messages, "stream": True, "temperature": 0.2}
+        payload = {
+            "model": self._model,
+            "messages": messages,
+            "stream": True,
+            "temperature": 0.2,
+            # 关闭 DeepSeek V4-Flash 默认开启的 thinking 模式（避免推理过程以
+            # reasoning_content/英文重复 token 形式泄漏到 delta 流里）。
+            "thinking": {"type": "disabled"},
+        }
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
                 "POST", url, headers=headers, json=payload

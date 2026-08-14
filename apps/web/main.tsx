@@ -148,6 +148,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [busy, setBusy] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [followups, setFollowups] = useState<string[]>([]);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
 
   useEffect(() => {
@@ -164,12 +165,13 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     }
   }, [live, pageKey, projectKey, conversationId]);
 
+  // 跟随新消息滚到底（防打扰）。改用 panel ref 而不是 window——body 现在 height:100% overflow:hidden。
   useEffect(() => {
     if (!live || messages.length === 0) return;
-    // 跟随新消息滚到底；用户手动上翻（>160px）时不打扰。
-    const doc = document.documentElement;
-    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 160) {
-      window.scrollTo(0, doc.scrollHeight);
+    const el = panelRef.current;
+    if (!el) return;
+    if (el.scrollHeight - (el.scrollTop + el.clientHeight) < 160) {
+      el.scrollTo(0, el.scrollHeight);
     }
   }, [live, messages]);
 
@@ -233,7 +235,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     </section>;
   }
 
-  return <section className="chat-panel">
+  return <section className="chat-panel" ref={panelRef}>
     <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>实时回答</small></div></div>
     <div className="chat-context"><Sparkles size={14} /><span>当前上下文：{context}</span></div>
     <div className="chat-body">

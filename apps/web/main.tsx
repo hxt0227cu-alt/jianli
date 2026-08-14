@@ -164,6 +164,15 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     }
   }, [live, pageKey, projectKey, conversationId]);
 
+  useEffect(() => {
+    if (!live || messages.length === 0) return;
+    // 跟随新消息滚到底；用户手动上翻（>160px）时不打扰。
+    const doc = document.documentElement;
+    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 160) {
+      window.scrollTo(0, doc.scrollHeight);
+    }
+  }, [live, messages]);
+
   const refreshFollowups = () => {
     const shuffled = [...FOLLOWUP_POOL].sort(() => Math.random() - 0.5);
     setFollowups(shuffled.slice(0, 3));

@@ -33,10 +33,17 @@ export JIANLI_LLM_EMBEDDING_MODEL="BAAI/bge-m3"
 ```
 
 ## 5. 验收
-- [ ] 沙箱门禁：ruff ✅ / mypy ✅ / alembic head=0007 ✅ / DB-free ✅
-- [ ] WSL：迁移测试 5 passed（含维度断言）+ 评测重跑有数字
-- [ ] 知识库重灌后 `streamAnswer` 引用正常（真实向量检索）
+- [x] 沙箱门禁：ruff ✅ / mypy 45 ✅ / alembic head=0007 ✅ / DB-free 14 passed ✅
+- [x] WSL：`jianli_dev` 升 0007 + `seed_resume_kb.py` 重灌（5 chunks，**真实 BGE-M3 embedding**，无 400——`dimensions` 参数已移除 `0aac1f8`）
+- [x] 迁移测试 5 passed（含 `_vector_dimension` 断言=1024）
+- [x] 评测重跑：**HIT=8/8 (100%)** 保持（语义向量下与哈希持平），REJECT=0/6 XFAIL（P1 缺陷基线不变）
+- [x] `verified_commit=d0a6cb8`（含 0aac1f8 dimensions 修复）
 
 ## 6. 面试价值
 "embedding 从本地哈希升级为 BGE-M3 语义向量（硅基流动，1024 维），
-评测集对比：哈希命中率 x% → 语义命中率 y%，检索质量可量化提升。"
+评测集对比：哈希命中率 8/8 → 语义命中率 8/8（字面用例持平）。"
+
+## 6.1 诚实标注（关键）
+- 当前评测集用例多为**字面关键词命中**（"Litchi 用了什么向量数据库"含字面 token），哈希与 BGE-M3 都能过 → **测不出语义差异**。
+- 语义向量真实优势需**语义改写型用例**（同义词/异表述、字面不重叠但语义相同——哈希必挂、BGE-M3 命中）才能量化 → 列为 TASK-KB-EVAL-002（扩语料 ≥10 篇 + 改写用例 + 扩 reject）。
+- 注意：seed_resume_kb 曾硬编码 DIM=768（早于 0007）——已修为 `Settings.from_env().llm_embedding_dim`，并加配置检测（配了 `JIANLI_LLM_EMBEDDING_*` 走真实网关，否则本地哈希兜底），保证评测可对比。

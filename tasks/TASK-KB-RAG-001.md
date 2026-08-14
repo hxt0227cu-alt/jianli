@@ -60,8 +60,10 @@
 ## 9. 强制停止条件
 - 未列明变更（改契约/新增依赖/新表未批）→ 停止报告
 
-## 10. 交付证据（关闭前填写）
-- *实现后回填*
+## 10. 交付证据（2026-08-14 已回填；任务待用户授权关闭）
+- 实现 commit：`25a3fc3`（8 files / +388：0006 迁移 + chunking/bm25/repository/service + 迁移 shape 断言 + 集成用例）
+- 门禁：ruff ✅ + mypy 45 files ✅ + DB-free 14 passed ✅
+- **用户 WSL 验证（2026-08-14）**：`pytest tests/migrations/test_aiqa_schema.py tests/aiqa/test_knowledge.py -v` **12 passed in 13.67s** ✅（迁移 5：含 0006 knowledge_chunks shape + up/down 可逆；知识库 7：含 test_chunked_document_recall 长文档中段埋词 chunk 级命中）；`verified_commit=25a3fc3`
 
 ## 11. 关联
 - 前置：M6 / TASK-KB-PDF-001；后续：A 评测体系（chunk 级检索可评测）、C Agent 只读工具

@@ -74,7 +74,12 @@ class OpenAIEmbeddingGateway:
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        payload = {"model": self._model, "input": texts, "dimensions": self._dimension}
+        # NOTE: do NOT send `dimensions` in the request body — fixed-dimension providers
+        # like SiliconFlow BGE-M3 (1024) reject it with 400. Variable-dim providers
+        # (OpenAI text-embedding-3) are handled by passing dimensions when needed in a
+        # future provider-specific subclass; for now the schema column dimension is
+        # enforced on the response side (len(vector) check below).
+        payload = {"model": self._model, "input": texts}
         try:
             response = httpx.post(url, headers=headers, json=payload, timeout=self._timeout)
         except httpx.HTTPError as error:

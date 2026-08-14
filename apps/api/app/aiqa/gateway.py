@@ -86,11 +86,17 @@ class OpenAIGateway:
                 "httpx is required for the OpenAI gateway; install the dev extras"
             ) from error
         url = f"{self._base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-            "Accept": "text/event-stream",
-        }
+        # 显式 utf-8 编码：避免在 zh_CN 等非英文 locale 下 httpx 默认 ascii codec
+        # 把消息里的中文误判到 header 归一化路径上时报 UnicodeEncodeError。
+        # Content-Type 加 charset=utf-8 让 provider 知道 body 也是 utf-8。
+        headers_obj = httpx.Headers(
+            {
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "text/event-stream",
+            },
+            encoding="utf-8",
+        )
         payload = {
             "model": self._model,
             "messages": messages,
@@ -102,7 +108,7 @@ class OpenAIGateway:
         }
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
-                "POST", url, headers=headers, json=payload
+                "POST", url, headers=headers_obj, json=payload
             ) as resp:
                 if resp.status_code >= 400:
                     raise GatewayError(f"provider returned {resp.status_code}")

@@ -182,14 +182,17 @@ class KnowledgeRepository:
                 },
             )
 
-    def mark_indexed(self, document_id: UUID, embedding: list[float]) -> None:
+    def mark_indexed(self, document_id: UUID) -> None:
+        """Chunk-level embeddings replaced whole-document embedding (TASK-KB-RAG-001):
+        the 0005 column stays NULL and chunk vectors live in ``knowledge_chunks``."""
+
         with self._engine.begin() as connection:
             connection.execute(
                 text(
                     "UPDATE knowledge_documents SET status='indexed', "
-                    "embedding=:embedding, failure_reason=NULL WHERE id=:document_id"
+                    "embedding=NULL, failure_reason=NULL WHERE id=:document_id"
                 ),
-                {"document_id": document_id, "embedding": _vector_literal(embedding)},
+                {"document_id": document_id},
             )
 
     def mark_failed(self, document_id: UUID, reason: str) -> None:
@@ -214,17 +217,82 @@ class KnowledgeRepository:
                 {"document_id": document_id, "now": now},
             )
 
-    def search(self, embedding: list[float], top_k: int = 3) -> list[dict[str, Any]]:
-        """Cosine retrieval over active, indexed documents (pgvector). Score = 1 - distance."""
+    # -- chunk-level storage and hybrid retrieval (TASK-KB-RAG-001) -----------------------
+
+    def replace_chunks(
+        self,
+        document_id: UUID,
+        chunks: list[tuple[int, str]],
+        embeddings: list[list[float]],
+        now: datetime,
+    ) -> None:
+        """Replace all chunks of a document (delete + insert in one transaction)."""
+
+        with self._engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM knowledge_chunks WHERE doc_id=:document_id"),
+                {"document_id": document_id},
+            )
+            for (seq, content), vector in zip(chunks, embeddings, strict=True):
+                connection.execute(
+                    text(
+                        "INSERT INTO knowledge_chunks "
+                        "(id,doc_id,seq,content,embedding,created_at) "
+                        "VALUES (:id,:doc_id,:seq,:content,:embedding,:now)"
+                    ),
+                    {
+                        "id": uuid4(),
+                        "doc_id": document_id,
+                        "seq": seq,
+                        "content": content,
+                        "embedding": _vector_literal(vector),
+                        "now": now,
+                    },
+                )
+
+    def search_chunks(self, embedding: list[float], top_k: int = 10) -> list[dict[str, Any]]:
+        """Vector retrieval over chunks of active documents. Score = 1 - distance."""
 
         with self._engine.connect() as connection:
             rows = connection.execute(
                 text(
-                    "SELECT id,name, 1 - (embedding <=> :query) AS score "
-                    "FROM knowledge_documents "
-                    "WHERE retrieval_disabled_at IS NULL AND embedding IS NOT NULL "
-                    "ORDER BY embedding <=> :query LIMIT :top_k"
+                    "SELECT c.id AS chunk_id, c.doc_id, c.seq, c.content, d.name AS doc_name, "
+                    "1 - (c.embedding <=> :query) AS score "
+                    "FROM knowledge_chunks c "
+                    "JOIN knowledge_documents d ON d.id = c.doc_id "
+                    "WHERE d.retrieval_disabled_at IS NULL AND c.embedding IS NOT NULL "
+                    "ORDER BY c.embedding <=> :query LIMIT :top_k"
                 ),
                 {"query": _vector_literal(embedding), "top_k": top_k},
             ).mappings().all()
         return [dict(row) for row in rows]
+
+    def load_chunk_corpus(self) -> list[tuple[str, str]]:
+        """(chunk_id, content) pairs of active documents for BM25 indexing."""
+
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT c.id, c.content FROM knowledge_chunks c "
+                    "JOIN knowledge_documents d ON d.id = c.doc_id "
+                    "WHERE d.retrieval_disabled_at IS NULL"
+                ),
+            ).mappings().all()
+        return [(str(row["id"]), row["content"]) for row in rows]
+
+    def chunk_rows(self, chunk_ids: list[str]) -> dict[str, dict[str, Any]]:
+        """Chunk detail rows keyed by chunk id (for assembling candidates)."""
+
+        if not chunk_ids:
+            return {}
+        with self._engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT c.id, c.doc_id, c.seq, c.content, d.name AS doc_name "
+                    "FROM knowledge_chunks c "
+                    "JOIN knowledge_documents d ON d.id = c.doc_id "
+                    "WHERE c.id = ANY(:ids)"
+                ),
+                {"ids": chunk_ids},
+            ).mappings().all()
+        return {str(row["id"]): dict(row) for row in rows}

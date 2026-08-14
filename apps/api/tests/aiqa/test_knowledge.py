@@ -306,3 +306,28 @@ async def test_knowledge_permissions(real_stack: Any) -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anon:
         assert (await anon.get("/admin/knowledge-documents")).status_code == 401
         assert (await _upload(anon, [("c.md", b"y")])).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_chunked_document_recall(real_stack: Any) -> None:
+    """Long documents are chunked; a term buried mid-document recalls the right chunk
+    (hybrid BM25+vector, TASK-KB-RAG-001)."""
+
+    engine, app, settings = real_stack
+    owner = _seed_user(engine, "owner_admin")
+    keyword = "云原生向量检索独角兽"
+    long_doc = (
+        "分布式基础：高并发服务、数据建模与契约测试。\n" * 12
+        + f"关键技术：{keyword} 是我在 RAG 工程中的独家实践，混合检索与分块召回。\n"
+        + "工程方法：先设计后编码，重视可观测性与可演进性。\n" * 12
+    ).encode("utf-8")
+    async with _authorized_client(app, engine, settings, owner) as client:
+        await _upload(client, [("long.md", long_doc)])
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        assert next(item for item in listed if item["name"] == "long.md")["status"] == "indexed"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as anon:
+        events = await _stream_answer(anon, keyword)
+        assert events[-1][1]["grounded"] is True
+        citations = next(d for name, d in events if name == "answer.citations")
+        docs = [cite["doc"] for cite in citations["citations"]]
+        assert "long.md" in docs

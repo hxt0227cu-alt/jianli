@@ -30,6 +30,8 @@ from sqlalchemy.exc import IntegrityError
 from app.auth.errors import AuthError
 from app.auth.models import Principal
 
+from . import bm25
+from .chunking import chunk_text as _chunk_text
 from .content import PAGES, PageContentData
 from .embeddings import EmbeddingError, EmbeddingGateway
 from .gateway import GatewayError, LLMGateway
@@ -249,11 +251,16 @@ class AnswerService:
                     continue
             storage.save(document_id, text)
             try:
-                vector = embedder.embed([text])[0]
+                chunks = _chunk_text(text)
+                chunk_texts = [content for _, content in chunks]
+                embeddings = embedder.embed(chunk_texts)
             except EmbeddingError as error:
                 await asyncio.to_thread(repository.mark_failed, document_id, str(error))
                 continue
-            await asyncio.to_thread(repository.mark_indexed, document_id, vector)
+            await asyncio.to_thread(
+                repository.replace_chunks, document_id, chunks, embeddings, default_now()
+            )
+            await asyncio.to_thread(repository.mark_indexed, document_id)
 
     def delete_knowledge_document(self, document_id: UUID) -> None:
         repository, storage, _ = self._require_knowledge()
@@ -387,23 +394,45 @@ class AnswerService:
             await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
 
     async def _knowledge_candidates(self, question: str) -> list[Candidate]:
-        """pgvector retrieval over uploaded documents; empty list falls back to pages."""
+        """Chunk-level hybrid retrieval (vector + BM25 fused with RRF, TASK-KB-RAG-001).
+        Empty list falls back to static pages."""
 
         if self._knowledge_repository is None or self._embedder is None or self._storage is None:
             return []
         try:
             vector = (await asyncio.to_thread(self._embedder.embed, [question]))[0]
-            rows = await asyncio.to_thread(self._knowledge_repository.search, vector)
+            vector_hits = await asyncio.to_thread(self._knowledge_repository.search_chunks, vector)
+            corpus = await asyncio.to_thread(self._knowledge_repository.load_chunk_corpus)
         except EmbeddingError:
             return []
+        bm25_hits = bm25.BM25Index(corpus).search(question, top_k=10)
+        vector_ids = [str(hit["chunk_id"]) for hit in vector_hits]
+        bm25_ids = [chunk_id for chunk_id, _ in bm25_hits]
+        fused = bm25.reciprocal_rank_fusion(
+            [
+                [(chunk_id, 0.0) for chunk_id in vector_ids],
+                [(chunk_id, 0.0) for chunk_id in bm25_ids],
+            ],
+            top_k=6,
+        )
+        if not fused:
+            return []
+        details = await asyncio.to_thread(
+            self._knowledge_repository.chunk_rows, [chunk_id for chunk_id, _ in fused]
+        )
         candidates: list[Candidate] = []
-        for row in rows:
-            try:
-                text = await asyncio.to_thread(self._storage.load, row["id"])
-            except FileNotFoundError:
+        for chunk_id, _ in fused:
+            row = details.get(chunk_id)
+            if row is None:
                 continue
-            score = float(row["score"]) if row.get("score") is not None else 0.0
-            candidates.append(Candidate(doc=str(row["name"]), fragment=0, text=text, score=score))
+            candidates.append(
+                Candidate(
+                    doc=str(row["doc_name"]),
+                    fragment=int(row["seq"]),
+                    text=str(row["content"]),
+                    score=1.0,
+                )
+            )
         return candidates
 
     async def _persist_assistant(

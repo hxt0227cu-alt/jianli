@@ -158,6 +158,15 @@ def test_aiqa_schema_shape(aiqa_engine: Engine) -> None:
         "status": ("enum", False),
         "indexed_at": ("timestamptz", False),
     }
+    # 0006: chunk-level storage (TASK-KB-RAG-001); vector column reports NullType too.
+    assert _shape(aiqa_engine, "knowledge_chunks") == {
+        "id": ("uuid", False),
+        "doc_id": ("uuid", False),
+        "seq": ("int", False),
+        "content": ("text", False),
+        "embedding": ("nulltype", True),
+        "created_at": ("timestamptz", False),
+    }
     for name, labels in {
         "message_role": ["user", "assistant"],
         "knowledge_document_type": ["md", "pdf", "docx", "txt"],

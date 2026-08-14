@@ -24,6 +24,19 @@ type ChatMessage = {
   offtopic?: boolean;
   error?: boolean;
 };
+
+// 豆包式追问池：每次回答完成后从池中随机抽 3 条显示为气泡（点击直接发）。
+const FOLLOWUP_POOL = [
+  '展开介绍 Litchi Copilot 的 Planner → Guard → Executor 设计',
+  '你做的 pgvector 多租户 RAG 怎么做的隔离？',
+  '泰益智项目里 LangGraph 和 Temporal 各负责什么？',
+  '你对 Prompt Injection 防护的思路是什么？',
+  '两个项目里模型选型和降级策略有什么不同？',
+  '你最有成就感的一段工程经历是哪一段？',
+  '你适合什么样的团队和岗位？',
+  '实习经历对正式工作的帮助有多大？',
+  '你的职业规划是怎么样的？',
+];
 type BookingStep = 'login' | 'slots' | 'details' | 'confirm' | 'done';
 type SlotStatus = 'available' | 'booked' | 'owner_locked' | 'unavailable';
 type Slot = { id: string; start_at: string; end_at: string; status: SlotStatus; resource_version: number; ownership: 'none' | 'self' | 'other' };
@@ -134,10 +147,12 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [followups, setFollowups] = useState<string[]>([]);
   const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
 
   useEffect(() => {
     setMessages([]);
+    setFollowups([]);
     setRecommendations([]);
     if (!live) return;
     api<{ items: string[] }>(`/pages/${pageKey}/recommendations`).then((data) => setRecommendations(data.items)).catch(() => undefined);
@@ -149,14 +164,19 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     }
   }, [live, pageKey, projectKey, conversationId]);
 
+  const refreshFollowups = () => {
+    const shuffled = [...FOLLOWUP_POOL].sort(() => Math.random() - 0.5);
+    setFollowups(shuffled.slice(0, 3));
+  };
+
   const send = async (question?: string) => {
     const text = (question ?? draft).trim();
     if (!text || busy) return;
     setDraft('');
+    setFollowups([]);
     setBusy(true);
     let activeConversationId = conversationId ?? null;
     if (canPersist && !activeConversationId) {
-      // 登录用户首次提问自动创建会话（持久化），回填后历史区可见（TASK-FE-INTERVIEWER-001）
       try {
         const created = await api<{ id: string }>('/conversations', { method: 'POST', headers: { 'X-CSRF-Token': csrfCookie() } });
         activeConversationId = created.id;
@@ -178,6 +198,8 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, citations }; return next; });
         } else if (event === 'answer.completed') {
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, grounded: Boolean(data.grounded), offtopic: Boolean(data.offtopic) }; return next; });
+          // 豆包式：回答完成后下方出 3 条追问建议气泡（点击直接发）
+          refreshFollowups();
         } else if (event === 'answer.error') {
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: String(data.detail ?? '回答失败，请稍后重试') }; return next; });
         }
@@ -223,6 +245,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     </div>
     <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="输入你想追问的问题…" rows={1} disabled={busy} /><button disabled={busy} onClick={() => send()} aria-label="发送问题">{busy ? '回答中…' : <Send size={17} />}</button></div>
     <div className="chat-foot"><LockKeyhole size={12} /> 回答基于知识库与公开页面，越界问题将被拒绝</div>
+    {followups.length > 0 && !busy && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.pending && <div className="followups"><span className="followups-label">追问</span>{followups.map((item) => <button key={item} className="followup-bubble" onClick={() => send(item)}>{item}</button>)}</div>}
   </section>;
 }
 

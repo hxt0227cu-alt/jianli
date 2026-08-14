@@ -148,7 +148,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [busy, setBusy] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [followups, setFollowups] = useState<string[]>([]);
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
 
   useEffect(() => {
@@ -165,10 +165,11 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     }
   }, [live, pageKey, projectKey, conversationId]);
 
-  // 跟随新消息滚到底（防打扰）。改用 panel ref 而不是 window——body 现在 height:100% overflow:hidden。
+  // 跟随新消息滚到底（防打扰）。豆包式只滚 chat-body（历史对话区），
+  // 不影响 followups/composer。
   useEffect(() => {
     if (!live || messages.length === 0) return;
-    const el = panelRef.current;
+    const el = chatBodyRef.current;
     if (!el) return;
     if (el.scrollHeight - (el.scrollTop + el.clientHeight) < 160) {
       el.scrollTo(0, el.scrollHeight);
@@ -238,7 +239,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   return <section className="chat-panel" ref={panelRef}>
     <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>实时回答</small></div></div>
     <div className="chat-context"><Sparkles size={14} /><span>当前上下文：{context}</span></div>
-    <div className="chat-body">
+    <div className="chat-body" ref={chatBodyRef}>
       {messages.length === 0 && <>
         <div className="message assistant"><span className="message-icon"><Bot size={16} /></span><div><b>你好，我是项目数字分身。</b><p>我会基于已公开的知识库与页面证据流式回答你的问题；无关或越界的问题会被拒绝。</p></div></div>
         {recommendations.length > 0 && <div className="suggested"><span>推荐追问</span>{recommendations.map((item) => <button key={item} onClick={() => send(item)}>{item}<ArrowRight size={14} /></button>)}</div>}
@@ -254,9 +255,11 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
         </div></div>;
       })}
     </div>
+    {/* 中层：推荐追问（独立模块，不在消息流里） */}
+    {followups.length > 0 && !busy && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.pending && <div className="followups"><span className="followups-label">追问</span>{followups.map((item) => <button key={item} className="followup-bubble" onClick={() => send(item)}>{item}</button>)}</div>}
+    {/* 底层：输入框（sticky 贴底） */}
     <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="输入你想追问的问题…" rows={1} disabled={busy} /><button disabled={busy} onClick={() => send()} aria-label="发送问题">{busy ? '回答中…' : <Send size={17} />}</button></div>
     <div className="chat-foot"><LockKeyhole size={12} /> 回答基于知识库与公开页面，越界问题将被拒绝</div>
-    {followups.length > 0 && !busy && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.pending && <div className="followups"><span className="followups-label">追问</span>{followups.map((item) => <button key={item} className="followup-bubble" onClick={() => send(item)}>{item}</button>)}</div>}
   </section>;
 }
 

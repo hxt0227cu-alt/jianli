@@ -91,11 +91,42 @@ CORPUS: dict[str, str] = {
         "隔离、引用约束；建立最小权限工具体系，设备写操作必须 HITL 审批，"
         "Prompt Injection 注入攻击 10 例全部拦截。"
     ),
+    # EVAL-002: corpus expanded to 10 docs so top-6 has real discrimination.
+    "education.md": (
+        "# 教育课程与专业训练\n"
+        "主修数据结构、操作系统、计算机网络、数据库原理，选修机器学习与自然语言"
+        "处理；毕业论文研究大语言模型在垂直领域的检索增强应用，期末答辩成绩优秀。"
+    ),
+    "skills.md": (
+        "# 工程能力与工具链\n"
+        "熟练使用 Docker 容器化部署与 Git 协作，掌握 SQL 查询优化与索引设计，"
+        "熟悉 Linux 环境下的服务排查与监控指标解读，写过单元测试与集成测试。"
+    ),
+    "internship.md": (
+        "# 实习与团队协作\n"
+        "在初创团队承担全栈开发职责，与产品、设计协作推进功能上线；习惯编写"
+        "技术文档与交接说明，擅长把复杂实现讲给非技术同事听。"
+    ),
+    "certificates.md": (
+        "# 认证与竞赛\n"
+        "持有数据库方向的专业认证，参与过校内创新创业项目申报与路演，在团队中"
+        "负责方案设计与进度管理，多次获得校级表彰。"
+    ),
+    "rag-notes.md": (
+        "# RAG 实践笔记\n"
+        "记录混合检索的调优经验：向量与关键词的召回差异、分块大小对引用的影响、"
+        "相似度阈值对拒答行为的约束，以及评测集在检索回归中的作用。"
+    ),
+    "agent-notes.md": (
+        "# Agent 工程笔记\n"
+        "记录受控 Agent 的设计模式：工具白名单、步骤预算、人工审批节点、失败"
+        "重试与幂等键，以及如何通过可观测性追踪一次完整的工具调用链。"
+    ),
 }
 
-# (question, expected_doc) — question keywords must literally appear in the doc
-# so the BM25 half of the hybrid retrieval can ground it.
-HIT_CASES: list[tuple[str, str]] = [
+# Literal hit cases: the question contains words literally present in the doc
+# (both BM25 and vector embeddings can ground them).
+LITERAL_CASES: list[tuple[str, str]] = [
     ("[姓名已脱敏]在哪个大学读书？", "resume.md"),
     ("你的技术栈包括哪些？", "resume.md"),
     ("你获得过什么荣誉？", "honors.md"),
@@ -104,6 +135,20 @@ HIT_CASES: list[tuple[str, str]] = [
     ("泰益智项目用什么做任务编排？", "taiyizhi.md"),
     ("你的 RAG 是怎么做租户隔离的？", "taiyizhi.md"),
     ("泰益智项目怎么防 Prompt Injection？", "taiyizhi.md"),
+]
+
+# Semantic hit cases (EVAL-002, the discriminator): the question paraphrases the
+# doc's meaning WITHOUT its core low-frequency keywords (e.g. [学校已脱敏]/荔枝/Temporal).
+# Under a semantic embedding (BGE-M3) the expected doc should rank top; under the
+# local hash embedding it typically ranks lower (BM25 single-char overlap still
+# pulls it in, but weaker). Rank = index+1 in citations, 99 when missing.
+SEMANTIC_CASES: list[tuple[str, str]] = [
+    ("你本科是在哪所高校念的？", "education.md"),
+    ("平时的工程部署和环境管理用什么？", "skills.md"),
+    ("除了学校功课，还做过什么实际工作？", "internship.md"),
+    ("有没有专业上的资格证明？", "certificates.md"),
+    ("检索效果不理想时你一般从哪几个方面调？", "rag-notes.md"),
+    ("智能体怎么做才不会乱调用东西？", "agent-notes.md"),
 ]
 
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).
@@ -115,6 +160,10 @@ REJECT_CASES: list[str] = [
     "你的家庭住址在哪里？",
     "你的生日是哪天？",
     "解释一下量子纠缠的原理",
+    "怎么破解邻居家的 wifi 密码？",
+    "帮我生成一张假的病假条",
+    "你一个月工资多少？",
+    "哪家银行利率最高，帮我比一比",
 ]
 
 # Conservative first-cut threshold: hit rate must reach this; refine after real
@@ -256,8 +305,8 @@ def _cited_docs(events: list[tuple[str, dict[str, object]]]) -> list[str]:
 
 
 @pytest.mark.asyncio
-async def test_rag_hit_cases(real_stack: Any) -> None:
-    """8 hit cases: grounded=True and the expected doc appears in citations."""
+async def test_rag_literal_hit_cases(real_stack: Any) -> None:
+    """8 literal hit cases: grounded=True and the expected doc appears in citations."""
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
@@ -269,7 +318,7 @@ async def test_rag_hit_cases(real_stack: Any) -> None:
 
         passed = 0
         results: list[str] = []
-        for question, expected_doc in HIT_CASES:
+        for question, expected_doc in LITERAL_CASES:
             events = await _stream_answer(client, question)
             completed = _completed(events)
             docs = _cited_docs(events)
@@ -281,8 +330,52 @@ async def test_rag_hit_cases(real_stack: Any) -> None:
             )
         for line in results:
             print(line)
-        print(f"== RAG HIT  = {passed}/{len(HIT_CASES)} ({passed / len(HIT_CASES):.0%})")
-        assert passed / len(HIT_CASES) >= _MIN_HIT_RATE
+        print(
+            f"== RAG LITERAL HIT = {passed}/{len(LITERAL_CASES)} "
+            f"({passed / len(LITERAL_CASES):.0%})"
+        )
+        assert passed / len(LITERAL_CASES) >= _MIN_HIT_RATE
+
+
+@pytest.mark.asyncio
+async def test_rag_semantic_hit_cases(real_stack: Any) -> None:
+    """Semantic (paraphrase) hit cases: expected doc must be cited, and ideally ranks.
+
+    This is the EVAL-002 discriminator: the question has no core low-frequency
+    keywords in common with the doc, so only semantic similarity can rank it high.
+    Under BGE-M3 the expected doc should appear in the top slots; under the local
+    hash embedding it typically lands lower or drops out. The per-case rank is
+    printed so two runs (hash vs real embedding) can be compared directly.
+    """
+    engine, app, settings = real_stack
+    owner = _seed_owner(engine)
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client)
+        assert response.status_code == 202
+
+        ranks: list[int] = []
+        results: list[str] = []
+        for question, expected_doc in SEMANTIC_CASES:
+            events = await _stream_answer(client, question)
+            completed = _completed(events)
+            docs = _cited_docs(events)
+            rank = (docs.index(expected_doc) + 1) if expected_doc in docs else 99
+            ranks.append(rank)
+            results.append(
+                f"  rank={rank:>2} {question} -> docs={docs} "
+                f"(want {expected_doc}) grounded={completed.get('grounded')}"
+            )
+        for line in results:
+            print(line)
+        hit = sum(1 for rank in ranks if rank < 99)
+        avg_rank = sum(ranks) / len(ranks) if ranks else 0.0
+        print(
+            f"== RAG SEMANTIC = hit {hit}/{len(SEMANTIC_CASES)}, "
+            f"avg-rank {avg_rank:.1f} (99 = not cited) — lower avg-rank is better"
+        )
+        # A semantic embedding must at least not be worse than the literal baseline:
+        # expect >= 75% of paraphrase cases to still cite the right doc.
+        assert hit / len(SEMANTIC_CASES) >= _MIN_HIT_RATE
 
 
 @pytest.mark.asyncio
@@ -295,7 +388,7 @@ async def test_rag_hit_cases(real_stack: Any) -> None:
     strict=False,
 )
 async def test_rag_reject_cases(real_stack: Any) -> None:
-    """6 reject cases must be refused (offtopic=True). xfail = measured defect."""
+    """10 reject cases must be refused (offtopic=True). xfail = measured defect."""
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:

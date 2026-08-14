@@ -236,7 +236,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     </section>;
   }
 
-  return <section className="chat-panel" ref={panelRef}>
+  return <section className="chat-panel">
     <div className="chat-head"><div><span className="live-dot" /> <b>项目问答</b><small>实时回答</small></div></div>
     <div className="chat-context"><Sparkles size={14} /><span>当前上下文：{context}</span></div>
     <div className="chat-body" ref={chatBodyRef}>

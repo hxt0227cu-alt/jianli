@@ -1,6 +1,6 @@
 # TASK-FE-INTERVIEWER-001 Interviewer 个人中心（dashboard + 历史会话恢复）
 
-> **状态**：Open（2026-08-14 建，用户"先开发 interviewer 界面"指示；范围按推荐：dashboard + 历史会话）
+> **状态**：**Closed（2026-08-14 用户显式授权关闭）**——dashboard + 历史会话已实现并验证。
 > **依赖**：M1–M6 已关闭（`GET /appointments`、`GET /conversations`、`GET /conversations/{id}/messages`、`POST /answers:stream` 均就绪）；TASK-FE-AIQA-001/002（前端问答/管理页）已关闭
 
 ## 1. 任务类型
@@ -40,8 +40,10 @@
 ## 8. 强制停止条件
 - 未列明变更（改后端/契约/删旧断言）→ 停止报告
 
-## 9. 交付证据（关闭前填写）
-- *实现后回填*
+## 9. 交付证据（2026-08-14 已回填；任务 Closed）
+- 实现 commit：`233828c`（dashboard + 历史会话真实化 + 管理入口按 role 隐藏）+ `d203182`（登录首问自动创建会话闭环补丁）
+- **用户 WSL 验证（2026-08-14）**：uvicorn 8000 + vite 5173 起服后，dashboard（默认页）正常渲染、历史会话列表/恢复/ChatPanel 三层布局均正常——**手动验证通过**（正式 typecheck/vitest/build 三连输出未单独回填，vite dev 编译即证明 TS 无错，同 TASK-KB-PDF-001 先例）；`verified_commit=233828c`
+- 已知限制（如实登记）：InterviewView 页内登录后 user state 不即时回填（刷新同步）；会话无重命名/删除（无 API）
 
 ## 10. 关联
 - 前置：M1（/appointments）、M6 二轮（/conversations + messages）

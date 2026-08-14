@@ -1,6 +1,6 @@
 # TASK-DEPLOY-001 部署素材（简历）+ LLM 配置支持（DeepSeek V4 Flash）
 
-> **状态**：Open（2026-08-13 建；用户提供简历 `14.docx`，选定 DeepSeek V4 Flash）
+> **状态**：**Closed（2026-08-14 用户显式授权关闭）**——简历素材 + DeepSeek/BGE-M3 配置支持已落地并验证。
 > **依赖**：M6 / TASK-FE-AIQA-001 / TASK-KB-PDF-001 均已关闭
 
 ## 1. 任务类型
@@ -31,8 +31,11 @@
 - ruff ✅ + mypy ✅ + DB-free 15 passed ✅（含 test_config）
 - 用户 WSL：设 DeepSeek env 后 streamAnswer 走真实模型；知识库上传（未配 embedding）走本地哈希降级正常
 
-## 6. 交付证据（关闭前填写）
-- *实现后回填*
+## 6. 交付证据（2026-08-14 已回填；任务 Closed）
+- 素材：`f12e9c9`（resume.md 结构化 + reportlab PDF）+ `fef6b26`（**换用户原版 `14.pdf`**，284KB 完整排版；resume.md git rm --cached）
+- LLM 配置：`f12e9c9`（DeepSeek V4 Flash 支持，embedding 配置拆独立 `JIANLI_LLM_EMBEDDING_*`，DeepSeek 无 /embeddings 端点）+ `79e64d3`（httpx Headers utf-8，修中文 400/UnicodeEncodeError）+ `0aac1f8`（去 dimensions 参数，硅基流动 BGE-M3 400 修复）
+- **用户 WSL 验证（2026-08-14）**：env 齐全后 uvicorn 启动正常（`/auth/me` `/appointments` 401=匿名正常）、简历 PDF 页面一显示、DeepSeek 流式问答通、BGE-M3 知识库灌库成功（5 chunks）；`verified_commit=fef6b26`
+- 注意：真实 DeepSeek key 由用户运行时 env 提供（不落文件）；硅基流动 key 同（`JIANLI_LLM_EMBEDDING_API_KEY`）
 
 ## 7. 关联
 - 后续：真实简历 PDF 由管理页上传知识库 → 问答命中；上线准备（域名/备案/SMTP）

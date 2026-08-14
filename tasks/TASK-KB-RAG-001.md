@@ -1,6 +1,6 @@
 # TASK-KB-RAG-001 RAG 检索质量工程：分块 + 混合检索（BM25+向量 RRF）
 
-> **状态**：Open（2026-08-14 建，用户选定"B 混合检索+分块"，方向聚焦 AI Agent/RAG，CRUD 类暂停）
+> **状态**：**Closed（2026-08-14 用户显式授权关闭）**——分块 + 混合检索（BM25+向量 RRF）已实现并验证：迁移 0006 + chunking/bm25/repository/service，WSL 12 passed。
 > **依赖**：M6 已关闭（知识库摄取/检索就绪）；TASK-KB-PDF-001 已关闭（PDF 摄取就绪）
 
 ## 1. 任务类型

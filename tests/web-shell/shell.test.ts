@@ -30,5 +30,11 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('resume.pdf');
     expect(source).toContain('kb-status');
     expect(source).toContain('知识库管理');
+    // TASK-FE-INTERVIEWER-001: dashboard + real conversation history.
+    expect(source).toContain("'/conversations'");
+    expect(source).toContain('conversation_id');
+    expect(source).toContain('DashboardView');
+    expect(source).toContain('工作台');
+    expect(source).toContain('登录后显示历史对话');
   });
 });

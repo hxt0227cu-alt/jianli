@@ -9,10 +9,12 @@ import './styles.css';
 import './appointment.css';
 import { MyAppointmentsView } from './my-appointments';
 
-type Page = 'resume' | 'projects' | 'interview' | 'mine' | 'admin';
+type Page = 'dashboard' | 'resume' | 'projects' | 'interview' | 'mine' | 'admin';
 type ProjectId = 'jianli' | 'sleep';
 type PageKey = 'resume' | 'projects';
 type KnowledgeDoc = { id: string; name: string; type: string; size: number; status: 'indexing' | 'indexed' | 'failed'; parse_mode: string | null; failure_reason: string | null; created_at: string };
+type Conversation = { id: string; created_at: string; updated_at: string };
+type ApptSummary = { id: string; status: 'active' | 'cancelled' | 'completed'; start_at: string; end_at: string; company_name: string; meeting_platform: string; meeting_number: string; contact_salutation: string };
 type ChatMessage = {
   role: 'assistant' | 'user';
   text: string;
@@ -88,12 +90,6 @@ async function streamAnswer(
   }
 }
 
-const sessions = [
-  { title: '为什么 Agent 不直接预约？', meta: '今天 14:32' },
-  { title: 'RAG 找不到证据怎么办？', meta: '昨天 20:18' },
-  { title: '通知失败如何重试？', meta: '昨天 19:04' },
-];
-
 const projects = {
   jianli: {
     label: '项目 01', name: 'AI 面试协作站', accent: 'green',
@@ -115,23 +111,25 @@ const projects = {
   },
 } satisfies Record<ProjectId, { label: string; name: string; accent: string; headline: string; steps: { title: string; body: string; mark: string }[] }>;
 
-function HistoryRail({ page, onPage }: { page: Page; onPage: (page: Page) => void }) {
+function HistoryRail({ page, onPage, user, conversations, onSelectConversation, onNewConversation }: { page: Page; onPage: (page: Page) => void; user: User | null; conversations: Conversation[]; onSelectConversation: (id: string) => void; onNewConversation: () => void }) {
+  const shortDay = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
   return <aside className="history-rail">
     <div className="rail-brand"><span className="brand-mark">晓</span><span>Jianli 工作台</span></div>
-    <button className="new-session"><Plus size={16} /> 新建对话</button>
+    <button className="new-session" onClick={onNewConversation}><Plus size={16} /> 新建对话</button>
     <div className="rail-label">工作区</div>
+    <button className={page === 'dashboard' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('dashboard')}><LayoutDashboard size={16} /> 工作台</button>
     <button className={page === 'resume' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('resume')}><FileText size={16} /> 简历问答</button>
     <button className={page === 'projects' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('projects')}><FolderOpen size={16} /> 项目说明</button>
     <button className={page === 'interview' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('interview')}><CalendarDays size={16} /> 预约面试</button>
     <button className={page === 'mine' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('mine')}><CalendarCheck size={16} /> 我的预约</button>
-    <button className={page === 'admin' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('admin')}><Database size={16} /> 知识库管理</button>
+    {user?.role === 'owner_admin' && <button className={page === 'admin' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('admin')}><Database size={16} /> 知识库管理</button>}
     <div className="rail-label history-title">历史对话</div>
-    <div className="session-list">{sessions.map((session) => <button className="session-item" key={session.title}><MessageSquare size={14} /><span><b>{session.title}</b><small>{session.meta}</small></span></button>)}</div>
-    <div className="rail-bottom"><button className="rail-link"><Archive size={16} /> 已归档</button><div className="account"><span className="avatar">晓</span><span><b>用户</b><small>静态演示账号</small></span><ChevronDown size={15} /></div></div>
+    {user ? <div className="session-list">{conversations.length === 0 ? <div className="session-empty">还没有历史对话，去简历问答页提问吧。</div> : conversations.map((conversation) => <button className="session-item" key={conversation.id} onClick={() => onSelectConversation(conversation.id)}><MessageSquare size={14} /><span><b>对话</b><small>{shortDay(conversation.created_at)}</small></span></button>)}</div> : <div className="session-empty">登录后显示历史对话。</div>}
+    <div className="rail-bottom"><button className="rail-link"><Archive size={16} /> 已归档</button><div className="account"><span className="avatar">晓</span><span><b>{user ? user.email : '访客'}</b><small>{user ? `${user.role} · 已登录` : '未登录'}</small></span><ChevronDown size={15} /></div></div>
   </aside>;
 }
 
-function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId }) {
+function ChatPanel({ live, pageKey, projectKey, conversationId }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId; conversationId?: string | null }) {
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -143,7 +141,13 @@ function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: Page
     setRecommendations([]);
     if (!live) return;
     api<{ items: string[] }>(`/pages/${pageKey}/recommendations`).then((data) => setRecommendations(data.items)).catch(() => undefined);
-  }, [live, pageKey, projectKey]);
+    if (conversationId) {
+      // 恢复历史会话：拉取该会话的消息填充对话（TASK-FE-INTERVIEWER-001）
+      api<{ items: { role: 'user' | 'assistant'; content: string }[] }>(`/conversations/${conversationId}/messages`).then((data) => {
+        setMessages(data.items.map((item) => ({ role: item.role, text: item.content })));
+      }).catch(() => undefined);
+    }
+  }, [live, pageKey, projectKey, conversationId]);
 
   const send = async (question?: string) => {
     const text = (question ?? draft).trim();
@@ -152,6 +156,7 @@ function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: Page
     setBusy(true);
     const body: Record<string, unknown> = { question: text, page_key: pageKey };
     if (projectKey) body.project_key = projectKey;
+    if (conversationId) body.conversation_id = conversationId;
     setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
     try {
       let assistantText = '';
@@ -213,8 +218,8 @@ function ChatPanel({ live, pageKey, projectKey }: { live: boolean; pageKey: Page
 }
 
 function TopBar({ page, onPage }: { page: Page; onPage: (page: Page) => void }) {
-  const title = page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'admin' ? '知识库管理' : '预约面试';
-  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button><button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
+  const title = page === 'dashboard' ? '工作台' : page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'admin' ? '知识库管理' : '预约面试';
+  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button><button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
@@ -379,12 +384,48 @@ function AdminView() {
   </main>;
 }
 
+function DashboardView({ user, appts, onNavigate }: { user: User | null; appts: ApptSummary[]; onNavigate: (page: Page) => void }) {
+  const now = Date.now();
+  const active = appts.filter((item) => item.status === 'active');
+  const upcoming = active
+    .filter((item) => new Date(item.start_at).getTime() > now - 3600e3 && new Date(item.start_at).getTime() < now + 7 * 86400e3)
+    .sort((a, b) => a.start_at.localeCompare(b.start_at))
+    .slice(0, 5);
+  const dayLabel = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(iso));
+  return <main className="workspace dashboard-view"><div className="workspace-heading"><div><span className="eyebrow">WORKSPACE / DASHBOARD</span><h1>{user ? `你好，${user.email.split('@')[0]}。` : '先认识一下我，再聊正事。'}</h1><p>{user ? '这里是你的面试安排与快捷入口概览。' : '登录后查看面试安排；也可以先看看简历与项目，或直接提问。'}</p></div>{user && <span className="placeholder-badge">{user.role === 'owner_admin' ? 'owner_admin' : 'interviewer'} · 已登录</span>}</div>
+    {!user && <section className="dash-guest"><div className="dash-guest-card"><span className="eyebrow">GET STARTED</span><h2>登录你的账号</h2><p>预约面试、查看我的预约、恢复历史对话。</p><div className="dash-guest-actions"><button className="primary-command" onClick={() => onNavigate('interview')}>去预约面试</button><button className="text-command" onClick={() => onNavigate('resume')}>先看简历 →</button></div></div></section>}
+    {user && <>
+      <section className="dash-stats">{[
+        { label: '进行中', value: active.length, tone: 'green' },
+        { label: '已完成', value: appts.filter((item) => item.status === 'completed').length, tone: 'blue' },
+        { label: '已取消', value: appts.filter((item) => item.status === 'cancelled').length, tone: 'gray' },
+      ].map((stat) => <div className={`dash-stat ${stat.tone}`} key={stat.label}><b>{stat.value}</b><span>{stat.label}</span></div>)}</section>
+      <section className="dash-upcoming"><div className="dash-sec-head"><span className="eyebrow">UPCOMING</span><button className="text-command" onClick={() => onNavigate('mine')}>全部预约 →</button></div>
+        {upcoming.length === 0 ? <p className="kb-empty">未来 7 天没有已预约的面试。<button className="text-command" onClick={() => onNavigate('interview')}>去预约 →</button></p> : <div className="dash-appt-list">{upcoming.map((item) => <div className="dash-appt" key={item.id}><span className="dash-appt-time">{dayLabel(item.start_at)}</span><b>{item.company_name}</b><small>{item.meeting_platform} · {item.meeting_number} · 联系人{item.contact_salutation}</small><span className="kb-status indexed">进行中</span></div>)}</div>}
+      </section>
+      <section className="dash-quick"><span className="eyebrow">QUICK ACTIONS</span><div className="dash-quick-row"><button onClick={() => onNavigate('interview')}><CalendarDays size={17} /><b>预约面试</b><small>选择真实可用时段</small></button><button onClick={() => onNavigate('mine')}><CalendarCheck size={17} /><b>我的预约</b><small>改期 / 取消 / 修改信息</small></button><button onClick={() => onNavigate('resume')}><FileText size={17} /><b>简历问答</b><small>基于简历与知识库提问</small></button></div></section>
+    </>}
+  </main>;
+}
+
 function App() {
-  const [page, setPage] = useState<Page>('resume');
+  const [page, setPage] = useState<Page>('dashboard');
   const [project, setProject] = useState<ProjectId>('jianli');
-  const content = page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
+  const [user, setUser] = useState<User | null>(null);
+  const [appts, setAppts] = useState<ApptSummary[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<User>('/auth/me').then(async (me) => { setUser(me); const data = await api<{ items: Conversation[] }>('/conversations'); setConversations(data.items); }).catch(() => undefined);
+    api<{ items: ApptSummary[] }>('/appointments').then((data) => setAppts(data.items)).catch(() => undefined);
+  }, []);
+
+  const selectConversation = (id: string) => { setConversationId(id); setPage('resume'); };
+  const newConversation = () => { setConversationId(null); setPage('resume'); };
+  const content = page === 'dashboard' ? <DashboardView user={user} appts={appts} onNavigate={setPage} /> : page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
   const live = page === 'resume' || page === 'projects';
-  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} /></div></div>;
+  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} /></div></div>;
 }
 
 export default App;

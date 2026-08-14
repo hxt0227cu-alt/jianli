@@ -62,6 +62,23 @@ def _enum_labels(engine: Engine, name: str) -> list[str]:
         return list(connection.scalars(text(query), {"name": name}))
 
 
+def _vector_dimension(engine: Engine, table: str, column: str) -> int:
+    """pgvector vector(N) dimension via format_type (e.g. 'vector(1024)' -> 1024)."""
+    query = (
+        "SELECT format_type(a.atttypid, a.atttypmod) "
+        "FROM pg_attribute a "
+        "JOIN pg_class c ON c.oid = a.attrelid "
+        "JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = 'public' AND c.relname = :table AND a.attname = :column"
+    )
+    with engine.connect() as connection:
+        rendered = connection.scalar(text(query), {"table": table, "column": column})
+    if not rendered or not rendered.startswith("vector("):
+        return 0
+    digits = rendered[len("vector(") : -1]
+    return int(digits) if digits.isdigit() else 0
+
+
 @pytest.fixture(scope="session")
 def aiqa_engine() -> Iterator[Engine]:
     assert DATABASE_URL is not None
@@ -167,6 +184,8 @@ def test_aiqa_schema_shape(aiqa_engine: Engine) -> None:
         "embedding": ("nulltype", True),
         "created_at": ("timestamptz", False),
     }
+    # 0007: chunk embedding dimension is 1024 (SiliconFlow BGE-M3, TASK-KB-EMB-001).
+    assert _vector_dimension(aiqa_engine, "knowledge_chunks", "embedding") == 1024
     for name, labels in {
         "message_role": ["user", "assistant"],
         "knowledge_document_type": ["md", "pdf", "docx", "txt"],

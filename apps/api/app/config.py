@@ -50,9 +50,10 @@ class Settings(BaseModel):
     llm_embedding_api_key: SecretStr | None = None
     llm_embedding_model: str | None = None
     # Knowledge base (M6 round 3): local-disk object storage for parsed text and the
-    # embedding dimension (must match the vector(768) column of migration 0005).
+    # embedding dimension (must match the vector(1024) column of migration 0007;
+    # BGE-M3 via SiliconFlow is the approved real-embedding default).
     knowledge_storage_dir: str = Field(default="./var/knowledge", min_length=1)
-    llm_embedding_dim: int = Field(default=768, ge=64, le=4096)
+    llm_embedding_dim: int = Field(default=1024, ge=64, le=4096)
 
     @property
     def auth_configured(self) -> bool:

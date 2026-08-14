@@ -129,7 +129,7 @@ function HistoryRail({ page, onPage, user, conversations, onSelectConversation, 
   </aside>;
 }
 
-function ChatPanel({ live, pageKey, projectKey, conversationId }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId; conversationId?: string | null }) {
+function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onConversationCreated }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId; conversationId?: string | null; canPersist: boolean; onConversationCreated?: (id: string) => void }) {
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -154,9 +154,18 @@ function ChatPanel({ live, pageKey, projectKey, conversationId }: { live: boolea
     if (!text || busy) return;
     setDraft('');
     setBusy(true);
+    let activeConversationId = conversationId ?? null;
+    if (canPersist && !activeConversationId) {
+      // 登录用户首次提问自动创建会话（持久化），回填后历史区可见（TASK-FE-INTERVIEWER-001）
+      try {
+        const created = await api<{ id: string }>('/conversations', { method: 'POST', headers: { 'X-CSRF-Token': csrfCookie() } });
+        activeConversationId = created.id;
+        onConversationCreated?.(created.id);
+      } catch { /* 会话创建失败则本次按匿名处理 */ }
+    }
     const body: Record<string, unknown> = { question: text, page_key: pageKey };
     if (projectKey) body.project_key = projectKey;
-    if (conversationId) body.conversation_id = conversationId;
+    if (activeConversationId) body.conversation_id = activeConversationId;
     setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
     try {
       let assistantText = '';
@@ -423,9 +432,13 @@ function App() {
 
   const selectConversation = (id: string) => { setConversationId(id); setPage('resume'); };
   const newConversation = () => { setConversationId(null); setPage('resume'); };
+  const onConversationCreated = (id: string) => {
+    setConversationId(id);
+    setConversations((prev) => (prev.some((item) => item.id === id) ? prev : [{ id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev]));
+  };
   const content = page === 'dashboard' ? <DashboardView user={user} appts={appts} onNavigate={setPage} /> : page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
   const live = page === 'resume' || page === 'projects';
-  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} /></div></div>;
+  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} canPersist={user !== null} onConversationCreated={onConversationCreated} /></div></div>;
 }
 
 export default App;

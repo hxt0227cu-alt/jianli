@@ -115,6 +115,35 @@ def test_stream_answer_grounded_flow(client: TestClient) -> None:
         assert "doc" in cite and "fragment" in cite and "storage_key" not in cite
 
 
+def test_stream_answer_tool_calls_frame(client: TestClient) -> None:
+    """Agent tooling (TASK-AGENT-TOOLS-002): the decision chain frame is emitted once.
+
+    Grounded path: the stub decides to call search_knowledge (query = original question),
+    the service executes it and reports hits (doc·fragment summary only — no storage_key,
+    no full text). Off-topic path: no hits -> hits is an empty list, still refused.
+    """
+    status, events = _answer_stream(client, question="你擅长什么技术方向？", page_key="resume")
+    assert status == 200
+    tool_calls = [d for name, d in events if name == "answer.tool_calls"]
+    assert len(tool_calls) == 1, "exactly one decision-chain frame on a grounded answer"
+    calls = tool_calls[0]["calls"]
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["name"] == "search_knowledge"
+    assert call["query"]
+    assert call["hits"], "grounded tool call must report hits"
+    for hit in call["hits"]:
+        assert "doc" in hit and "fragment" in hit
+        assert "storage_key" not in hit
+        assert "text" not in hit
+
+    status, events = _answer_stream(client, question="今天天气怎么样？", page_key="resume")
+    assert status == 200
+    tool_calls = [d for name, d in events if name == "answer.tool_calls"]
+    assert len(tool_calls) == 1
+    assert tool_calls[0]["calls"][0]["hits"] == []
+
+
 def test_stream_answer_offtopic_refusal(client: TestClient) -> None:
     status, events = _answer_stream(client, question="今天天气怎么样？", page_key="resume")
     assert status == 200

@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import io
+import json
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 from uuid import UUID, uuid4
@@ -62,6 +63,37 @@ _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
 _SUPPORTED_TYPES = {"md", "txt", "pdf"}
+
+# Agent tooling (TASK-AGENT-TOOLS-002): the single whitelisted read-only tool. The model
+# decides whether to call it and generates its own `query` (tool_choice=auto); the service
+# executes it with the existing hybrid retrieval. Booking/write/admin endpoints are never
+# registered here (PRD decision #14) — see docs/api/sse.md §3.
+_SEARCH_TOOLS: list[dict[str, object]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_knowledge",
+            "description": (
+                "在站点主人的公开知识库（简历、项目、技术笔记等资料）中检索与用户问题"
+                "相关的片段。当问题需要事实依据时调用；请用问题中的关键主题词作为检索词"
+                "query（如项目名、技术名、经历关键词），不要整句复制问题。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "检索词：问题中的关键主题词，例如 'Litchi Copilot'、"
+                            "'技术栈'、'腾讯实习'"
+                        ),
+                    }
+                },
+                "required": ["query"],
+            },
+        },
+    }
+]
 
 
 def _extract_pdf_text(raw: bytes) -> str:
@@ -317,73 +349,8 @@ class AnswerService:
             )
 
         deltas: list[str] = []
-        # Agent tooling (TASK-AGENT-TOOLS-001): the hybrid retrieval is exposed as the
-        # `search_knowledge` read-only tool. The decision chain is emitted as an
-        # answer.tool_calls frame when the knowledge base actually produced candidates,
-        # so the frontend can show "已检索知识库（query=…）→ 命中 N 片段".
-        candidates = await self._knowledge_candidates(question)
-        if not candidates:
-            candidates = retrieve(question, page_key, project_key)
-        if candidates:
-            from_knowledge = self._knowledge_repository is not None
-            if from_knowledge:
-                yield tool_calls_frame(
-                    seq := seq + 1,
-                    [
-                        {
-                            "name": "search_knowledge",
-                            "query": question,
-                            "hits": [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
-                        }
-                    ],
-                    trace_id,
-                )
-            messages = [
-                {"role": "system", "content": build_system_prompt()},
-                {
-                    "role": "user",
-                    "content": (
-                        f"用户问题：{question}\n\n【已知资料】\n{_format_context(candidates)}"
-                    ),
-                },
-            ]
-            try:
-                async for kind, payload in self._gateway.answer(messages):
-                    if kind != "delta" or not isinstance(payload, str):
-                        continue
-                    deltas.append(payload)
-                    yield delta_frame(seq := seq + 1, payload, trace_id)
-            except GatewayError:
-                yield error_frame(
-                    seq := seq + 1,
-                    {
-                        "type": "urn:jianli:error:model_unavailable",
-                        "title": "Model unavailable",
-                        "status": 503,
-                        "code": "MODEL_UNAVAILABLE",
-                        "detail": "The answer service is temporarily unavailable",
-                    },
-                    trace_id,
-                )
-                return
-            yield citations_frame(
-                seq := seq + 1,
-                [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
-                trace_id,
-            )
-            yield completed_frame(
-                seq := seq + 1,
-                grounded=True,
-                offtopic=False,
-                model=self._gateway.model_name,
-                usage=None,
-                trace_id=trace_id,
-            )
-            if persist:
-                assert conversation_id is not None
-                await self._persist_assistant(conversation_id, "".join(deltas), False)
-            return
 
+        # Greeting first (no model round-trip, unchanged policy).
         if is_greeting(question):
             yield delta_frame(seq := seq + 1, GREETING_REPLY, trace_id)
             yield citations_frame(seq := seq + 1, [], trace_id)
@@ -400,20 +367,121 @@ class AnswerService:
                 await self._persist_assistant(conversation_id, GREETING_REPLY, False)
             return
 
-        # Off-topic: persona-styled refusal, no model round-trip (boundary policy).
-        yield delta_frame(seq := seq + 1, OFFTOPIC_REPLY, trace_id)
-        yield citations_frame(seq := seq + 1, [], trace_id)
+        # Agent tooling (TASK-AGENT-TOOLS-002): two-phase function calling. Phase 1 —
+        # the model decides whether to call the whitelisted read-only `search_knowledge`
+        # tool and generates its own retrieval terms (`tool_choice=auto`). The service
+        # executes the tool, then Phase 2 generates the grounded answer with the results.
+        # No-hits always falls back to the existing off-topic refusal (never fabricate).
+        _MODEL_ERROR_FRAME: dict[str, object] = {
+            "type": "urn:jianli:error:model_unavailable",
+            "title": "Model unavailable",
+            "status": 503,
+            "code": "MODEL_UNAVAILABLE",
+            "detail": "The answer service is temporarily unavailable",
+        }
+        messages1 = [
+            {"role": "system", "content": build_system_prompt()},
+            {"role": "user", "content": f"用户问题：{question}"},
+        ]
+        tool_request: dict[str, object] | None = None
+        try:
+            async for kind, payload in self._gateway.answer(messages1, tools=_SEARCH_TOOLS):
+                if kind == "tool_call" and isinstance(payload, dict):
+                    tool_request = payload
+                    break
+        except GatewayError:
+            yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
+            return
+
+        candidates: list[Candidate] = []
+        search_query = question
+        if tool_request is not None and tool_request.get("name") == "search_knowledge":
+            # Model decided to search: execute the tool with the model-generated query.
+            try:
+                arguments = json.loads(str(tool_request.get("arguments") or "{}"))
+            except json.JSONDecodeError:
+                arguments = {}
+            search_query = str(arguments.get("query") or question).strip() or question
+            candidates = await self._knowledge_candidates(search_query)
+            if not candidates:
+                candidates = retrieve(search_query, page_key, project_key)
+        else:
+            # Model decided not to search (or no tool response): system fallback on the
+            # original question keeps grounded semantics stable; no hits -> refusal.
+            candidates = await self._knowledge_candidates(question)
+            if not candidates:
+                candidates = retrieve(question, page_key, project_key)
+
+        if not candidates:
+            yield tool_calls_frame(
+                seq := seq + 1,
+                [
+                    {
+                        "name": "search_knowledge",
+                        "query": search_query,
+                        "hits": [],
+                    }
+                ],
+                trace_id,
+            )
+            yield delta_frame(seq := seq + 1, OFFTOPIC_REPLY, trace_id)
+            yield citations_frame(seq := seq + 1, [], trace_id)
+            yield completed_frame(
+                seq := seq + 1,
+                grounded=False,
+                offtopic=True,
+                model=_OFFTOPIC_CODE,
+                usage=None,
+                trace_id=trace_id,
+            )
+            if persist:
+                assert conversation_id is not None
+                await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
+            return
+
+        yield tool_calls_frame(
+            seq := seq + 1,
+            [
+                {
+                    "name": "search_knowledge",
+                    "query": search_query,
+                    "hits": [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+                }
+            ],
+            trace_id,
+        )
+        messages2 = [
+            {"role": "system", "content": build_system_prompt()},
+            {
+                "role": "user",
+                "content": f"用户问题：{question}\n\n【已知资料】\n{_format_context(candidates)}",
+            },
+        ]
+        try:
+            async for kind, payload in self._gateway.answer(messages2):
+                if kind != "delta" or not isinstance(payload, str):
+                    continue
+                deltas.append(payload)
+                yield delta_frame(seq := seq + 1, payload, trace_id)
+        except GatewayError:
+            yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
+            return
+        yield citations_frame(
+            seq := seq + 1,
+            [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+            trace_id,
+        )
         yield completed_frame(
             seq := seq + 1,
-            grounded=False,
-            offtopic=True,
-            model=_OFFTOPIC_CODE,
+            grounded=True,
+            offtopic=False,
+            model=self._gateway.model_name,
             usage=None,
             trace_id=trace_id,
         )
         if persist:
             assert conversation_id is not None
-            await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
+            await self._persist_assistant(conversation_id, "".join(deltas), False)
 
     async def _knowledge_candidates(self, question: str) -> list[Candidate]:
         """Chunk-level hybrid retrieval (vector + BM25 fused with RRF, TASK-KB-RAG-001).

@@ -60,8 +60,10 @@ data: <single-line JSON>
 事件顺序：
 
 1. `answer.started`：`answer_id`、可空 `conversation_id`；
-2. （Agent 工具化，TASK-AGENT-TOOLS-001）零到一次 `answer.tool_calls`：决策链可见——
-   `calls` 数组（`name`、`query`、`hits`：命中 doc·fragment 摘要，**不返回 storage_key 或原文全文**）；
+2. （Agent 工具化，TASK-AGENT-TOOLS-001/002）零到一次 `answer.tool_calls`：决策链可见——
+   `calls` 数组（`name`、`query`、`hits`：命中 doc·fragment 摘要，**不返回 storage_key 或原文全文**）。
+   `query` 由模型在 function calling 第一轮自主生成（`tool_choice=auto`），`hits` 可为空列表
+   （工具执行无命中 → 走越界拒答）；
 3. 零到多个 `answer.delta`：`text`；
 4. `answer.citations`：知识来源数组（文档名、片段号，不返回 storage_key）；
 5. `answer.completed`：`grounded`、`offtopic`、`model`、`usage`；

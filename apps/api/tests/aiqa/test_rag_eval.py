@@ -17,6 +17,7 @@ Structure (14 cases):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import secrets
@@ -30,6 +31,8 @@ import redis
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import Engine, create_engine, text
 
+from app.aiqa.embeddings import build_embedding_gateway
+from app.aiqa.repository import KnowledgeRepository
 from app.auth.passwords import PasswordHasher
 from app.auth.router import CSRF_COOKIE, SESSION_COOKIE
 from app.auth.runtime import AuthRuntime, build_auth_runtime
@@ -415,6 +418,60 @@ async def _run_rank_cases(
         # A semantic embedding must at least not be worse than the literal baseline:
         # expect >= 75% of paraphrase cases to still cite the right doc.
         assert hit / len(cases) >= _MIN_HIT_RATE
+
+
+@pytest.mark.asyncio
+async def test_pure_vector_ranking(real_stack: Any) -> None:
+    """EVAL-002 final discriminator: rank WITHOUT the BM25 half.
+
+    The hybrid pipeline (vector + BM25 + RRF) masks embedding differences because
+    CJK single-char BM25 recalls everything on a 10-doc corpus. To measure the
+    semantic embedding's real value, bypass BM25 and rank the EXTREME paraphrase
+    cases purely on pgvector cosine distance via ``KnowledgeRepository.search_chunks``:
+    - local hash (no semantics, no shared tokens) -> expected doc ranks far down or
+      drops out (rank 99)
+    - BGE-M3 (semantic) -> should rank it near the top
+    This is where the hash-vs-BGE-M3 avg-rank gap is widest and most defensible.
+    """
+    engine, app, settings = real_stack
+    owner = _seed_owner(engine)
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client)
+        assert response.status_code == 202
+        listed = (await client.get("/admin/knowledge-documents")).json()["items"]
+        assert all(item["status"] == "indexed" for item in listed)
+
+    embedder = build_embedding_gateway(
+        base_url=settings.llm_embedding_base_url,
+        api_key=(
+            settings.llm_embedding_api_key.get_secret_value()
+            if settings.llm_embedding_api_key is not None
+            else None
+        ),
+        model=settings.llm_embedding_model,
+        dimension=settings.llm_embedding_dim,
+        timeout=settings.llm_timeout_seconds,
+    )
+    repository = KnowledgeRepository(engine)
+    ranks: list[int] = []
+    results: list[str] = []
+    for question, expected_doc in EXTREME_SEMANTIC_CASES:
+        vector = embedder.embed([question])[0]
+        rows = await asyncio.to_thread(repository.search_chunks, vector, top_k=10)
+        doc_names = [str(row["doc_name"]) for row in rows]
+        rank = (doc_names.index(expected_doc) + 1) if expected_doc in doc_names else 99
+        ranks.append(rank)
+        results.append(
+            f"  rank={rank:>2} {question} -> top={doc_names[:4]} (want {expected_doc})"
+        )
+    for line in results:
+        print(line)
+    hit = sum(1 for rank in ranks if rank < 99)
+    avg_rank = sum(ranks) / len(ranks) if ranks else 0.0
+    print(
+        f"== PURE-VECTOR (no BM25) = hit {hit}/{len(EXTREME_SEMANTIC_CASES)}, "
+        f"avg-rank {avg_rank:.1f} (99 = not in top10) — lower avg-rank is better"
+    )
 
 
 @pytest.mark.asyncio

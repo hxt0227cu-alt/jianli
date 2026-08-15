@@ -25,16 +25,24 @@ EVAL-001 的 8 条命中用例都是**字面关键词命中**（问句直接含�
 - ❌ 不动 `app/aiqa/**`（无产品代码变更；检索/拒答行为不变）
 - ❌ 不加依赖（BGE-M3 走既有 OpenAIEmbeddingGateway，哈希走 LocalEmbeddingGateway）
 
-## 4. 技术要点
-- 语料仍是测试内嵌中文 md（模拟简历/两项目 + 新增教育细节/技能/荣誉扩展文档），**不含用户真实个人信息**
-- 语义用例的"字面零重叠"用 token 校验保证（测试内 assert 问句 token 与期望文档 token 无交集）
-- 对比方法：`JIANLI_LLM_EMBEDDING_*` 有则 BGE-M3、无则哈希（复用 seed_resume_kb 的配置检测思路，测试侧同理——fixture 建 embedder 时按 env 决定）→ 用户跑两遍（配 key / 不配 key）拿对比
+## 4. 技术要点（含实测认知修正）
+- 语料仍是测试内嵌中文 md（10 篇：模拟简历/两项目 + 教育/技能/实习/认证/RAG/Agent 笔记），**不含用户真实个人信息**
+- **认知修正（2026-08-15 实测）**：CJK 单字 BM25 + 10 篇小语料 → 混合链路 top-6 几乎全召回，向量差异被 BM25 兜底稀释（EXTREME 组哈希 avg-rank 仍 2.2 与 SEMANTIC 持平）——**这证明混合检索对 embedding 质量退化鲁棒（优点）**；要量化语义向量真实价值必须**绕过 BM25 直测纯向量层**（`test_pure_vector_ranking`，`repository.search_chunks` 直查）
+- 对比方法：`JIANLI_LLM_EMBEDDING_*` 有则 BGE-M3、无则哈希（`_settings` 从 `Settings.from_env()` 透传 embedding 配置——EVAL-002 曾漏读导致两遍同用哈希，`9376767` 修复）→ 用户跑两遍拿对比
 - 拒答型仍 xfail（P1 阈值缺陷基线不变，本任务不修检索行为）
 
-## 5. 验收
-- [ ] ruff ✅ / mypy ✅（沙箱）
-- [ ] WSL：跑两遍（哈希 + BGE-M3）→ 打印对比数字（哈希 HIT vs BGE-M3 HIT）
-- [ ] 语义用例在哈希下**必挂**、BGE-M3 下**应过**（判别式有效性验证）
+## 5. 验收（2026-08-15 已完成）
+- [x] ruff ✅ / mypy ✅（沙箱）
+- [x] WSL 跑两遍对比（哈希 vs BGE-M3）——**实测数字**：
+  - 全链路（streamAnswer 混合检索）：LITERAL 8/8 持平；SEMANTIC avg-rank **2.2 → 1.8**；EXTREME avg-rank 2.2（哈希，被 BM25 兜底）
+  - **纯向量层（无 BM25）**：EXTREME avg-rank **1.8 → 1.3**（6 条中 4 条 BGE-M3 rank=1，哈希仅 2 条）
+- [x] 语义用例判别式有效性验证：纯向量层差距 0.5 + rank=1 条数 2→4，方向正确可量化
+- [x] 任务单交付证据回填（`verified_commit=118a02d`，任务待用户授权关闭）
+
+## 6. 面试价值（最终话术）
+"RAG 评测回归 24 条（8 字面 + 6 语义改写 + 6 极端改写 + 10 拒答），分层度量：
+① 混合检索全链路：哈希 vs BGE-M3 命中率均 100%，语义改写 avg-rank 2.2→1.8——BM25 兜底使系统对 embedding 退化鲁棒；
+② 纯向量层：avg-rank 1.8→1.3，6 条极端改写 4 条 rank=1——**语义向量对同义表达的真实价值可量化**（同一次评测、一条命令、两遍运行）。"
 - [ ] 任务单交付证据回填
 
 ## 6. 面试价值

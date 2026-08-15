@@ -462,12 +462,15 @@ async def test_pure_vector_ranking(real_stack: Any) -> None:
     repository = KnowledgeRepository(engine)
     ranks: list[int] = []
     results: list[str] = []
+    hit_scores: list[float] = []
     for question, expected_doc in EXTREME_SEMANTIC_CASES:
         vector = embedder.embed([question])[0]
         rows = await asyncio.to_thread(repository.search_chunks, vector, top_k=10)
         doc_names = [str(row["doc_name"]) for row in rows]
         rank = (doc_names.index(expected_doc) + 1) if expected_doc in doc_names else 99
         ranks.append(rank)
+        if rank < 99:
+            hit_scores.append(float(rows[rank - 1]["score"]))
         results.append(
             f"  rank={rank:>2} {question} -> top={doc_names[:4]} (want {expected_doc})"
         )
@@ -475,9 +478,11 @@ async def test_pure_vector_ranking(real_stack: Any) -> None:
         print(line)
     hit = sum(1 for rank in ranks if rank < 99)
     avg_rank = sum(ranks) / len(ranks) if ranks else 0.0
+    min_hit = min(hit_scores) if hit_scores else 0.0
     print(
         f"== PURE-VECTOR (no BM25) = hit {hit}/{len(EXTREME_SEMANTIC_CASES)}, "
-        f"avg-rank {avg_rank:.1f} (99 = not in top10) — lower avg-rank is better"
+        f"avg-rank {avg_rank:.1f}, min-hit-score {min_hit:.3f} "
+        f"(99 = not in top10) — lower avg-rank is better"
     )
 
 
@@ -507,6 +512,23 @@ async def test_rag_reject_cases(real_stack: Any) -> None:
         response = await _upload(client)
         assert response.status_code == 202
 
+    # Probe the actual top-1 cosine similarity of each reject question (threshold
+    # calibration, TASK-KB-THRESHOLD-001): the threshold must sit above the highest
+    # reject top-1 score yet below the lowest legit hit score. Print both so the
+    # number is data-driven, not guessed.
+    embedder = build_embedding_gateway(
+        base_url=settings.llm_embedding_base_url,
+        api_key=(
+            settings.llm_embedding_api_key.get_secret_value()
+            if settings.llm_embedding_api_key is not None
+            else None
+        ),
+        model=settings.llm_embedding_model,
+        dimension=settings.llm_embedding_dim,
+        timeout=settings.llm_timeout_seconds,
+    )
+    repository = KnowledgeRepository(engine)
+    async with _authorized_client(app, engine, settings, owner) as client:
         refused = 0
         results: list[str] = []
         for question in REJECT_CASES:
@@ -514,9 +536,13 @@ async def test_rag_reject_cases(real_stack: Any) -> None:
             completed = _completed(events)
             ok = bool(completed.get("offtopic"))
             refused += int(ok)
+            vector = embedder.embed([question])[0]
+            top = await asyncio.to_thread(repository.search_chunks, vector, top_k=1)
+            top_score = float(top[0]["score"]) if top else 0.0
             results.append(
                 f"  {'PASS' if ok else 'FAIL'} {question} -> "
-                f"offtopic={completed.get('offtopic')} grounded={completed.get('grounded')}"
+                f"offtopic={completed.get('offtopic')} grounded={completed.get('grounded')} "
+                f"top1-score={top_score:.3f}"
             )
         for line in results:
             print(line)

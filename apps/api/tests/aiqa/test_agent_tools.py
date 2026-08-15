@@ -142,6 +142,23 @@ def test_model_skips_tool_system_fallback_grounds(tmp_path: Path) -> None:
     assert calls[0]["hits"]
 
 
+def test_model_query_misses_fallback_question_recovers(tmp_path: Path) -> None:
+    """Dual-path recall: a model query that finds nothing must not drop the evidence.
+
+    The raw question is the secondary recall path, so a sub-optimal model rewrite can
+    never turn a grounded answer into an off-topic refusal (evaluation stability under
+    real tool decisions — the LITERAL 6/8 regression case).
+    """
+    service = _service(tmp_path, _FakeGateway(tool_query="量子纠缠"))
+    events = _collect(service, "jianli 技术栈是什么", "projects", "jianli")
+    completed = dict(events[-1][1])
+    assert completed["grounded"] is True and completed["offtopic"] is False
+    calls = next(d["calls"] for name, d in events if name == "answer.tool_calls")
+    assert calls[0]["query"] == "量子纠缠"  # the model's (bad) query is what's shown
+    citations = next(d["citations"] for name, d in events if name == "answer.citations")
+    assert citations and all(str(c["doc"]) == "jianli" for c in citations)
+
+
 def test_model_searches_but_no_hits_refuses(tmp_path: Path) -> None:
     """Model calls the tool but nothing matches -> empty hits frame + off-topic refusal."""
     service = _service(tmp_path, _FakeGateway(tool_query="量子纠缠"))

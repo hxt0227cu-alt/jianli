@@ -402,15 +402,15 @@ class AnswerService:
             except json.JSONDecodeError:
                 arguments = {}
             search_query = str(arguments.get("query") or question).strip() or question
-            candidates = await self._knowledge_candidates(search_query)
-            if not candidates:
-                candidates = retrieve(search_query, page_key, project_key)
+            candidates = await self._search_candidates(
+                search_query, question, page_key, project_key
+            )
         else:
             # Model decided not to search (or no tool response): system fallback on the
             # original question keeps grounded semantics stable; no hits -> refusal.
-            candidates = await self._knowledge_candidates(question)
-            if not candidates:
-                candidates = retrieve(question, page_key, project_key)
+            candidates = await self._search_candidates(
+                question, question, page_key, project_key
+            )
 
         if not candidates:
             yield tool_calls_frame(
@@ -482,6 +482,33 @@ class AnswerService:
         if persist:
             assert conversation_id is not None
             await self._persist_assistant(conversation_id, "".join(deltas), False)
+
+    async def _search_candidates(
+        self,
+        primary: str,
+        fallback: str,
+        page_key: str,
+        project_key: str | None,
+    ) -> list[Candidate]:
+        """Dual-path recall for the agent tool (TASK-AGENT-TOOLS-002).
+
+        ``primary`` is the model-generated query from the tool call; ``fallback`` is the
+        raw question. Both are searched (KB hybrid first, then the static page registry)
+        and merged de-duplicated, so a sub-optimal model rewrite can never drop evidence
+        the literal question would have found — the grounding stays stable under real
+        function-calling decisions (evaluation LITERAL/SEMANTIC keep their numbers).
+        """
+        merged: list[Candidate] = []
+        seen: set[tuple[str, int]] = set()
+        for query in (primary, fallback):
+            kb = await self._knowledge_candidates(query)
+            static = retrieve(query, page_key, project_key) if not kb else []
+            for candidate in [*kb, *static]:
+                key = (candidate.doc, candidate.fragment)
+                if key not in seen:
+                    seen.add(key)
+                    merged.append(candidate)
+        return merged[:6]
 
     async def _knowledge_candidates(self, question: str) -> list[Candidate]:
         """Chunk-level hybrid retrieval (vector + BM25 fused with RRF, TASK-KB-RAG-001).

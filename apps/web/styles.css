@@ -18,12 +18,13 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 /* 用户定制（2026-08-16）：简历问答 : 项目问答 = 2:1；项目问答字号 2× */
 .desktop-app{grid-template-columns:232px minmax(0,2fr) minmax(0,1fr)}
 .chat-panel{font-size:28px}
-.chat-panel .message.user{text-align:right;margin:0 0 18px}
+.chat-panel .message.user{text-align:right;margin:0 0 8px}
 .chat-panel .message.user span{display:inline-block;background:#eaf1e7;color:#182420;padding:10px 16px;border-radius:14px;font-size:18px;line-height:1.6;max-width:85%}
 .chat-panel .message p{font-size:18px;line-height:1.7}
 .chat-panel .chat-head b,.chat-panel .chat-head small{font-size:18px}
 .chat-panel .chat-context span{font-size:16px}
-.chat-panel .followup-bubble{font-size:18px;padding:10px 16px;line-height:1.6}
+.chat-panel .followup-bubble,.chat-panel .suggested button{font-size:18px;padding:10px 16px;line-height:1.6;border-radius:14px;color:#3a5b48;border:1px solid #cddbcf;background:#fff;text-align:left;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .12s,border-color .12px}
+.chat-panel .followup-bubble:hover,.chat-panel .suggested button:hover{background:#eaf3de;border-color:#97c459}
 .chat-panel .citations code{font-size:14px;padding:6px 10px}
 .chat-panel .answer-state{font-size:14px;padding:6px 12px}
 .chat-panel .tool-chain{font-size:16px;padding:8px 14px;line-height:1.5}

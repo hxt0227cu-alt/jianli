@@ -1,6 +1,6 @@
 # TASK-KB-EMB-001 真实 embedding 接入（硅基流动 BGE-M3）
 
-> **状态**：Open（2026-08-14 建；用户选定"硅基流动（BGE-M3）"为 P0 真实 embedding）
+> **状态**：**Closed（用户 2026-08-15 显式授权关闭）**——BGE-M3 真实 embedding 已接入并验证（迁移 0007，verified_commit=d0a6cb8）。
 > **依赖**：TASK-RAG-EVAL-001 已验证（HIT=8/8，REJECT=0/6 XFAIL）；迁移 0006 就绪
 
 ## 1. 背景（面试工程 P0 第二步）

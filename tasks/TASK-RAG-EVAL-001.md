@@ -1,6 +1,6 @@
 # TASK-RAG-EVAL-001 RAG 评测集（检索/拒答质量量化）
 
-> **状态**：Open（2026-08-14 建；用户确认"开工"，P0 面试工程——把检索质量变成数字）
+> **状态**：**Closed（用户 2026-08-15 显式授权关闭）**——RAG 评测集已实现并验证（HIT=8/8，REJECT=0/6 XFAIL 缺陷基线，verified_commit=b20f67d）。
 > **依赖**：TASK-KB-RAG-001（分块+混合检索）已验证；测试复用 test_knowledge 的 real_stack 模式（真实 PG）
 
 ## 1. 背景（用户核心关切）

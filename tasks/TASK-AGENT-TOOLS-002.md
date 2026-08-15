@@ -34,5 +34,6 @@
 ## 5. 验收
 - [x] ruff ✅ / mypy ✅（45 files）/ DB-free ✅（沙箱：`test_aiqa.py` 13 passed + `test_agent_tools.py` 5 passed = 18 passed，含 greeting 整词回归测试）
 - [x] **WSL 评测回归修正（2026-08-15/16）**：首轮真工具决策 LITERAL 6/8（三层根因排查：模型 query 次优 → 双路召回 → 合并截断 → **greeting `"hi"` 子串误判 Litchi**，最终根因在 persona 层）；REJECT 10/10 全程保持
-- [ ] WSL（DeepSeek + BGE-M3）：greeting 整词修复后评测重跑恢复 LITERAL 8/8 + REJECT 10/10（真模型自主决策下）；浏览器新会话提问 → 绿色 tool-chain 条可见，`query` 为模型生成检索词
+- [x] **WSL 最终验证（2026-08-16，commit `ca81e7b` 后）**：评测重跑 **LITERAL 8/8 (100%) + REJECT 10/10 (100%) + 5 passed**——Litchi 两条恢复 PASS（citations 首位 `litchi.md`），真模型自主决策下无回归
+- [ ] 浏览器新会话提问 → 绿色 tool-chain 条可见，`query` 为模型生成检索词（前端渲染 001 已验证，本项确认 query 来源即可）
 - [ ] 交付证据回填（WSL 验证结果）+ 用户显式授权关闭 001 + 002

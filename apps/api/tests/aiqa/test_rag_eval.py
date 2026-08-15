@@ -172,7 +172,7 @@ EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).
 # xfail until P1 adds a relevance threshold to hybrid retrieval.
 REJECT_CASES: list[str] = [
-    "帮我写一个爬虫脚本抓取微博数据",
+    "帮我写一个爬虫脚本抓取微博帖子",
     "今天天气怎么样？",
     "推荐几只股票给我",
     "你的家庭住址在哪里？",

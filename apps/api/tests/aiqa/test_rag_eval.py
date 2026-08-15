@@ -151,6 +151,21 @@ SEMANTIC_CASES: list[tuple[str, str]] = [
     ("智能体怎么做才不会乱调用东西？", "agent-notes.md"),
 ]
 
+# EXTREME_SEMANTIC_CASES (EVAL-002 direction A): paraphrases with ZERO low-frequency
+# token overlap with the target doc (no shared BM25 keywords — 念书/门课 vs 主修/选修,
+# 干活/工具 vs Docker/SQL...). BM25 cannot recall the target doc at all, so only the
+# vector half can bring it back: local hash (no semantics) ranks it far down or drops
+# it (rank=99), BGE-M3 (semantic) should pull it near the top. This is where the
+# hash-vs-semantic gap is widest and the discriminator is strongest.
+EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
+    ("念书那几年都学了哪些门课？", "education.md"),
+    ("干活的时候一般会用到哪些现成工具？", "skills.md"),
+    ("有没有在别人手底下做过事？", "internship.md"),
+    ("手上有没有能证明水平的证照？", "certificates.md"),
+    ("搜索结果不对的时候会从哪下手排查？", "rag-notes.md"),
+    ("怎么让程序自己按规矩办事而不越界？", "agent-notes.md"),
+]
+
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).
 # xfail until P1 adds a relevance threshold to hybrid retrieval.
 REJECT_CASES: list[str] = [
@@ -354,6 +369,23 @@ async def test_rag_semantic_hit_cases(real_stack: Any) -> None:
     hash embedding it typically lands lower or drops out. The per-case rank is
     printed so two runs (hash vs real embedding) can be compared directly.
     """
+    await _run_rank_cases(real_stack, SEMANTIC_CASES, "RAG SEMANTIC")
+
+
+@pytest.mark.asyncio
+async def test_rag_extreme_semantic_hit_cases(real_stack: Any) -> None:
+    """Direction-A discriminator: paraphrases with zero shared low-frequency tokens.
+
+    BM25 cannot recall the target doc here (no keyword overlap), so only the vector
+    half decides: local hash ranks it far down / drops it; BGE-M3 should pull it
+    near the top. Expected to show the widest hash-vs-semantic gap (avg-rank).
+    """
+    await _run_rank_cases(real_stack, EXTREME_SEMANTIC_CASES, "RAG EXTREME-SEMANTIC")
+
+
+async def _run_rank_cases(
+    real_stack: Any, cases: list[tuple[str, str]], label: str
+) -> None:
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
@@ -362,7 +394,7 @@ async def test_rag_semantic_hit_cases(real_stack: Any) -> None:
 
         ranks: list[int] = []
         results: list[str] = []
-        for question, expected_doc in SEMANTIC_CASES:
+        for question, expected_doc in cases:
             events = await _stream_answer(client, question)
             completed = _completed(events)
             docs = _cited_docs(events)
@@ -377,12 +409,12 @@ async def test_rag_semantic_hit_cases(real_stack: Any) -> None:
         hit = sum(1 for rank in ranks if rank < 99)
         avg_rank = sum(ranks) / len(ranks) if ranks else 0.0
         print(
-            f"== RAG SEMANTIC = hit {hit}/{len(SEMANTIC_CASES)}, "
+            f"== {label} = hit {hit}/{len(cases)}, "
             f"avg-rank {avg_rank:.1f} (99 = not cited) — lower avg-rank is better"
         )
         # A semantic embedding must at least not be worse than the literal baseline:
         # expect >= 75% of paraphrase cases to still cite the right doc.
-        assert hit / len(SEMANTIC_CASES) >= _MIN_HIT_RATE
+        assert hit / len(cases) >= _MIN_HIT_RATE
 
 
 @pytest.mark.asyncio

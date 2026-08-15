@@ -182,6 +182,10 @@ def _reset_database(engine: Engine) -> None:
 
 def _settings(storage_dir: str) -> Settings:
     assert DATABASE_URL and REDIS_URL
+    # Start from the full environment so JIANLI_LLM_EMBEDDING_* flows into the
+    # evaluation (EVAL-002: two runs — local hash vs BGE-M3 — must use different
+    # embedders; hard-coding the fields below would silently pin both to local).
+    env_settings = Settings.from_env()
     return Settings(
         database_url=DATABASE_URL,
         redis_url=REDIS_URL,
@@ -189,6 +193,9 @@ def _settings(storage_dir: str) -> Settings:
         rate_limit_hmac_key=os.environ["JIANLI_RATE_LIMIT_HMAC_KEY"],
         allowed_origins=(ORIGIN,),
         knowledge_storage_dir=storage_dir,
+        llm_embedding_base_url=env_settings.llm_embedding_base_url,
+        llm_embedding_api_key=env_settings.llm_embedding_api_key,
+        llm_embedding_model=env_settings.llm_embedding_model,
     )
 
 

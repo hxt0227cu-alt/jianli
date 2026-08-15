@@ -12,7 +12,14 @@ functions stable: ``build_system_prompt``, ``is_greeting``, and the two reply co
 
 from __future__ import annotations
 
-_GREETINGS = ("你好", "您好", "hi", "hello", "在吗", "在么", "哈喽")
+import re
+
+# Substring greetings: whole-phrase containment is fine for CJK phrases.
+_GREETINGS = ("你好", "您好", "hello", "在吗", "在么", "哈喽")
+# "hi" must be a whole word: plain substring matching would classify "Litchi",
+# "this", "high" etc. as greetings (observed 2026-08-16 — the Litchi LITERAL
+# cases short-circuited into GREETING and two grounded answers became 6/8).
+_HI_RE = re.compile(r"\bhi\b")
 
 _SYSTEM_PROMPT = (
     "你是我的数字分身，用第一人称回答访客关于我（站点主人）的问题。"
@@ -30,9 +37,15 @@ def build_system_prompt() -> str:
 
 
 def is_greeting(text: str) -> bool:
-    """True for small-talk openers that need no grounding (answered socially)."""
+    """True for small-talk openers that need no grounding (answered socially).
+
+    "hi" is matched as a whole word only, so questions containing it as a substring
+    (e.g. "Litchi Copilot" project questions) are never mistaken for greetings.
+    """
 
     normalized = text.strip().lower()
+    if _HI_RE.search(normalized):
+        return True
     return any(greet in normalized for greet in _GREETINGS)
 
 

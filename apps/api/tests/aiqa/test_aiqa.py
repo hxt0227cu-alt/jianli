@@ -206,6 +206,25 @@ def test_stream_answer_invalid_cookie_401() -> None:
         assert resp.json()["code"] == "AUTH_EXPIRED"
 
 
+def test_is_greeting_hi_whole_word_only() -> None:
+    """'hi' must be a whole word — substring matches ('litchi'/'this') are not greetings.
+
+    Regression (2026-08-16, TASK-AGENT-TOOLS-002): substring matching classified
+    the "Litchi Copilot" project questions as greetings, short-circuiting before
+    retrieval and dropping two LITERAL hits (8/8 -> 6/8).
+    """
+    from app.aiqa.persona import is_greeting
+
+    assert is_greeting("你好")
+    assert is_greeting("hi")
+    assert is_greeting("hello world")
+    assert is_greeting("在吗")
+    assert not is_greeting("Litchi Copilot 的 Agent 架构是什么？")
+    assert not is_greeting("Litchi 用了什么向量数据库？")
+    assert not is_greeting("this is a question")
+    assert not is_greeting("今天天气怎么样？")
+
+
 def test_stream_answer_validation_problem(client: TestClient) -> None:
     resp = client.post("/answers:stream", json={"question": ""})  # missing page_key, empty question
     assert resp.status_code == 422

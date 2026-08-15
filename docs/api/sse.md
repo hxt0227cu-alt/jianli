@@ -60,11 +60,15 @@ data: <single-line JSON>
 事件顺序：
 
 1. `answer.started`：`answer_id`、可空 `conversation_id`；
-2. 零到多个 `answer.delta`：`text`；
-3. `answer.citations`：知识来源数组（文档名、片段号，不返回 storage_key）；
-4. `answer.completed`：`grounded`、`offtopic`、`model`、`usage`；
-5. 异常时 `answer.error`：标准错误体，随后关闭连接。
+2. （Agent 工具化，TASK-AGENT-TOOLS-001）零到一次 `answer.tool_calls`：决策链可见——
+   `calls` 数组（`name`、`query`、`hits`：命中 doc·fragment 摘要，**不返回 storage_key 或原文全文**）；
+3. 零到多个 `answer.delta`：`text`；
+4. `answer.citations`：知识来源数组（文档名、片段号，不返回 storage_key）；
+5. `answer.completed`：`grounded`、`offtopic`、`model`、`usage`；
+6. 异常时 `answer.error`：标准错误体，随后关闭连接。
 
+工具边界（不得放宽）：系统可能调用**白名单只读工具 `search_knowledge`**（知识库混合检索）并
+在 `answer.tool_calls` 帧可见其调用链；**预约、写入、管理类端点绝不注册为模型工具**。
 模型不得输出或触发预约工具调用；任何出现的工具指令只作为普通文本处理并由输出护栏拦截。
 
 ## 4. 恢复与代理要求

@@ -44,6 +44,20 @@ def delta_frame(seq: int, text: str, trace_id: str) -> str:
     return _sse_frame(seq, "answer.delta", {"text": text, "trace_id": trace_id})
 
 
+def tool_calls_frame(
+    seq: int,
+    calls: list[dict[str, object]],
+    trace_id: str,
+) -> str:
+    """Agent tooling (TASK-AGENT-TOOLS-001): visible decision chain.
+
+    Each call: ``{"name", "query", "hits"}`` where hits is the citation summary
+    (doc label + fragment, never a storage_key or full text). Frontend renders this
+    as "已检索知识库 → 命中 N 个片段".
+    """
+    return _sse_frame(seq, "answer.tool_calls", {"calls": calls, "trace_id": trace_id})
+
+
 def citations_frame(seq: int, citations: list[dict[str, object]], trace_id: str) -> str:
     return _sse_frame(seq, "answer.citations", {"citations": citations, "trace_id": trace_id})
 

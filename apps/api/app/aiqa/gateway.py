@@ -1,22 +1,26 @@
-"""LLM gateway for the Answer domain (M6 round 1).
+"""LLM gateway for the Answer domain (M6 round 1; Agent tooling TASK-AGENT-TOOLS-001).
 
 The gateway is the single seam between the Answer service and a model provider. Round 1
 ships two implementations behind one protocol:
 
 * ``StubGateway`` — deterministic, in-process, no network. Used whenever the LLM env vars
-  are unset, so the site runs and is fully testable with zero external services.
+  are unset, so the site runs and is fully testable with zero external services. With
+  Agent tooling it simulates a ``search_knowledge`` tool call (query = original question)
+  so the DB-free pipeline stays deterministic.
 * ``OpenAIGateway`` — streams from any OpenAI-compatible ``/chat/completions`` endpoint.
   ``httpx`` is intentionally *lazy-imported*: it is a dev extra, not a runtime dependency,
   so production installs without it still boot (stub gateway). Enabling the OpenAI gateway
   requires httpx at runtime.
 
-Handoff note for Codex: add providers (Anthropic, local vLLM, …) by implementing
-``LLMGateway.answer`` and wiring them in ``runtime.build_aiqa_runtime``. The service only
-ever sees the protocol, so nothing else changes.
+``answer`` yields one of two kinds of events (TASK-AGENT-TOOLS-001):
+  ("delta", str)                      — answer text chunk
+  ("tool_call", dict)                 — {"name", "arguments"} model-initiated tool request
+Tool execution is owned by the service; the gateway never executes tools itself.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
@@ -28,7 +32,7 @@ class GatewayError(Exception):
 
 @runtime_checkable
 class LLMGateway(Protocol):
-    """Streaming chat completion gateway. Yields answer deltas as plain strings.
+    """Streaming chat completion gateway. Yields ("delta"|"tool_call", payload) tuples.
 
     Implementations are async generator functions (``async def ... yield``), which is why
     the protocol method itself is declared without ``async`` and returns ``AsyncIterator``.
@@ -37,7 +41,11 @@ class LLMGateway(Protocol):
     @property
     def model_name(self) -> str: ...
 
-    def answer(self, messages: list[dict[str, str]]) -> AsyncIterator[str]: ...
+    def answer(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]: ...
 
 
 def _context_from_user(user: str) -> str:
@@ -50,19 +58,43 @@ def _context_from_user(user: str) -> str:
 
 
 class StubGateway:
-    """Deterministic fallback gateway: extractive, grounded, no model call."""
+    """Deterministic fallback gateway: extractive, grounded, no model call.
+
+    Agent tooling: if tools were offered, simulate the model deciding to call
+    ``search_knowledge`` with the original question as the query. The service executes it
+    and feeds results back in a second turn, keeping the DB-free pipeline deterministic.
+    """
 
     @property
     def model_name(self) -> str:
         return "stub"
 
-    async def answer(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+    async def answer(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
+        if tools:
+            user = next((m["content"] for m in messages if m["role"] == "user"), "")
+            question = (
+                user.split("用户问题：", 1)[1].splitlines()[0]
+                if "用户问题：" in user
+                else user
+            )
+            yield (
+                "tool_call",
+                {
+                    "name": "search_knowledge",
+                    "arguments": json.dumps({"query": question}),
+                },
+            )
+            return
         user = next((m["content"] for m in messages if m["role"] == "user"), "")
         snippet = _context_from_user(user)
         if snippet:
-            yield f"（本地演示回答，尚未接入大模型）根据资料：{snippet}"
+            yield ("delta", f"（本地演示回答，尚未接入大模型）根据资料：{snippet}")
         else:
-            yield "（本地演示回答）我已收到你的问题，配置模型后将给出更完整的回答。"
+            yield ("delta", "（本地演示回答）我已收到你的问题，配置模型后将给出更完整的回答。")
 
 
 class OpenAIGateway:
@@ -78,7 +110,11 @@ class OpenAIGateway:
     def model_name(self) -> str:
         return self._model
 
-    async def answer(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+    async def answer(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
         try:
             import httpx  # lazy: httpx is a dev extra, not a runtime dependency
         except ImportError as error:
@@ -97,7 +133,7 @@ class OpenAIGateway:
             },
             encoding="utf-8",
         )
-        payload = {
+        payload: dict[str, object] = {
             "model": self._model,
             "messages": messages,
             "stream": True,
@@ -106,37 +142,69 @@ class OpenAIGateway:
             # reasoning_content/英文重复 token 形式泄漏到 delta 流里）。
             "thinking": {"type": "disabled"},
         }
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client, client.stream(
                 "POST", url, headers=headers_obj, json=payload
             ) as resp:
                 if resp.status_code >= 400:
                     raise GatewayError(f"provider returned {resp.status_code}")
+                # Accumulate incremental tool-call deltas (name + arguments chunks).
+                pending_tool_name: list[str] = []
+                pending_tool_args: list[str] = []
                 async for line in resp.aiter_lines():
                     if not line or not line.startswith("data:"):
                         continue
                     data = line[len("data:") :].strip()
                     if data == "[DONE]":
-                        return
-                    yield self._extract_delta(data)
+                        break
+                    delta_text, tool_name, tool_args = self._extract_delta_and_tools(data)
+                    if delta_text:
+                        yield ("delta", delta_text)
+                    if tool_name:
+                        pending_tool_name.append(tool_name)
+                    if tool_args:
+                        pending_tool_args.append(tool_args)
+                if pending_tool_name:
+                    yield (
+                        "tool_call",
+                        {
+                            "name": "".join(pending_tool_name),
+                            "arguments": "".join(pending_tool_args),
+                        },
+                    )
         except httpx.HTTPError as error:  # network/timeout
             raise GatewayError(str(error)) from error
 
     @staticmethod
-    def _extract_delta(data: str) -> str:
-        # Minimal, dependency-free JSON scan for the streaming delta content.
-        # Avoids pulling in a JSON parser nuance; the field is always shallow.
-        marker = '"content":'
-        idx = data.find(marker)
-        if idx == -1:
-            return ""
-        start = data.find('"', idx + len(marker))
-        if start == -1:
-            return ""
-        end = data.find('"', start + 1)
-        if end == -1:
-            return ""
-        return data[start + 1 : end].replace("\\n", "\n").replace('\\"', '"')
+    def _extract_delta_and_tools(
+        data: str,
+    ) -> tuple[str, str, str]:
+        """Parse one streaming chunk: (content delta, tool-call name delta, tool args delta).
+
+        Standard JSON parse of the chunk (OpenAI-compatible format); missing fields
+        return "". Tool-call deltas arrive as incremental fragments of ``function.arguments``
+        which the caller concatenates.
+        """
+        try:
+            chunk = json.loads(data)
+        except json.JSONDecodeError:
+            return "", "", ""
+        choices = chunk.get("choices") or []
+        if not choices:
+            return "", "", ""
+        delta = choices[0].get("delta") or {}
+        content = delta.get("content") or ""
+        tool_calls = delta.get("tool_calls") or []
+        name = ""
+        arguments = ""
+        for call in tool_calls:
+            fn = call.get("function") or {}
+            name = (name or "") + (fn.get("name") or "")
+            arguments = (arguments or "") + (fn.get("arguments") or "")
+        return content, name, arguments
 
 
 def build_gateway(

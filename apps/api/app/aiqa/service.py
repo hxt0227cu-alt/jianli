@@ -54,6 +54,7 @@ from .sse import (
     delta_frame,
     error_frame,
     started_frame,
+    tool_calls_frame,
 )
 from .storage import KnowledgeStorage
 
@@ -316,10 +317,27 @@ class AnswerService:
             )
 
         deltas: list[str] = []
+        # Agent tooling (TASK-AGENT-TOOLS-001): the hybrid retrieval is exposed as the
+        # `search_knowledge` read-only tool. The decision chain is emitted as an
+        # answer.tool_calls frame when the knowledge base actually produced candidates,
+        # so the frontend can show "已检索知识库（query=…）→ 命中 N 片段".
         candidates = await self._knowledge_candidates(question)
         if not candidates:
             candidates = retrieve(question, page_key, project_key)
         if candidates:
+            from_knowledge = self._knowledge_repository is not None
+            if from_knowledge:
+                yield tool_calls_frame(
+                    seq := seq + 1,
+                    [
+                        {
+                            "name": "search_knowledge",
+                            "query": question,
+                            "hits": [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+                        }
+                    ],
+                    trace_id,
+                )
             messages = [
                 {"role": "system", "content": build_system_prompt()},
                 {
@@ -330,9 +348,11 @@ class AnswerService:
                 },
             ]
             try:
-                async for delta in self._gateway.answer(messages):
-                    deltas.append(delta)
-                    yield delta_frame(seq := seq + 1, delta, trace_id)
+                async for kind, payload in self._gateway.answer(messages):
+                    if kind != "delta" or not isinstance(payload, str):
+                        continue
+                    deltas.append(payload)
+                    yield delta_frame(seq := seq + 1, payload, trace_id)
             except GatewayError:
                 yield error_frame(
                     seq := seq + 1,

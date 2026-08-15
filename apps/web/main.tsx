@@ -23,6 +23,7 @@ type ChatMessage = {
   grounded?: boolean;
   offtopic?: boolean;
   error?: boolean;
+  toolCalls?: string;
 };
 
 // 豆包式追问池：每次回答完成后从池中随机抽 3 条显示为气泡（点击直接发）。
@@ -205,6 +206,13 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
         if (event === 'answer.delta') {
           assistantText += String(data.text ?? '');
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, text: assistantText }; return next; });
+        } else if (event === 'answer.tool_calls') {
+          // Agent 工具化（TASK-AGENT-TOOLS-001）：决策链可见 —— 已调用 search_knowledge
+          const calls = (data.calls as { name: string; query: string; hits: { doc: string; fragment: number }[] }[] | undefined) ?? [];
+          const summary = calls.map((call) => `已检索知识库（query: ${call.query}）→ 命中 ${call.hits.length} 个片段`).join('；');
+          if (summary) {
+            setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, toolCalls: summary }; return next; });
+          }
         } else if (event === 'answer.citations') {
           const citations = (data.citations as { doc: string; fragment: number }[] | undefined) ?? [];
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, citations }; return next; });
@@ -247,6 +255,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
       {messages.map((message, index) => {
         if (message.role === 'user') return <div className="message user" key={index}><span>{message.text}</span></div>;
         return <div className="message assistant" key={index}><span className="message-icon"><Bot size={16} /></span><div>
+          {message.toolCalls && <small className="tool-chain">🤖 {message.toolCalls}</small>}
           {message.pending && message.text === '' ? <p className="typing-hint">正在思考…</p> : <p>{message.text}</p>}
           {!message.pending && message.citations && message.citations.length > 0 && <div className="citations"><span>引用</span>{message.citations.map((cite, citeIndex) => <code key={citeIndex}>{cite.doc} · {cite.fragment + 1}</code>)}</div>}
           {!message.pending && message.grounded && <small className="answer-state grounded">已基于资料回答</small>}

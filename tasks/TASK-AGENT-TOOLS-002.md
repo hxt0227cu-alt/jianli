@@ -16,9 +16,10 @@
 ## 3. 实现清单
 - [x] `service.py`：`_SEARCH_TOOLS` 常量（OpenAI 兼容 tools 格式，description 引导"需要事实依据时调用"）；`stream_answer` 两阶段：
   1. greeting 前置判定（不变）后，第一轮 `gateway.answer(messages1, tools=_SEARCH_TOOLS)`（`tool_choice=auto`，由 `OpenAIGateway` 下发），流式收集：`tool_call`（模型自主决策）或忽略 delta（模型自主判断无需检索）
-  2. 模型调 `search_knowledge` → 解析 `arguments.query`（JSONDecodeError 兜底用原问题）→ **双路召回 `_search_candidates(model_query, question)`**（模型 query + 原问题双路，各自 KB 混合检索 → 静态兜底 → 去重合并取前 6）→ 有命中：`tool_calls_frame`（模型 query + hits）+ 第二轮带【已知资料】生成（grounded=true）；无命中：`tool_calls_frame`（hits=[]）+ offtopic 拒答
+  2. 模型调 `search_knowledge` → 解析 `arguments.query`（JSONDecodeError 兜底用原问题）→ **双路召回 `_search_candidates(model_query, question)`**（模型 query + 原问题双路，各自 KB 混合检索 → 静态兜底 → **去重合并全量，不截断**）→ 有命中：`tool_calls_frame`（模型 query + hits）+ 第二轮带【已知资料】生成（grounded=true）；无命中：`tool_calls_frame`（hits=[]）+ offtopic 拒答
   3. 模型不调工具 → 系统兜底检索（query=原问题，走同一 `_search_candidates`）→ 有命中：`tool_calls_frame`（query=原问题）+ 带资料第二轮生成；无命中：offtopic 拒答
-  - **2026-08-15 晚回归修正（WSL 实测 LITERAL 8/8→6/8）**：模型自主生成的 query 次优时单路检索会丢期望文档（如"[姓名已脱敏]在哪个大学读书？"被改写为"大学"→命中 education.md 而非 resume.md）→ 双路召回后模型 query 仍是决策链展示的主检索词，原问题路兜底保证证据不丢（评测恢复 8/8）
+  - **2026-08-15 晚回归修正①（WSL 实测 LITERAL 8/8→6/8）**：模型自主生成的 query 次优时单路检索会丢期望文档（如"[姓名已脱敏]在哪个大学读书？"被改写为"大学"→命中 education.md 而非 resume.md）→ 双路召回后模型 query 仍是决策链展示的主检索词，原问题路兜底保证证据不丢
+  - **2026-08-15 晚回归修正②（双路仍 6/8 的真实教训）**：`_search_candidates` 早期版本 `merged[:6]` 截断——模型 query 路 KB top-6 **占满前 6 位**（且不含期望 doc）时，原问题路的期望 doc 被整体挤出，双路白做。**修复：合并去重后全量返回不截断**（每路天然有界：KB≤6、静态≤3、KB 非空跳静态 → 两路合并最多 ~12 个）。沙箱测试（无真实 KB，静态每路≤3）填不满 6 个，故 17 passed 无法暴露此缺陷——**真实 KB 环境缺陷，沙箱盲区**
 - [x] 测试 `tests/aiqa/test_aiqa.py`：新增 `test_stream_answer_tool_calls_frame`——DB-free 断言 `answer.tool_calls` 帧恰好一次、结构（name/query/hits，无 storage_key/text）；grounded 路径 hits 非空、offtopic 路径 hits=[]
 - [x] 测试 `tests/aiqa/test_agent_tools.py`（新）：5 用例，用 FakeGateway 模拟真实 OpenAI 网关——① 模型生成 query 真正驱动检索（`calls[0].query == tool_query`，citations 全 jianli）；② 模型不调工具 → 系统兜底（query=原问题）仍 grounded；③ 模型调工具无命中 → hits=[] + offtopic 拒答（OFFTOPIC_REPLY 文案）；④ **模型 query 完全检索不到 → 原问题双路救回（grounded=true + citations 含 jianli）**——6/8 回归的极端用例
 - [x] 契约 `docs/api/sse.md` §3：`answer.tool_calls` 语义补记（`query` 由模型自主生成、`hits` 可为空列表；文字同步，不改字段）

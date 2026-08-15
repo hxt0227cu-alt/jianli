@@ -497,6 +497,12 @@ class AnswerService:
         and merged de-duplicated, so a sub-optimal model rewrite can never drop evidence
         the literal question would have found — the grounding stays stable under real
         function-calling decisions (evaluation LITERAL/SEMANTIC keep their numbers).
+
+        IMPORTANT: the merged list must NOT be truncated to the primary path's size. A
+        model query whose KB top-6 fills the slots would push every fallback candidate
+        out (observed in WSL: LITERAL 8/8 -> 6/8 despite dual-path recall). Each path is
+        naturally bounded (KB <= 6, static <= 3; KB non-empty skips static), so the
+        merged list is at most ~12 — kept whole so the fallback evidence always survives.
         """
         merged: list[Candidate] = []
         seen: set[tuple[str, int]] = set()
@@ -508,7 +514,7 @@ class AnswerService:
                 if key not in seen:
                     seen.add(key)
                     merged.append(candidate)
-        return merged[:6]
+        return merged
 
     async def _knowledge_candidates(self, question: str) -> list[Candidate]:
         """Chunk-level hybrid retrieval (vector + BM25 fused with RRF, TASK-KB-RAG-001).

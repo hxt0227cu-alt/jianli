@@ -58,5 +58,5 @@ def build_aiqa_runtime(
         embedder,
         knowledge_repository,
         storage,
-        min_score=settings.kb_min_score,
+        min_score=settings.kb_min_score or 0.0,
     )

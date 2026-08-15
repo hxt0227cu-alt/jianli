@@ -55,10 +55,11 @@ class Settings(BaseModel):
     knowledge_storage_dir: str = Field(default="./var/knowledge", min_length=1)
     llm_embedding_dim: int = Field(default=1024, ge=64, le=4096)
     # Relevance threshold (P1, TASK-KB-THRESHOLD-001): minimum vector cosine similarity
-    # for a chunk to be treated as evidence. 0 = disabled (legacy hard-recall behavior).
-    # Only meaningful with a real semantic embedding — the local hash embedding has no
-    # semantic meaning, so a positive threshold would wrongly reject hit cases there.
-    kb_min_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    # for a chunk to be treated as evidence. None = unconfigured (disabled, legacy
+    # hard-recall); 0 = explicitly disabled; >0 = active. Only meaningful with a real
+    # semantic embedding — the local hash embedding has no semantic meaning, so a
+    # positive threshold would wrongly reject hit cases there.
+    kb_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
     @property
     def auth_configured(self) -> bool:

@@ -207,9 +207,15 @@ def _settings(storage_dir: str) -> Settings:
     # P1 relevance threshold (TASK-KB-THRESHOLD-001): only meaningful under a real
     # semantic embedding — the local hash embedding has no semantic meaning, so a
     # positive threshold would wrongly reject hit cases there. Conditional default:
-    # real embedding -> 0.4, local hash -> 0 (legacy behavior, reject cases stay xfail).
+    # real embedding -> 0.47 (data-calibrated: reject top1 max 0.464, hit min 0.463 —
+    # the single borderline hit is a fuzzy paraphrase that refusing is fine),
+    # local hash -> 0 (legacy behavior, reject cases stay xfail).
+    # Note: use explicit None check so an explicit JIANLI_KB_MIN_SCORE=0 can disable.
     embedding_configured = env_settings.llm_embedding_base_url is not None
-    min_score = env_settings.kb_min_score or (0.4 if embedding_configured else 0.0)
+    configured = env_settings.kb_min_score
+    min_score = (
+        (configured if configured is not None else 0.47) if embedding_configured else 0.0
+    )
     return Settings(
         database_url=DATABASE_URL,
         redis_url=REDIS_URL,

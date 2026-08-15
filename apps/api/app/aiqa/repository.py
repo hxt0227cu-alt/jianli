@@ -250,8 +250,14 @@ class KnowledgeRepository:
                     },
                 )
 
-    def search_chunks(self, embedding: list[float], top_k: int = 10) -> list[dict[str, Any]]:
-        """Vector retrieval over chunks of active documents. Score = 1 - distance."""
+    def search_chunks(
+        self, embedding: list[float], top_k: int = 10, min_score: float = 0.0
+    ) -> list[dict[str, Any]]:
+        """Vector retrieval over chunks of active documents. Score = 1 - distance.
+
+        ``min_score`` (P1, TASK-KB-THRESHOLD-001): drop chunks below the cosine
+        relevance threshold (0 = disabled, legacy top-k hard recall).
+        """
 
         with self._engine.connect() as connection:
             rows = connection.execute(
@@ -261,9 +267,10 @@ class KnowledgeRepository:
                     "FROM knowledge_chunks c "
                     "JOIN knowledge_documents d ON d.id = c.doc_id "
                     "WHERE d.retrieval_disabled_at IS NULL AND c.embedding IS NOT NULL "
+                    "AND (1 - (c.embedding <=> :query)) >= :min_score "
                     "ORDER BY c.embedding <=> :query LIMIT :top_k"
                 ),
-                {"query": _vector_literal(embedding), "top_k": top_k},
+                {"query": _vector_literal(embedding), "min_score": min_score, "top_k": top_k},
             ).mappings().all()
         return [dict(row) for row in rows]
 

@@ -54,6 +54,11 @@ class Settings(BaseModel):
     # BGE-M3 via SiliconFlow is the approved real-embedding default).
     knowledge_storage_dir: str = Field(default="./var/knowledge", min_length=1)
     llm_embedding_dim: int = Field(default=1024, ge=64, le=4096)
+    # Relevance threshold (P1, TASK-KB-THRESHOLD-001): minimum vector cosine similarity
+    # for a chunk to be treated as evidence. 0 = disabled (legacy hard-recall behavior).
+    # Only meaningful with a real semantic embedding — the local hash embedding has no
+    # semantic meaning, so a positive threshold would wrongly reject hit cases there.
+    kb_min_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
     @property
     def auth_configured(self) -> bool:
@@ -124,6 +129,7 @@ class Settings(BaseModel):
             "llm_embedding_model": "JIANLI_LLM_EMBEDDING_MODEL",
             "knowledge_storage_dir": "JIANLI_KNOWLEDGE_STORAGE_DIR",
             "llm_embedding_dim": "JIANLI_LLM_EMBEDDING_DIM",
+            "kb_min_score": "JIANLI_KB_MIN_SCORE",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

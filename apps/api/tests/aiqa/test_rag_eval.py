@@ -204,6 +204,12 @@ def _settings(storage_dir: str) -> Settings:
     # evaluation (EVAL-002: two runs — local hash vs BGE-M3 — must use different
     # embedders; hard-coding the fields below would silently pin both to local).
     env_settings = Settings.from_env()
+    # P1 relevance threshold (TASK-KB-THRESHOLD-001): only meaningful under a real
+    # semantic embedding — the local hash embedding has no semantic meaning, so a
+    # positive threshold would wrongly reject hit cases there. Conditional default:
+    # real embedding -> 0.4, local hash -> 0 (legacy behavior, reject cases stay xfail).
+    embedding_configured = env_settings.llm_embedding_base_url is not None
+    min_score = env_settings.kb_min_score or (0.4 if embedding_configured else 0.0)
     return Settings(
         database_url=DATABASE_URL,
         redis_url=REDIS_URL,
@@ -214,6 +220,7 @@ def _settings(storage_dir: str) -> Settings:
         llm_embedding_base_url=env_settings.llm_embedding_base_url,
         llm_embedding_api_key=env_settings.llm_embedding_api_key,
         llm_embedding_model=env_settings.llm_embedding_model,
+        kb_min_score=min_score,
     )
 
 
@@ -474,17 +481,26 @@ async def test_pure_vector_ranking(real_stack: Any) -> None:
     )
 
 
+# P1 relevance threshold (TASK-KB-THRESHOLD-001): under a real semantic embedding the
+# threshold is active and reject cases must PASS (offtopic=True). Under the local hash
+# embedding the threshold stays 0 (no semantic meaning), so reject cases remain the
+# measured 0% defect baseline -> conditional xfail.
+_EMBEDDING_REAL = bool(os.environ.get("JIANLI_LLM_EMBEDDING_BASE_URL"))
+
+
 @pytest.mark.asyncio
 @pytest.mark.xfail(
+    not _EMBEDDING_REAL,
     reason=(
-        "P1 known defect: hybrid retrieval has no relevance threshold, so vector "
-        "top-k hard-recalls irrelevant questions -> grounded instead of refused. "
-        "The evaluation makes reject rate measurable; add the threshold to turn green."
+        "P1 baseline: without a real semantic embedding the relevance threshold is "
+        "disabled (hash has no semantic meaning), so irrelevant questions are still "
+        "hard-recalled -> grounded instead of refused. Reject rate 0% is the measured "
+        "defect baseline; BGE-M3 + threshold turns it green."
     ),
     strict=False,
 )
 async def test_rag_reject_cases(real_stack: Any) -> None:
-    """10 reject cases must be refused (offtopic=True). xfail = measured defect."""
+    """10 reject cases must be refused (offtopic=True). Green under real embedding + threshold."""
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:

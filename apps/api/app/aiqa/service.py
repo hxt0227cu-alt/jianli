@@ -107,6 +107,7 @@ class AnswerService:
         embedder: EmbeddingGateway | None = None,
         knowledge_repository: KnowledgeRepository | None = None,
         storage: KnowledgeStorage | None = None,
+        min_score: float = 0.0,
     ) -> None:
         self._gateway = gateway
         self._rate_limiter = rate_limiter
@@ -114,6 +115,7 @@ class AnswerService:
         self._embedder = embedder
         self._knowledge_repository = knowledge_repository
         self._storage = storage
+        self._min_score = min_score
 
     # -- synchronous helpers used by the router before streaming -------------------------
 
@@ -401,9 +403,17 @@ class AnswerService:
             return []
         try:
             vector = (await asyncio.to_thread(self._embedder.embed, [question]))[0]
-            vector_hits = await asyncio.to_thread(self._knowledge_repository.search_chunks, vector)
+            vector_hits = await asyncio.to_thread(
+                self._knowledge_repository.search_chunks, vector, min_score=self._min_score
+            )
             corpus = await asyncio.to_thread(self._knowledge_repository.load_chunk_corpus)
         except EmbeddingError:
+            return []
+        # P1 relevance threshold (TASK-KB-THRESHOLD-001): no semantically similar chunk
+        # -> no evidence. BM25 single-char overlap alone must NOT ground an answer
+        # (CJK single chars always overlap), otherwise irrelevant questions would be
+        # answered instead of refused.
+        if not vector_hits:
             return []
         bm25_hits = bm25.BM25Index(corpus).search(question, top_k=10)
         vector_ids = [str(hit["chunk_id"]) for hit in vector_hits]

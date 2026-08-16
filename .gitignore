@@ -24,3 +24,6 @@ build/
 
 # 外来 skill 工件（非本项目交付）
 .career-os/
+
+# 本地开发 env（含本地生成密钥，绝不入库）
+apps/api/.env.local

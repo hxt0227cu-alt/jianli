@@ -197,6 +197,7 @@ def test_worker_smtp_path_claims_renders_marks() -> None:
                 assert preview.status_code == 200, preview.text
                 created = await client.post(
                     "/appointments",
+                    headers={"Origin": ORIGIN, "Idempotency-Key": str(uuid4())},
                     json={
                         "confirmation_token": preview.json()["confirmation_token"],
                         "appointment": draft,

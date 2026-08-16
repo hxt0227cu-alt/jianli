@@ -97,7 +97,7 @@ trace_id 结构化日志、token 成本可见。
 - 若实现中被迫新增依赖/迁移/契约变更，立即停止并报告。
 
 ## 交付证据（关闭前回填）
-- commit / PR：<待填，见 verified_commit>
+- commit / PR：beafbcf
 - 修改文件清单：
   - `apps/api/app/aiqa/gateway.py`（重试循环 + `_RetryableError` + `_backoff` + `stream_options.include_usage` + usage 解析）
   - `apps/api/app/aiqa/service.py`（多轮 memory 回填 `_load_history` + usage 透传 `_add_usage` + 延迟测量 + 结构化日志 `_log_error`/`_log_offtopic`/`answer_completed`/`answer_greeting`）
@@ -120,5 +120,5 @@ trace_id 结构化日志、token 成本可见。
 - 是否偏离 TASK：否
 - 规范影响结论：none（completed.usage 字段已定义，仅从 None 填真实值；memory 回填为已批准多轮持久化设计的接线补全）
 - spec_sync：clean
-- verified_commit：<待填>
+- verified_commit：beafbcf
 - 关闭门禁：①②③④ 全满足方可关闭

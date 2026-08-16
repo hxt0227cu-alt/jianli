@@ -15,6 +15,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, Request
 from fastapi.responses import Response
+from sqlalchemy import Engine, text
 
 from app.admin.models import (
     AvailabilityOverride,
@@ -141,5 +142,110 @@ def create_admin_router(
                 payload.expires_at,
             )
         )
+
+    # ----- Admin operations cockpit (2026-08-16): all-interviewers QA dashboard -----
+
+    def _engine(request: Request) -> Engine:
+        return request.app.state.engine
+
+    @router.get("/conversations", operation_id="adminListConversations")
+    def list_conversations(request: Request) -> dict[str, object]:
+        admin_viewer(request)
+        engine = _engine(request)
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT c.id, c.user_id, u.email, c.created_at, c.updated_at, "
+                    "(SELECT COUNT(*) FROM conversation_messages WHERE conversation_id = c.id) AS message_count "  # noqa: E501
+                    "FROM conversations c JOIN users u ON u.id = c.user_id "
+                    "ORDER BY c.updated_at DESC LIMIT 100"
+                )
+            ).mappings().all()
+        return {
+            "items": [
+                {
+                    "id": str(row["id"]),
+                    "user_id": str(row["user_id"]),
+                    "user_email": row["email"],
+                    "created_at": row["created_at"].isoformat(),
+                    "updated_at": row["updated_at"].isoformat(),
+                    "message_count": int(row["message_count"]),
+                }
+                for row in rows
+            ]
+        }
+
+    @router.get("/conversations/{conversation_id}/messages", operation_id="adminListConversationMessages")  # noqa: E501
+    def list_conversation_messages(conversation_id: UUID, request: Request) -> dict[str, object]:
+        admin_viewer(request)
+        engine = _engine(request)
+        with engine.connect() as connection:
+            rows = connection.execute(
+                text(
+                    "SELECT id, role, content, is_offtopic, created_at "
+                    "FROM conversation_messages WHERE conversation_id = :cid ORDER BY created_at"
+                ),
+                {"cid": conversation_id},
+            ).mappings().all()
+        return {
+            "items": [
+                {
+                    "id": str(row["id"]),
+                    "role": row["role"],
+                    "content": row["content"],
+                    "is_offtopic": bool(row["is_offtopic"]),
+                    "created_at": row["created_at"].isoformat(),
+                }
+                for row in rows
+            ]
+        }
+
+    @router.get("/aiqa-stats", operation_id="getAIQAStats")
+    def aiqa_stats(request: Request) -> dict[str, object]:
+        admin_viewer(request)
+        engine = _engine(request)
+        with engine.connect() as connection:
+            totals = connection.execute(
+                text(
+                    "SELECT "
+                    "(SELECT COUNT(*) FROM conversations) AS total_conversations, "
+                    "(SELECT COUNT(*) FROM conversation_messages) AS total_messages, "
+                    "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'user') AS user_messages, "  # noqa: E501
+                    "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'assistant') AS assistant_messages, "  # noqa: E501
+                    "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'assistant' AND is_offtopic = true) AS offtopic_messages, "  # noqa: E501
+                    "(SELECT COUNT(DISTINCT user_id) FROM conversations) AS active_users"
+                )
+            ).mappings().one()
+            by_user = connection.execute(
+                text(
+                    "SELECT u.email, COUNT(c.id) AS conv_count "
+                    "FROM conversations c JOIN users u ON u.id = c.user_id "
+                    "GROUP BY u.email ORDER BY conv_count DESC LIMIT 10"
+                )
+            ).mappings().all()
+            recent = connection.execute(
+                text(
+                    "SELECT date_trunc('day', created_at) AS day, COUNT(*) AS count "
+                    "FROM conversation_messages "
+                    "WHERE created_at > now() - interval '7 days' "
+                    "GROUP BY day ORDER BY day"
+                )
+            ).mappings().all()
+        assistant = int(totals["assistant_messages"])
+        return {
+            "totals": {
+                "total_conversations": int(totals["total_conversations"]),
+                "total_messages": int(totals["total_messages"]),
+                "user_messages": int(totals["user_messages"]),
+                "assistant_messages": assistant,
+                "offtopic_messages": int(totals["offtopic_messages"]),
+                "offtopic_rate": (int(totals["offtopic_messages"]) / assistant) if assistant else 0.0,  # noqa: E501
+                "active_users": int(totals["active_users"]),
+            },
+            "by_user": [{"email": row["email"], "conversation_count": int(row["conv_count"])} for row in by_user],  # noqa: E501
+            "recent_7d": [
+                {"day": row["day"].date().isoformat(), "message_count": int(row["count"])} for row in recent  # noqa: E501
+            ],
+        }
 
     return router

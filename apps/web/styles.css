@@ -44,3 +44,39 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .auth-switch{display:flex;gap:14px;justify-content:center;margin-top:12px}
 .auth-overlay{position:fixed;inset:0;background:rgba(24,36,32,.45);display:grid;place-items:center;z-index:50;padding:20px}
 .auth-overlay .login-panel{width:min(420px,100%);background:#fff;border:1px solid #dde6de;border-radius:10px;padding:30px;box-shadow:0 18px 50px rgba(20,32,27,.25)}
+/* admin 运营驾驶舱（2026-08-16） */
+.admin-tabs{display:flex;gap:6px;margin-bottom:24px;padding:8px;background:#fff;border:1px solid #dde6de;border-radius:8px;width:fit-content}
+.admin-tabs button{border:0;background:transparent;color:#5e6f65;padding:8px 16px;border-radius:5px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.admin-tabs button:hover{background:#eef3ec}
+.admin-tabs button.active{background:#2e4a3a;color:#eaf6e8;font-weight:600}
+.admin-tabs button small{font-size:11px;opacity:.7;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:9px}
+.admin-panel{background:#fff;border:1px solid #dde6de;border-radius:8px;padding:24px;margin-bottom:18px}
+.admin-panel h3{margin:6px 0 14px;font-size:18px;color:#2c4a3a}
+.admin-panel .bars{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.admin-panel .bars li{display:grid;grid-template-columns:100px 1fr 40px;gap:12px;align-items:center;font-size:12px}
+.admin-panel .bars .bar-label{color:#5e6f65;font-family:ui-monospace,monospace}
+.admin-panel .bars .bar-track{background:#eef3ec;border-radius:3px;height:14px;overflow:hidden}
+.admin-panel .bars .bar-fill{display:block;height:100%;background:linear-gradient(90deg,#79ba4c,#3f7150)}
+.admin-panel .bars b{color:#2c4a3a;text-align:right}
+.admin-rank{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:rank}
+.admin-rank li{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center;padding:8px 12px;background:#fbfcfb;border:1px solid #eef3ec;border-radius:6px}
+.admin-rank li b{color:#9edb86;font-weight:700;font-family:ui-monospace,monospace}
+.admin-rank li span{color:#2c4a3a;font-size:13px}
+.admin-rank li small{color:#5e6f65;font-size:11px}
+.admin-table{background:#fff;border:1px solid #dde6de;border-radius:8px;overflow:hidden}
+.admin-table .admin-row{display:grid;grid-template-columns:160px 200px 1fr 1fr 100px;gap:16px;padding:12px 16px;align-items:center;font-size:13px;border-top:1px solid #eef3ec}
+.admin-table .admin-row.head{background:#fbfcfb;font-weight:600;color:#5e6f65;font-size:11px;letter-spacing:.05em;text-transform:uppercase;border-top:0}
+.admin-table .admin-row span{color:#5e6f65}
+.admin-table .admin-row b{color:#2c4a3a;font-weight:600}
+.admin-table .admin-row small{color:#5e6f65;font-size:12px}
+.admin-table .admin-row.cancelled{opacity:.6}
+.admin-conv{border-top:1px solid #eef3ec}
+.admin-conv:first-child{border-top:0}
+.admin-conv-msgs{background:#fbfcfb;padding:18px 24px;display:grid;gap:14px}
+.admin-msg{display:grid;gap:6px;padding:12px 14px;border-radius:8px}
+.admin-msg.user{background:#eaf1e7;border:1px solid #d3e3cf}
+.admin-msg.assistant{background:#fff;border:1px solid #dde6de}
+.admin-msg.offtopic{background:#fff2e6;border:1px solid #f0dcbf}
+.admin-msg-meta{display:flex;gap:10px;align-items:center;font-size:12px;color:#5e6f65}
+.admin-msg-meta b{color:#2c4a3a}
+.admin-msg pre{font-family:inherit;white-space:pre-wrap;word-break:break-word;margin:0;font-size:13px;color:#2c4a3a;line-height:1.6}

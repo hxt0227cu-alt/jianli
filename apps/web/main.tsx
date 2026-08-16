@@ -437,13 +437,24 @@ function AdminView() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'qa' | 'kb'>('overview');
+  const [stats, setStats] = useState<any>(null);
+  const [allAppts, setAllAppts] = useState<any[]>([]);
+  const [qaConvs, setQaConvs] = useState<any[]>([]);
+  const [openConvId, setOpenConvId] = useState<string | null>(null);
+  const [openConvMessages, setOpenConvMessages] = useState<any[]>([]);
 
   const loadDocs = async () => {
     const data = await api<{ items: KnowledgeDoc[] }>('/admin/knowledge-documents');
     setDocs(data.items);
   };
+  const loadAdminData = async () => {
+    try { const data = await api<any>('/admin/aiqa-stats'); setStats(data); } catch { /* ignore */ }
+    try { const data = await api<{ items: any[] }>('/admin/appointments'); setAllAppts(data.items); } catch { /* ignore */ }
+    try { const data = await api<{ items: any[] }>('/admin/conversations'); setQaConvs(data.items); } catch { /* ignore */ }
+  };
   useEffect(() => {
-    api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadDocs(); }).catch(() => undefined);
+    api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadDocs(); await loadAdminData(); }).catch(() => undefined);
   }, []);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
@@ -475,13 +486,24 @@ function AdminView() {
   };
 
   const sizeLabel = (size: number) => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
-  return <main className="workspace admin-view"><div className="workspace-heading"><div><span className="eyebrow">KNOWLEDGE BASE / ADMIN</span><h1>知识库管理。</h1><p>上传简历 PDF 与项目资料 md，问答将基于这些真实内容回答；支持删除（立即停止被检索）。</p></div><span className="placeholder-badge">owner_admin</span></div>
+  const shortTime = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(iso));
+  const openConv = async (id: string) => {
+    setOpenConvId(id); setOpenConvMessages([]);
+    try { const data = await api<{ items: any[] }>(`/admin/conversations/${id}/messages`); setOpenConvMessages(data.items); } catch { /* ignore */ }
+  };
+  return <main className="workspace admin-view"><div className="workspace-heading"><div><span className="eyebrow">OPERATIONS COCKPIT / ADMIN</span><h1>运营驾驶舱。</h1><p>预约全貌、AI 问答效果、所有 interviewer 的对话历史，以及知识库管理——只有 owner_admin 可访问。</p></div><span className="placeholder-badge">owner_admin</span></div>
     {error && <div className="booking-error">{error}</div>}
-    {!user && <section className="login-panel"><div><span className="eyebrow">OWNER SIGN IN</span><h2>管理员登录</h2><p>使用 owner_admin 账号进入知识库管理。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><button disabled={busy}>{busy ? '正在登录…' : '登录并管理知识库'}</button></form></section>}
-    {user && <>
-      <section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>
-      <section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section>
-    </>}
+    {!user && <section className="login-panel"><div><span className="eyebrow">OWNER SIGN IN</span><h2>管理员登录</h2><p>使用 owner_admin 账号进入运营驾驶舱。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><button disabled={busy}>{busy ? '正在登录…' : '登录并管理'}</button></form></section>}
+    {user && <nav className="admin-tabs"><button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>效果大屏</button><button className={activeTab === 'appointments' ? 'active' : ''} onClick={() => setActiveTab('appointments')}>预约全貌 <small>({allAppts.length})</small></button><button className={activeTab === 'qa' ? 'active' : ''} onClick={() => setActiveTab('qa')}>问答历史 <small>({qaConvs.length})</small></button><button className={activeTab === 'kb' ? 'active' : ''} onClick={() => setActiveTab('kb')}>知识库 <small>({docs.length})</small></button></nav>}
+    {user && activeTab === 'overview' && <section className="admin-overview">{!stats ? <p className="kb-empty">暂无统计数据。</p> : <>{<div className="dash-stats">{[
+      { label: '总对话数', value: stats.totals.total_conversations, tone: 'green' },
+      { label: '总消息数', value: stats.totals.total_messages, tone: 'blue' },
+      { label: '活跃 interviewer', value: stats.totals.active_users, tone: 'gray' },
+      { label: '拒答数', value: `${stats.totals.offtopic_messages}（${(stats.totals.offtopic_rate * 100).toFixed(1)}%）`, tone: 'gray' },
+    ].map((stat) => <div className={`dash-stat ${stat.tone}`} key={stat.label}><b>{stat.value}</b><span>{stat.label}</span></div>)}</div>}{<section className="admin-panel"><span className="eyebrow">NEAR 7 DAYS</span><h3>近 7 天每日消息量</h3>{stats.recent_7d.length === 0 ? <p className="kb-empty">近 7 天无消息。</p> : <ul className="bars">{(() => { const max = Math.max(...stats.recent_7d.map((d: any) => d.message_count)); return stats.recent_7d.map((d: any) => <li key={d.day}><span className="bar-label">{d.day}</span><span className="bar-track"><span className="bar-fill" style={{ width: `${(d.message_count / max) * 100}%` }} /></span><b>{d.message_count}</b></li>); })()}</ul>}</section>}{<section className="admin-panel"><span className="eyebrow">TOP INTERVIEWERS</span><h3>对话数 Top 10</h3>{stats.by_user.length === 0 ? <p className="kb-empty">暂无数据。</p> : <ol className="admin-rank">{stats.by_user.map((row: any, i: number) => <li key={row.email}><b>#{i + 1}</b><span>{row.email}</span><small>{row.conversation_count} 个对话</small></li>)}</ol>}</section>}</>}</section>}
+    {user && activeTab === 'appointments' && <section className="admin-panel">{allAppts.length === 0 ? <p className="kb-empty">暂无预约。</p> : <div className="admin-table"><div className="admin-row head"><span>时间</span><span>面试官</span><span>公司</span><span>会议</span><span>状态</span></div>{allAppts.map((item: any) => <div className={`admin-row ${item.status}`} key={item.id}><span>{shortTime(item.start_at)}</span><span>{item.user_email}</span><b>{item.company_name}</b><small>{item.meeting_platform} · {item.meeting_number}</small><span className={`kb-status ${item.status}`}>{item.status}</span></div>)}</div></section>}
+    {user && activeTab === 'qa' && <section className="admin-panel">{qaConvs.length === 0 ? <p className="kb-empty">暂无对话。</p> : <div className="admin-table"><div className="admin-row head"><span>最近活动</span><span>面试官</span><span>消息数</span><span></span></div>{qaConvs.map((c: any) => <div className="admin-conv" key={c.id}><div className="admin-row" onClick={() => openConv(c.id)} style={{ cursor: 'pointer' }}><span>{shortTime(c.updated_at)}</span><span>{c.user_email}</span><small>{c.message_count} 条</small><small>{openConvId === c.id ? '▼' : '▶'}</small></div>{openConvId === c.id && <div className="admin-conv-msgs">{openConvMessages.length === 0 ? <p className="kb-empty">加载中…</p> : openConvMessages.map((m: any) => <div className={`admin-msg ${m.role} ${m.is_offtopic ? 'offtopic' : ''}`} key={m.id}><div className="admin-msg-meta"><b>{m.role === 'user' ? '👤 用户' : '🤖 助手'}</b>{m.is_offtopic && <span className="kb-status indexed">越界拒答</span>}<small>{shortTime(m.created_at)}</small></div><pre>{m.content}</pre></div>)}</div>}</div>)}</div></section>}
+    {user && activeTab === 'kb' && <>{<section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>}<section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section></>}
   </main>;
 }
 

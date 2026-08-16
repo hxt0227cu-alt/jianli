@@ -33,3 +33,9 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .chat-panel .chat-foot{font-size:13px}
 .chat-panel .message-icon svg{width:28px;height:28px}
 .chat-panel .chat-context svg{width:20px;height:20px}
+/* 项目说明章节要点列表（深色 stage-screen 内） */
+.stage-copy .stage-points{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:12px;max-width:560px}
+.stage-copy .stage-points li{position:relative;padding-left:18px;color:#c0d8c3;font-size:14px;line-height:1.7}
+.blue .stage-copy .stage-points li{color:#c0d0e1}
+.stage-copy .stage-points li::before{content:'';position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:#9edb86}
+.blue .stage-copy .stage-points li::before{background:#9dc4ed}

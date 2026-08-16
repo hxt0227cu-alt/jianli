@@ -160,15 +160,20 @@ def test_model_query_misses_fallback_question_recovers(tmp_path: Path) -> None:
 
 
 def test_model_searches_but_no_hits_refuses(tmp_path: Path) -> None:
-    """Model calls the tool but nothing matches -> empty hits frame + off-topic refusal."""
-    service = _service(tmp_path, _FakeGateway(tool_query="量子纠缠"))
-    events = _collect(service, "量子纠缠原理", "projects", "jianli")
+    """Model calls the tool but nothing matches -> empty hits frame + off-topic refusal.
+
+    "今天天气" is the REJECT-corpus opener with zero CJK-token overlap against the
+    expanded jianli corpus (CJK single-char BM25 would otherwise false-positive on
+    common chars like 原/理, e.g. "量子纠缠原理" — observed when content.py grew).
+    """
+    service = _service(tmp_path, _FakeGateway(tool_query="今天天气"))
+    events = _collect(service, "今天天气怎么样？", "projects", "jianli")
     names = [name for name, _ in events]
     assert names[-1] == "answer.completed"
     completed = dict(events[-1][1])
     assert completed["grounded"] is False and completed["offtopic"] is True
     calls = next(d["calls"] for name, d in events if name == "answer.tool_calls")
-    assert calls[0]["query"] == "量子纠缠"
+    assert calls[0]["query"] == "今天天气"
     assert calls[0]["hits"] == []
     delta_text = "".join(d["text"] for name, d in events if name == "answer.delta")
     assert "不在我公开分享的范围" in delta_text

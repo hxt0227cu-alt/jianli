@@ -107,23 +107,42 @@ async function streamAnswer(
 const projects = {
   jianli: {
     label: '项目 01', name: 'AI 面试协作站', accent: 'green',
-    headline: '把简历、追问与面试预约做成一条可验证的产品链。',
+    headline: '把简历问答、项目追问与面试预约做成一条可验证的产品链。',
+    story: '先有约束，再有功能：面试场景下真实性优先——宁可不答，也绝不编造。',
     steps: [
-      { title: '产品入口', body: '简历问答 + 项目追问 + 面试预约，围绕招聘方的真实判断路径组织信息。', mark: '01' },
-      { title: 'Agent 边界', body: '模型只负责基于证据问答，预约写入始终经过确定性 UI 和后端事务。', mark: '02' },
-      { title: '可靠性设计', body: 'Slot 锁、Outbox、重试、退信和 SSE 恢复共同承载可审计的业务闭环。', mark: '03' },
+      {
+        title: '背景与问题', mark: '01',
+        summary: '面试初筛大量时间在重复确认基础经历；AI 问答天然幻觉，面试场景下编造=诚信风险。',
+        points: ['简历问答 + 项目追问 + 面试预约，覆盖技术岗初筛的信息确认全流程', '核心约束：真实性优先——越界/无依据问题一律拒答，绝不编造经历', '不是"为了做 RAG 而做 RAG"，而是意识到场景约束后的产品设计'],
+      },
+      {
+        title: '架构与选型', mark: '02',
+        summary: 'FastAPI + PostgreSQL(pgvector) + Redis + React，前后端契约先行；每个选型说清放弃了什么。',
+        points: ['FastAPI + SQLAlchemy + Alembic：0001-0007 迁移 11 张表，up→down→up 可逆', '放弃独立向量库（Milvus/Qdrant）：数据量 < 万条，pgvector 足够，独立部署运维收益为负', 'embedding 演进：本地哈希 → BGE-M3（1024 维），纯向量层 avg-rank 1.8 → 1.3', '会话用 Cookie + CSRF + Redis 限频，敏感字段 AES-256-GCM 加密，审计日志落库'],
+      },
+      {
+        title: 'Agent 与 RAG', mark: '03',
+        summary: '混合检索 + 双层拒答 + 模型自主决策调用只读工具，决策链 SSE 可观测。',
+        points: ['混合检索：向量 top10 + BM25 top10 → RRF 融合 top6；CJK 单字 BM25 对 embedding 退化鲁棒', '越界拒答双层门槛：向量阈值 0.47（数据校准）+ CJK 停用词过滤，拒答率 0% → 100%', 'Agent 工具化：search_knowledge 白名单只读工具，模型 function calling 自主生成检索词，决策链 SSE 帧可见；预约/写入端点绝不注册为工具', '双路召回：模型改写 query + 原问题对照，防次优改写丢证据'],
+      },
+      {
+        title: '工程化与证据', mark: '04',
+        summary: '评测先暴露缺陷再修复闭环；全部数字真实可复现，含一段诚实记录的踩坑史。',
+        points: ['RAG 评测（tests/aiqa/test_rag_eval.py，10 篇语料全链路）：LITERAL 8/8、REJECT 10/10、语义改写 6/6', '拒答率 0% → 100%（阈值引入前后）；BGE-M3 纯向量 avg-rank 1.3', '真实 PG16 + Redis7 集成测试 53+ passed；ruff/mypy 门禁全绿；SSE 恢复契约文档化', '真实踩坑：Agent 自主决策上线后评测 8/8→6/8→8/8，最终根因是 greeting 判定 "hi" 子串误匹配 "litchi"——诚实记录，不粉饰'],
+      },
     ],
   },
   sleep: {
     label: '项目 02', name: 'Sleep AIoT Agent', accent: 'blue',
     headline: '把睡眠健康场景做成受治理、可评估的 Agent 系统。',
+    story: '素材整理中，后续补充。',
     steps: [
       { title: '系统全景', body: 'React/Taro、NestJS、Python Agent、RAG、MQTT 与边缘设备形成纵向链路。', mark: '01' },
       { title: 'Agent 工作流', body: 'route → policy → finalize，工具按风险分级，高影响动作进入人工审批。', mark: '02' },
       { title: '可验证边界', body: '回归、RAG 评测和 Prompt Injection 防护都有独立证据，不把本地验证写成线上结果。', mark: '03' },
     ],
   },
-} satisfies Record<ProjectId, { label: string; name: string; accent: string; headline: string; steps: { title: string; body: string; mark: string }[] }>;
+} satisfies Record<ProjectId, { label: string; name: string; accent: string; headline: string; story: string; steps: { title: string; mark: string; summary?: string; points?: string[]; body?: string }[] }>;
 
 function HistoryRail({ page, onPage, user, conversations, onSelectConversation, onNewConversation }: { page: Page; onPage: (page: Page) => void; user: User | null; conversations: Conversation[]; onSelectConversation: (id: string) => void; onNewConversation: () => void }) {
   const shortDay = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
@@ -286,7 +305,7 @@ function ProjectView({ selected, onSelect, onInterview }: { selected: ProjectId;
   const project = projects[selected];
   const currentStep = project.steps[step];
   useEffect(() => { setStep(0); }, [selected]);
-  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>用播放式演示讲清楚项目。</h1><p>每个项目都按招聘方的阅读路径拆成几个可验证的章节，不把技术名词堆成清单。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label}</span><span>演示占位 · {currentStep.mark} / 03</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2><p>{currentStep.body}</p></div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一页</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 内容占位</span><p>后续可替换为项目架构图、页面录屏、成本估算和真实验证证据。</p></div></main>;
+  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>问题 → 踩坑 → 演进。</h1><p>{project.story}</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label} · {project.name}</span><span>{currentStep.mark} / {project.steps.length}</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2>{currentStep.summary ? <p>{currentStep.summary}</p> : <p>{currentStep.body}</p>}{currentStep.points ? <ul className="stage-points">{currentStep.points.map((point) => <li key={point}>{point}</li>)}</ul> : null}</div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一步</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>每个章节都可以直接在右侧追问细节——所有量化数字来自真实评测与测试，可复现。</p></div></main>;
 }
 
 function InterviewView() {

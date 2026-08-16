@@ -85,8 +85,10 @@ def build_pages() -> dict[str, PageContentData]:
     projects_jianli: dict[str, object] = {
         "heading": "个人 AI 问答网站（jianli）",
         "body": (
-            "面向个人的作品集站点：公开 RAG 问答（基于本人资料、越界拒答）、第一人称人格层、"
-            "动态面试表实时刷新、对话式面试预约代理。技术栈 FastAPI + PostgreSQL + Redis + React。"
+            "面向个人求职的作品集站点：公开 RAG 问答（基于本人资料、越界拒答、决策链 "
+            "SSE 可见）、第一人称人格层、动态面试表实时刷新、对话式面试预约代理。核心"
+            "约束是面试场景真实性优先，绝不编造经历。技术栈 FastAPI + PostgreSQL"
+            "(pgvector) + Redis + React + DeepSeek + BGE-M3。"
         ),
     }
     projects_sleep: dict[str, object] = {
@@ -98,8 +100,48 @@ def build_pages() -> dict[str, PageContentData]:
         *_chunk(
             "jianli",
             [
-                "jianli 是个人 AI 问答网站：公开 RAG 问答、人格层、面试表实时刷新与预约代理。",
-                "jianli 技术栈为 FastAPI + PostgreSQL + Redis + React，后端强调契约与幂等。",
+                (
+                    "jianli 是个人 AI 问答网站（本项目自身）：把简历问答、项目追问与面试"
+                    "预约做成一条可验证的产品链。核心约束是面试场景真实性优先——越界或无"
+                    "依据的问题一律拒答，绝不编造经历。"
+                ),
+                (
+                    "jianli 技术栈：FastAPI + SQLAlchemy + Alembic（0001-0007 迁移共 11 张表，"
+                    "up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7 + React 19/Vite 8 "
+                    "+ TypeScript；LLM 用 DeepSeek V4 Flash（chat），embedding 用硅基流动 "
+                    "BGE-M3（1024 维）。"
+                ),
+                (
+                    "jianli 混合检索：向量 top10 + BM25 top10 经 RRF 融合取 top6 作为引用；"
+                    "CJK 单字 BM25 索引对 embedding 退化鲁棒，语义向量优势须在纯向量层量化"
+                    "（BGE-M3 avg-rank 1.3 vs 本地哈希 1.8）。"
+                ),
+                (
+                    "jianli 越界拒答双层门槛：① 知识库向量相关性阈值 0.47（数据校准：拒答 "
+                    "top1 max 0.464 / 命中 min 0.463，接受边缘取舍）；② 静态检索加 CJK 停用词"
+                    "过滤，功能字不参与重叠计数。拒答率从 0% 提升到 100%（评测 REJECT 10/10）。"
+                ),
+                (
+                    "jianli Agent 工具化：search_knowledge 注册为白名单只读工具，模型通过 "
+                    "function calling 自主决策是否检索并生成检索词（tool_choice=auto）；决策"
+                    "链经 SSE answer.tool_calls 帧可观测；双路召回（模型 query + 原问题对照）"
+                    "防次优改写丢证据；预约/写入/管理端点绝不注册为模型工具。"
+                ),
+                (
+                    "jianli 评测闭环：tests/aiqa/test_rag_eval.py 基于真实语料（10 篇上传→"
+                    "分块→混合检索→streamAnswer 全链路）量化检索质量：LITERAL 8/8、REJECT "
+                    "10/10、语义/极端改写用例 6/6；评测先暴露缺陷（拒答率 0%）再驱动修复闭环。"
+                ),
+                (
+                    "jianli 业务闭环：Slot 快照与并发锁、3 分钟预览不预占、原子创建、字段级 "
+                    "AES-256-GCM 加密、Outbox 通知、审计日志、SSE 恢复契约；真实 PG16 + Redis7 "
+                    "集成测试 53+ passed，ruff/mypy 门禁全绿。"
+                ),
+                (
+                    "jianli 真实演进记录：embedding 从本地哈希换成 BGE-M3（哈希无语义）；"
+                    "Agent 模型自主决策上线后评测一度 8/8→6/8，最终根因是 greeting 判定里 "
+                    "'hi' 子串误匹配 'litchi'（改整词匹配修复）——诚实记录踩坑过程，不粉饰。"
+                ),
             ],
         ),
         *_chunk(

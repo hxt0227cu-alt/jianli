@@ -104,7 +104,10 @@ async function streamAnswer(
   }
 }
 
-const projects = {
+type ProjectStep = { title: string; mark: string; summary?: string; points?: string[]; body?: string };
+type ProjectInfo = { label: string; name: string; accent: string; headline: string; story: string; steps: ProjectStep[] };
+
+const projects: Record<ProjectId, ProjectInfo> = {
   jianli: {
     label: '项目 01', name: 'AI 面试协作站', accent: 'green',
     headline: '把简历问答、项目追问与面试预约做成一条可验证的产品链。',
@@ -142,7 +145,7 @@ const projects = {
       { title: '可验证边界', body: '回归、RAG 评测和 Prompt Injection 防护都有独立证据，不把本地验证写成线上结果。', mark: '03' },
     ],
   },
-} satisfies Record<ProjectId, { label: string; name: string; accent: string; headline: string; story: string; steps: { title: string; mark: string; summary?: string; points?: string[]; body?: string }[] }>;
+};
 
 function HistoryRail({ page, onPage, user, conversations, onSelectConversation, onNewConversation }: { page: Page; onPage: (page: Page) => void; user: User | null; conversations: Conversation[]; onSelectConversation: (id: string) => void; onNewConversation: () => void }) {
   const shortDay = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));

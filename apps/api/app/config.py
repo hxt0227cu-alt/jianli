@@ -42,6 +42,9 @@ class Settings(BaseModel):
     llm_api_key: SecretStr | None = None
     llm_model: str | None = None
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    # LLM gateway retry budget (P0-1, TASK-M6-HARDENING-001): transient 5xx/network
+    # failures are retried with exponential backoff up to this many attempts (>=1).
+    llm_max_retries: int = Field(default=3, ge=1, le=5)
     # Optional embedding gateway, independent of the chat LLM (TASK-DEPLOY-001). Providers
     # like DeepSeek expose chat but no /embeddings, so keeping these separate lets the
     # knowledge base keep working (deterministic local hash embedding) while chat uses the
@@ -125,6 +128,7 @@ class Settings(BaseModel):
             "llm_api_key": "JIANLI_LLM_API_KEY",
             "llm_model": "JIANLI_LLM_MODEL",
             "llm_timeout_seconds": "JIANLI_LLM_TIMEOUT_SECONDS",
+            "llm_max_retries": "JIANLI_LLM_MAX_RETRIES",
             "llm_embedding_base_url": "JIANLI_LLM_EMBEDDING_BASE_URL",
             "llm_embedding_api_key": "JIANLI_LLM_EMBEDDING_API_KEY",
             "llm_embedding_model": "JIANLI_LLM_EMBEDDING_MODEL",

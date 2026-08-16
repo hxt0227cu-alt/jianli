@@ -36,6 +36,7 @@ def build_aiqa_runtime(
         ),
         model=settings.llm_model,
         timeout=settings.llm_timeout_seconds,
+        max_retries=settings.llm_max_retries,
     )
     embedder = build_embedding_gateway(
         base_url=settings.llm_embedding_base_url,

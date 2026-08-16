@@ -22,8 +22,10 @@ import asyncio
 import hashlib
 import io
 import json
+import logging
+import time
 from collections.abc import AsyncIterator, Sequence
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
@@ -59,10 +61,16 @@ from .sse import (
 )
 from .storage import KnowledgeStorage
 
+logger = logging.getLogger("jianli.aiqa")
+
 _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
 _SUPPORTED_TYPES = {"md", "txt", "pdf"}
+# Multi-turn memory backfill (TASK-M6-HARDENING-001): inject at most this many of the most
+# recent prior messages as context. Bounded to keep the prompt from inflating; long
+# transcripts would need summarisation, which is deliberately out of scope for now.
+_MAX_HISTORY_MESSAGES = 6
 
 # Agent tooling (TASK-AGENT-TOOLS-002): the single whitelisted read-only tool. The model
 # decides whether to call it and generates its own `query` (tool_choice=auto); the service
@@ -109,6 +117,14 @@ def _extract_pdf_text(raw: bytes) -> str:
 
 def _format_context(candidates: list[Candidate]) -> str:
     return "\n".join(f"[{c.doc} #{c.fragment}] {c.text}" for c in candidates)
+
+
+def _add_usage(acc: dict[str, int], payload: dict[str, object]) -> None:
+    """Accumulate token usage across streaming phases (Phase1 tool-decision + Phase2 answer)."""
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = payload.get(key)
+        if isinstance(value, int):
+            acc[key] += value
 
 
 def _conversation_from(row: dict[str, Any]) -> Conversation:
@@ -324,6 +340,8 @@ class AnswerService:
             and self._repository is not None
         )
         trace_id = str(uuid4())
+        start = time.monotonic()
+        history: list[dict[str, str]] = []
         seq = 0
         answer_id = str(uuid4())
         yield started_frame(
@@ -339,6 +357,7 @@ class AnswerService:
                 and conversation_id is not None
                 and self._repository is not None
             )
+            history = await self._load_history(conversation_id)
             await asyncio.to_thread(
                 self._repository.append_message,
                 conversation_id,
@@ -352,6 +371,18 @@ class AnswerService:
 
         # Greeting first (no model round-trip, unchanged policy).
         if is_greeting(question):
+            latency_ms = int((time.monotonic() - start) * 1000)
+            logger.info(
+                "answer_greeting",
+                extra={
+                    "trace_id": trace_id,
+                    "conversation_id": str(conversation_id) if persist else None,
+                    "grounded": False,
+                    "offtopic": False,
+                    "model": _GREETING_CODE,
+                    "latency_ms": latency_ms,
+                },
+            )
             yield delta_frame(seq := seq + 1, GREETING_REPLY, trace_id)
             yield citations_frame(seq := seq + 1, [], trace_id)
             yield completed_frame(
@@ -381,15 +412,21 @@ class AnswerService:
         }
         messages1 = [
             {"role": "system", "content": build_system_prompt()},
+            *history,
             {"role": "user", "content": f"用户问题：{question}"},
         ]
         tool_request: dict[str, object] | None = None
+        usage_acc = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         try:
             async for kind, payload in self._gateway.answer(messages1, tools=_SEARCH_TOOLS):
-                if kind == "tool_call" and isinstance(payload, dict):
+                if kind == "usage" and isinstance(payload, dict):
+                    _add_usage(usage_acc, payload)
+                    continue
+                if kind == "tool_call" and isinstance(payload, dict) and tool_request is None:
                     tool_request = payload
-                    break
-        except GatewayError:
+                    continue
+        except GatewayError as error:
+            self._log_error(trace_id, conversation_id if persist else None, error)
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
 
@@ -413,6 +450,7 @@ class AnswerService:
             )
 
         if not candidates:
+            self._log_offtopic(trace_id, conversation_id if persist else None, start)
             yield tool_calls_frame(
                 seq := seq + 1,
                 [
@@ -452,6 +490,7 @@ class AnswerService:
         )
         messages2 = [
             {"role": "system", "content": build_system_prompt()},
+            *history,
             {
                 "role": "user",
                 "content": f"用户问题：{question}\n\n【已知资料】\n{_format_context(candidates)}",
@@ -459,11 +498,15 @@ class AnswerService:
         ]
         try:
             async for kind, payload in self._gateway.answer(messages2):
+                if kind == "usage" and isinstance(payload, dict):
+                    _add_usage(usage_acc, payload)
+                    continue
                 if kind != "delta" or not isinstance(payload, str):
                     continue
                 deltas.append(payload)
                 yield delta_frame(seq := seq + 1, payload, trace_id)
-        except GatewayError:
+        except GatewayError as error:
+            self._log_error(trace_id, conversation_id if persist else None, error)
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
         yield citations_frame(
@@ -471,12 +514,31 @@ class AnswerService:
             [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
             trace_id,
         )
+        usage_payload = (
+            cast("dict[str, object] | None", usage_acc)
+            if usage_acc["total_tokens"] > 0
+            else None
+        )
+        latency_ms = int((time.monotonic() - start) * 1000)
+        logger.info(
+            "answer_completed",
+            extra={
+                "trace_id": trace_id,
+                "conversation_id": str(conversation_id) if persist else None,
+                "grounded": True,
+                "offtopic": False,
+                "model": self._gateway.model_name,
+                "latency_ms": latency_ms,
+                "prompt_tokens": usage_acc["prompt_tokens"],
+                "completion_tokens": usage_acc["completion_tokens"],
+            },
+        )
         yield completed_frame(
             seq := seq + 1,
             grounded=True,
             offtopic=False,
             model=self._gateway.model_name,
-            usage=None,
+            usage=usage_payload,
             trace_id=trace_id,
         )
         if persist:
@@ -581,3 +643,49 @@ class AnswerService:
             now=now,
         )
         await asyncio.to_thread(self._repository.touch, conversation_id, now)
+
+    # -- multi-turn memory backfill (TASK-M6-HARDENING-001) -------------------------------
+
+    async def _load_history(self, conversation_id: UUID) -> list[dict[str, str]]:
+        """Most recent prior messages for context injection (bounded, see _MAX_HISTORY_MESSAGES).
+
+        Called before the current question is appended, so the history never includes the
+        in-flight question. Only role/content are surfaced to the model.
+        """
+        if self._repository is None:
+            return []
+        rows = await asyncio.to_thread(self._repository.list_messages, conversation_id)
+        return [
+            {"role": row["role"], "content": row["content"]}
+            for row in rows[-_MAX_HISTORY_MESSAGES:]
+        ]
+
+    # -- structured observability helpers (TASK-M6-HARDENING-001) -------------------------
+
+    def _log_error(
+        self, trace_id: str, conversation_id: UUID | None, error: Exception
+    ) -> None:
+        logger.error(
+            "answer_error",
+            extra={
+                "trace_id": trace_id,
+                "conversation_id": str(conversation_id) if conversation_id is not None else None,
+                "error_type": type(error).__name__,
+            },
+        )
+
+    def _log_offtopic(
+        self, trace_id: str, conversation_id: UUID | None, start: float
+    ) -> None:
+        latency_ms = int((time.monotonic() - start) * 1000)
+        logger.info(
+            "answer_offtopic",
+            extra={
+                "trace_id": trace_id,
+                "conversation_id": str(conversation_id) if conversation_id is not None else None,
+                "grounded": False,
+                "offtopic": True,
+                "model": _OFFTOPIC_CODE,
+                "latency_ms": latency_ms,
+            },
+        )

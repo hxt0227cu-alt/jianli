@@ -8,7 +8,24 @@ from datetime import UTC, datetime
 
 
 class JsonFormatter(logging.Formatter):
-    """Serialize only standard log metadata and the caller-provided event message."""
+    """Serialize standard log metadata plus caller-provided event message and optional fields.
+
+    Optional fields (trace_id / conversation_id / latency_ms / grounded / offtopic / model /
+    prompt_tokens / completion_tokens) are attached via ``logger.info(msg, extra={...})`` and
+    only emitted when present, so the schema stays fixed for plain events (TASK-M6-HARDENING-001).
+    """
+
+    _OPTIONAL_FIELDS = (
+        "trace_id",
+        "conversation_id",
+        "request_id",
+        "latency_ms",
+        "grounded",
+        "offtopic",
+        "model",
+        "prompt_tokens",
+        "completion_tokens",
+    )
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
@@ -17,6 +34,10 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "event": record.getMessage(),
         }
+        for key in self._OPTIONAL_FIELDS:
+            value = getattr(record, key, None)
+            if value is not None:
+                payload[key] = value
         return json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
 
 

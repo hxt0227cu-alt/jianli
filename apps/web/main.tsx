@@ -320,6 +320,8 @@ function InterviewView() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [csrf, setCsrf] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [busy, setBusy] = useState(false);
 
   const loadSlots = async () => {
@@ -362,6 +364,28 @@ function InterviewView() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : '登录失败'); } finally { setBusy(false); }
   };
 
+  const register = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    const data = new FormData(event.currentTarget);
+    try {
+      const response = await fetch('/auth/register', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email: data.get('email'), password: data.get('password') }) });
+      if (!response.ok) throw new Error((await response.json()).detail || '注册失败');
+      setNotice('注册申请已提交：验证邮件已发送，请查收邮箱并点击链接完成验证，再返回登录。');
+      setAuthMode('login');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '注册失败'); } finally { setBusy(false); }
+  };
+
+  const forgotPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError(''); setNotice('');
+    const data = new FormData(event.currentTarget);
+    try {
+      const response = await fetch('/auth/password-reset/request', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email: data.get('email') }) });
+      if (!response.ok) throw new Error((await response.json()).detail || '发送失败');
+      setNotice('重置链接已发送到你的邮箱（若账号存在）。请查收邮件操作。');
+      setAuthMode('login');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '发送失败'); } finally { setBusy(false); }
+  };
+
   const choose = (slot: Slot) => {
     const ordered = slots.filter((item) => shanghaiDay(item.start_at) === shanghaiDay(slot.start_at)).sort((a, b) => a.start_at.localeCompare(b.start_at));
     const index = ordered.findIndex((item) => item.id === slot.id);
@@ -398,7 +422,7 @@ function InterviewView() {
   return <main className="workspace interview-view"><div className="workspace-heading"><div><span className="eyebrow">INTERVIEW / 03</span><h1>预约一次有准备的交流。</h1><p>登录后选择真实可用时段，填写会议信息并在三分钟内确认。</p></div><span className="placeholder-badge">真实预约流程</span></div>
     <div className="booking-steps">{stages.map((item, index) => { const Icon = item.icon; return <div className={index === stageIndex ? 'booking-step active' : 'booking-step'} key={item.title}><span className="step-icon"><Icon size={18} /></span><div><small>STEP 0{index + 1}</small><b>{item.title}</b><p>{item.detail}</p></div></div>; })}</div>
     {error && <div className="booking-error">{error}</div>}
-    {step === 'login' && <section className="login-panel"><div><span className="eyebrow">SECURE SIGN IN</span><h2>面试官登录</h2><p>使用已验证账号进入预约日历。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><label className="check-row"><input name="remember" type="checkbox" /> 14 天内保持登录</label><button disabled={busy}>{busy ? '正在登录…' : '登录并查看时段'}</button></form></section>}
+    {step === 'login' && <section className="login-panel"><div><span className="eyebrow">{authMode === 'register' ? 'CREATE ACCOUNT' : authMode === 'forgot' ? 'RESET PASSWORD' : 'SECURE SIGN IN'}</span><h2>{authMode === 'register' ? '注册账号' : authMode === 'forgot' ? '找回密码' : '面试官登录'}</h2><p>{authMode === 'register' ? '注册后前往邮箱验证，即可预约面试。' : authMode === 'forgot' ? '输入注册邮箱，我们会发送重置链接。' : '使用已验证账号进入预约日历。'}</p></div>{notice && <div className="booking-success">{notice}</div>}{authMode === 'login' && <form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><label className="check-row"><input name="remember" type="checkbox" /> 14 天内保持登录</label><button disabled={busy}>{busy ? '正在登录…' : '登录并查看时段'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('register'); }}>没有账号？注册</button><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('forgot'); }}>忘记密码？</button></div></form>}{authMode === 'register' && <form onSubmit={register}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码（10-72 字符）<input name="password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={busy}>{busy ? '正在注册…' : '注册并发送验证邮件'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>已有账号？返回登录</button></div></form>}{authMode === 'forgot' && <form onSubmit={forgotPassword}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><button disabled={busy}>{busy ? '正在发送…' : '发送重置链接'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>返回登录</button></div></form>}</section>}
     {step === 'slots' && <section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 未来两周可预约时间</span><span className="muted">绿色可选 · 红色不可约 · 深红色为本人预约</span></div><div className="slot-grid">{dayGroups.map(([day, items]) => <div className="slot-day" key={day}><b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(items[0].start_at))}</b><div>{items.map((slot) => { const ownBooking = slot.status === 'booked' && slot.ownership === 'self'; const slotLabel = ownBooking ? '已预约（本人）' : slot.status === 'booked' ? '已预约' : ''; return <button key={slot.id} className={`${slot.status} ${ownBooking ? 'own-booking' : ''} ${selected.includes(slot.id) ? 'selected' : ''}`} disabled={slot.status !== 'available'} title={slotLabel || undefined} aria-label={slotLabel ? `${new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))} ${slotLabel}` : undefined} onClick={() => choose(slot)}>{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>; })}</div></div>)}</div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>账号</dt><dd>{user?.email}</dd></div><div><dt>时长</dt><dd>90 分钟</dd></div><div><dt>时间</dt><dd>{selectedSlots[0] ? `${new Date(selectedSlots[0].start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 起` : '尚未选择'}</dd></div></dl><button className="primary-command" disabled={selected.length !== 3} onClick={() => setStep('details')}>填写预约信息</button></aside></section>}
     {step === 'details' && <section className="details-panel"><button className="text-command" onClick={() => setStep('slots')}><ArrowLeft size={15} /> 返回选时</button><form onSubmit={submitDetails}><h2>填写会议信息</h2><div className="form-grid"><label>公司名称<input name="company_name" required maxLength={200} /></label><label>会议平台<input name="meeting_platform" defaultValue="腾讯会议" required /></label><label>会议号<input name="meeting_number" required /></label><label>联系人姓氏<input name="contact_last_name" required /></label><label>称呼<select name="contact_salutation"><option>老师</option><option>先生</option><option>女士</option></select></label><label>联系电话<input name="contact_phone" required /></label><label className="wide">备注<textarea name="notes" maxLength={2000} /></label></div><button className="primary-command" disabled={busy}>{busy ? '正在生成预览…' : '下一步：确认信息'}</button></form></section>}
     {step === 'confirm' && preview && <section className="confirm-panel"><span className="eyebrow">FINAL CHECK</span><h2>请确认预约信息</h2><p>确认链接有效至 {new Date(preview.expires_at).toLocaleTimeString('zh-CN')}，期间不预占时段。</p><dl><div><dt>公司</dt><dd>{preview.company_name}</dd></div><div><dt>收件邮箱</dt><dd>{preview.recipient_email}</dd></div><div><dt>称呼</dt><dd>{preview.salutation}</dd></div><div><dt>会议</dt><dd>{draft.meeting_platform} · {draft.meeting_number}</dd></div></dl><div className="confirm-actions"><button className="text-command" onClick={() => setStep('details')}>返回修改</button><button className="primary-command" disabled={busy} onClick={confirm}>{busy ? '正在提交…' : '确认预约'}</button></div></section>}
@@ -492,6 +516,38 @@ function App() {
   const [appts, setAppts] = useState<ApptSummary[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [urlAction, setUrlAction] = useState<{ kind: 'verify' | 'reset'; token: string } | null>(null);
+  const [actionNotice, setActionNotice] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+
+  // 邮箱验证 / 密码重置链接（M4）：/verify-email?token=…、/reset-password?token=…
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+    const path = window.location.pathname;
+    if (path.endsWith('/verify-email')) setUrlAction({ kind: 'verify', token });
+    else if (path.endsWith('/reset-password')) setUrlAction({ kind: 'reset', token });
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
+  const runUrlAction = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    if (!urlAction) return;
+    setActionBusy(true); setActionNotice('');
+    try {
+      const endpoint = urlAction.kind === 'verify' ? '/auth/verify-email' : '/auth/password-reset/confirm';
+      const body: Record<string, unknown> = { token: urlAction.token };
+      if (urlAction.kind === 'reset') {
+        const data = new FormData(event?.currentTarget);
+        body.new_password = String(data.get('new_password') || '');
+      }
+      const response = await fetch(endpoint, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error((await response.json()).detail || '操作失败');
+      setActionNotice(urlAction.kind === 'verify' ? '邮箱已验证，请返回登录。' : '密码已重置，请用新密码登录。');
+      setUrlAction(null);
+    } catch (reason) { setActionNotice(reason instanceof Error ? reason.message : '操作失败'); } finally { setActionBusy(false); }
+  };
 
   useEffect(() => {
     api<User>('/auth/me').then(async (me) => { setUser(me); const data = await api<{ items: Conversation[] }>('/conversations'); setConversations(data.items); }).catch(() => undefined);
@@ -506,7 +562,7 @@ function App() {
   };
   const content = page === 'dashboard' ? <DashboardView user={user} appts={appts} onNavigate={setPage} /> : page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
   const live = page === 'resume' || page === 'projects';
-  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} canPersist={user !== null} onConversationCreated={onConversationCreated} /></div></div>;
+  return <div className="app-shell">{urlAction && <div className="auth-overlay"><section className="login-panel"><div><span className="eyebrow">{urlAction.kind === 'verify' ? 'VERIFY EMAIL' : 'RESET PASSWORD'}</span><h2>{urlAction.kind === 'verify' ? '验证邮箱' : '设置新密码'}</h2><p>{urlAction.kind === 'verify' ? '点击确认即完成邮箱验证，然后返回登录。' : '输入新密码（10-72 字符）完成重置。'}</p></div>{actionNotice && <div className="booking-success">{actionNotice}</div>}{urlAction.kind === 'verify' ? <button className="primary-command" disabled={actionBusy} onClick={() => void runUrlAction()}>{actionBusy ? '验证中…' : '确认验证'}</button> : <form onSubmit={(event) => void runUrlAction(event)}><label>新密码<input name="new_password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={actionBusy}>{actionBusy ? '提交中…' : '重置密码'}</button></form>}</section></div>}<div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} canPersist={user !== null} onConversationCreated={onConversationCreated} /></div></div>;
 }
 
 export default App;

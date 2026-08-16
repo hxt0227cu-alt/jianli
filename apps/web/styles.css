@@ -39,3 +39,8 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .blue .stage-copy .stage-points li{color:#c0d0e1}
 .stage-copy .stage-points li::before{content:'';position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:#9edb86}
 .blue .stage-copy .stage-points li::before{background:#9dc4ed}
+/* 注册/找回/邮箱验证（2026-08-16 M4 前端补齐） */
+.booking-success{background:#e7f4e3;color:#3f7a4e;border:1px solid #cfe7c8;border-radius:6px;padding:10px 13px;font-size:13px;margin-bottom:14px;line-height:1.6}
+.auth-switch{display:flex;gap:14px;justify-content:center;margin-top:12px}
+.auth-overlay{position:fixed;inset:0;background:rgba(24,36,32,.45);display:grid;place-items:center;z-index:50;padding:20px}
+.auth-overlay .login-panel{width:min(420px,100%);background:#fff;border:1px solid #dde6de;border-radius:10px;padding:30px;box-shadow:0 18px 50px rgba(20,32,27,.25)}

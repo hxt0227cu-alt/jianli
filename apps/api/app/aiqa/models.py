@@ -14,7 +14,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 PageKey = Literal["resume", "projects"]
-ProjectKey = Literal["jianli", "sleep202603_an"]
+ProjectKey = Literal["jianli", "sleep202603_an", "litchi"]
 RecommendationSource = Literal["cache", "fallback"]
 
 

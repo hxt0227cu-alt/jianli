@@ -39,6 +39,15 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .blue .stage-copy .stage-points li{color:#c0d0e1}
 .stage-copy .stage-points li::before{content:'';position:absolute;left:0;top:9px;width:7px;height:7px;border-radius:50%;background:#9edb86}
 .blue .stage-copy .stage-points li::before{background:#9dc4ed}
+/* 荔枝问答平台（litchi）紫色主题，镜像 .blue 的 accent 覆盖 */
+.project-stage.purple{background:#f1ecf7;border-color:#ddd0ec}
+.purple .stage-screen{background:#3a2b59}
+.purple .stage-top{color:#c9b8e6}
+.purple .stage-number{color:#c4a0ed}
+.purple .stage-copy p{color:#c9c0e1}
+.purple .stage-copy .stage-points li{color:#c9c0e1}
+.purple .stage-copy .stage-points li::before{background:#c4a0ed}
+.purple .stage-progress button{border-color:#9c82b8}
 /* 注册/找回/邮箱验证（2026-08-16 M4 前端补齐） */
 .booking-success{background:#e7f4e3;color:#3f7a4e;border:1px solid #cfe7c8;border-radius:6px;padding:10px 13px;font-size:13px;margin-bottom:14px;line-height:1.6}
 .auth-switch{display:flex;gap:14px;justify-content:center;margin-top:12px}

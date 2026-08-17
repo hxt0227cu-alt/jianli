@@ -96,7 +96,11 @@ def build_pages() -> dict[str, PageContentData]:
         "heading": "睡眠分析（sleep202603_an）",
         "body": "一个睡眠数据可视化与分析原型，负责数据采集管道与前端看板。",
     }
-    projects_sections: list[dict[str, object]] = [projects_jianli, projects_sleep]
+    projects_litchi: dict[str, object] = {
+        "heading": "荔枝问答平台（litchi，毕设）",
+        "body": "上传文档后由真实语料补充，当前为占位。",
+    }
+    projects_sections: list[dict[str, object]] = [projects_jianli, projects_sleep, projects_litchi]
     projects_chunks = [
         *_chunk(
             "jianli",
@@ -151,6 +155,12 @@ def build_pages() -> dict[str, PageContentData]:
                 "sleep202603_an 是睡眠数据可视化与分析原型，负责采集管道与前端看板。",
             ],
         ),
+        *_chunk(
+            "litchi",
+            [
+                "litchi 荔枝问答平台：毕设项目，上传文档后由真实语料补充正文。",
+            ],
+        ),
     ]
 
     return {
@@ -175,6 +185,7 @@ def build_pages() -> dict[str, PageContentData]:
             recommendations=[
                 "介绍一下 jianli 这个项目的技术选型。",
                 "sleep202603_an 解决了什么问题？",
+                "荔枝问答平台（litchi）这个项目是做什么的？",
                 "你在项目里最得意的一个设计决策是什么？",
             ],
         ),

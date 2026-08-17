@@ -89,8 +89,8 @@
 - 是否偏离 TASK：否（Round-2 事实卡属同一 grounding 目标 amend，已更新允许/禁止清单与预算）
 - 规范影响结论：none（bug-fix 对齐既有规范）
 - spec_sync：clean
-- verified_commit：本提交（HEAD）
-- **关闭门禁**：① 全量重测严格 ✅ 26/26 ≥25 ✅；② 规范影响 none ✅；③ spec_sync=clean ✅；④ verified_commit 待提交。
+- verified_commit：`eba0103`（grounding 代码；同批 `9bbe4bd`=评测脚手架、`95ba3be`=页面二稿+实测证据+成本脚本收尾）
+- **关闭门禁**：① 全量重测严格 ✅ 26/26 ≥25 ✅；② 规范影响 none ✅；③ spec_sync=clean ✅；④ verified_commit 已记录（eba0103）✅。**全部满足，TASK 可关闭。**
 
 ## 关联
 - 上游：TASK-FACT-001（评测脚手架 + 实测 84.6%）

@@ -11,12 +11,13 @@
 #
 # 门禁语义（harness 工程核心：失败必须如实暴露，绝不静默通过）：
 #   - 硬门禁（失败 → 退出码非 0）：测试库就绪、pytest（基线对比：仅"新失败"判红）、
-#     ruff check、ruff format、mypy、pnpm test（前端单测）。
-#   - pytest 已知存量失败（test_management.py 等 12 例）已登记 PYTEST_BASELINE，
-#     仅如实上报、不阻断、不假装通过；新出现的失败才判红并记坑（回归哨兵）。
-#   - 已知存量问题（仅上报、不阻断）：pnpm typecheck / pnpm build —— 当前
-#     apps/web/main.tsx 存在预存语法错误（TS1005），属历史债务，非 harness 缺陷，
-#     见 docs/HARNESS.md「已知问题」。harness 如实上报，不假装通过。
+#     ruff check、ruff format、mypy、pnpm test（前端单测）、pnpm typecheck（前端类型检查）。
+#   - pytest 已知存量失败（原 12 例：test_management.py 9 例 + test_security / test_auth /
+#     test_app 各 1 例）已于 TASK-QA-CLEANUP-001 全部修复，PYTEST_BASELINE 已清零；
+#     现基线为空，任何失败（含旧用例回退）均判红并记坑（回归哨兵），不再有"已知存量"豁免。
+#   - 前端 apps/web/main.tsx 原预存 TS1005 语法错误已于同任务修复，pnpm typecheck 转绿并升级为
+#     硬门禁（失败即非零退出）；pnpm build 仍按"已知存量（仅上报不阻断）"处理——其失败源于 rolldown
+#     原生二进制未随依赖安装（与 TS1005 无关的环境问题），待依赖装齐后再转正。
 #
 # 退出码：0=硬门禁全过；非0=有硬门禁失败（并自动在 docs/devlog/pitfalls/ 记录）。
 
@@ -144,27 +145,18 @@ report_stage() {
   return 0
 }
 
-# ---- pytest 基线对比门禁（harness 工程核心：已知存量失败登记基线，新失败才判红）----
+# ---- pytest 基线对比门禁（harness 工程核心：基线为空时任何失败都判红）----
 # 跑全量 pytest → 提取失败/报错节点 → 与 PYTEST_BASELINE 比对：
 #   - 出现非基线的新失败 = 回归 → 硬门禁失败（自动记坑）。
-#   - 仅命中基线（已知历史债务）= 如实上报、不阻断、不假装通过（门禁对"在管代码"保持绿）。
+#   - 仅命中基线（历史债务豁免）= 如实上报、不阻断、不假装通过（门禁对"在管代码"保持绿）。
 #   - 基线中某用例消失（变绿）= 债务偿还提示，建议更新基线。
-# 基线用例属历史债务，不在本任务修改范围（AGENTS.md 禁止改 tests/** 行为），需单独
-# TASK 清理；harness 不修改、不 skip、不降低其断言。
-PYTEST_BASELINE=(
-  "tests/appointments/test_security.py::test_aes_gcm_random_nonce_and_aad_binding"
-  "tests/auth/test_auth.py::test_login_rejects_missing_origin_and_73_byte_password"
-  "tests/test_app.py::test_framework_openapi_endpoint_lists_public_paths"
-  "tests/appointments/test_management.py::test_list_my_returns_only_own_active_appointments"
-  "tests/appointments/test_management.py::test_update_meeting_number_reencrypts_and_bumps_version"
-  "tests/appointments/test_management.py::test_reschedule_atomically_swaps_slots"
-  "tests/appointments/test_management.py::test_cancel_releases_slots_and_sets_cancelled"
-  "tests/appointments/test_management.py::test_cancel_others_appointment_is_forbidden"
-  "tests/appointments/test_management.py::test_update_version_mismatch_conflict"
-  "tests/appointments/test_management.py::test_reschedule_slot_taken_keeps_original"
-  "tests/appointments/test_management.py::test_cancel_is_idempotent_when_already_cancelled"
-  "tests/appointments/test_management.py::test_reschedule_two_transactions_race_for_slots"
-)
+# 当前 PYTEST_BASELINE 为空（原 12 例存量失败已于 TASK-QA-CLEANUP-001 全部修复清零），
+# 故任何失败均判红。harness 不修改、不 skip、不降低断言；若确有需豁免的回归，须先走
+# Change Request 与独立 TASK，再登记基线，不得静默放行。
+# 原 12 例已知存量失败已于 TASK-QA-CLEANUP-001 全部修复并清零；现基线为空。
+# 机制保留：若未来需临时登记"已知不阻断"失败，可在此数组追加节点 ID，
+# 其余逻辑（comm 比对、新失败判红、旧用例回退提示）不变。
+PYTEST_BASELINE=( )
 
 pytest_gate() {
   local out actual baseline_set new_fail known resolved n m
@@ -214,11 +206,11 @@ else
   run_stage "mypy" "$VENV" -m mypy
 fi
 
-# 前端（pnpm）：单测为硬门禁；typecheck/build 为已知存量（main.tsx 预存语法错误）
+# 前端（pnpm）：单测 + typecheck 为硬门禁；build 仍仅上报（rolldown 原生二进制环境依赖）
 if [[ "$QUICK" -eq 0 ]] && command -v pnpm >/dev/null 2>&1; then
   cd "$ROOT" || exit 1
   run_stage "pnpm test" pnpm test
-  report_stage "pnpm typecheck" pnpm typecheck
+  run_stage "pnpm typecheck" pnpm typecheck
   report_stage "pnpm build" pnpm build
 else
   echo ""

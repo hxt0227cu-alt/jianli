@@ -501,8 +501,69 @@ function AdminView() {
       { label: '活跃 interviewer', value: stats.totals.active_users, tone: 'gray' },
       { label: '拒答数', value: `${stats.totals.offtopic_messages}（${(stats.totals.offtopic_rate * 100).toFixed(1)}%）`, tone: 'gray' },
     ].map((stat) => <div className={`dash-stat ${stat.tone}`} key={stat.label}><b>{stat.value}</b><span>{stat.label}</span></div>)}</div>}{<section className="admin-panel"><span className="eyebrow">NEAR 7 DAYS</span><h3>近 7 天每日消息量</h3>{stats.recent_7d.length === 0 ? <p className="kb-empty">近 7 天无消息。</p> : <ul className="bars">{(() => { const max = Math.max(...stats.recent_7d.map((d: any) => d.message_count)); return stats.recent_7d.map((d: any) => <li key={d.day}><span className="bar-label">{d.day}</span><span className="bar-track"><span className="bar-fill" style={{ width: `${(d.message_count / max) * 100}%` }} /></span><b>{d.message_count}</b></li>); })()}</ul>}</section>}{<section className="admin-panel"><span className="eyebrow">TOP INTERVIEWERS</span><h3>对话数 Top 10</h3>{stats.by_user.length === 0 ? <p className="kb-empty">暂无数据。</p> : <ol className="admin-rank">{stats.by_user.map((row: any, i: number) => <li key={row.email}><b>#{i + 1}</b><span>{row.email}</span><small>{row.conversation_count} 个对话</small></li>)}</ol>}</section>}</>}</section>}
-    {user && activeTab === 'appointments' && <section className="admin-panel">{allAppts.length === 0 ? <p className="kb-empty">暂无预约。</p> : <div className="admin-table"><div className="admin-row head"><span>时间</span><span>面试官</span><span>公司</span><span>会议</span><span>状态</span></div>{allAppts.map((item: any) => <div className={`admin-row ${item.status}`} key={item.id}><span>{shortTime(item.start_at)}</span><span>{item.user_email}</span><b>{item.company_name}</b><small>{item.meeting_platform} · {item.meeting_number}</small><span className={`kb-status ${item.status}`}>{item.status}</span></div>)}</div></section>}
-    {user && activeTab === 'qa' && <section className="admin-panel">{qaConvs.length === 0 ? <p className="kb-empty">暂无对话。</p> : <div className="admin-table"><div className="admin-row head"><span>最近活动</span><span>面试官</span><span>消息数</span><span></span></div>{qaConvs.map((c: any) => <div className="admin-conv" key={c.id}><div className="admin-row" onClick={() => openConv(c.id)} style={{ cursor: 'pointer' }}><span>{shortTime(c.updated_at)}</span><span>{c.user_email}</span><small>{c.message_count} 条</small><small>{openConvId === c.id ? '▼' : '▶'}</small></div>{openConvId === c.id && <div className="admin-conv-msgs">{openConvMessages.length === 0 ? <p className="kb-empty">加载中…</p> : openConvMessages.map((m: any) => <div className={`admin-msg ${m.role} ${m.is_offtopic ? 'offtopic' : ''}`} key={m.id}><div className="admin-msg-meta"><b>{m.role === 'user' ? '👤 用户' : '🤖 助手'}</b>{m.is_offtopic && <span className="kb-status indexed">越界拒答</span>}<small>{shortTime(m.created_at)}</small></div><pre>{m.content}</pre></div>)}</div>}</div>)}</div></section>}
+    {user && activeTab === 'appointments' && (
+      <section className="admin-panel">
+        {allAppts.length === 0 ? (
+          <p className="kb-empty">暂无预约。</p>
+        ) : (
+          <div className="admin-table">
+            <div className="admin-row head">
+              <span>时间</span><span>面试官</span><span>公司</span><span>会议</span><span>状态</span>
+            </div>
+            {allAppts.map((item: any) => (
+              <div className={`admin-row ${item.status}`} key={item.id}>
+                <span>{shortTime(item.start_at)}</span>
+                <span>{item.user_email}</span>
+                <b>{item.company_name}</b>
+                <small>{item.meeting_platform} · {item.meeting_number}</small>
+                <span className={`kb-status ${item.status}`}>{item.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )}
+    {user && activeTab === 'qa' && (
+      <section className="admin-panel">
+        {qaConvs.length === 0 ? (
+          <p className="kb-empty">暂无对话。</p>
+        ) : (
+          <div className="admin-table">
+            <div className="admin-row head">
+              <span>最近活动</span><span>面试官</span><span>消息数</span><span></span>
+            </div>
+            {qaConvs.map((c: any) => (
+              <div className="admin-conv" key={c.id}>
+                <div className="admin-row" onClick={() => openConv(c.id)} style={{ cursor: 'pointer' }}>
+                  <span>{shortTime(c.updated_at)}</span>
+                  <span>{c.user_email}</span>
+                  <small>{c.message_count} 条</small>
+                  <small>{openConvId === c.id ? '▼' : '▶'}</small>
+                </div>
+                {openConvId === c.id && (
+                  <div className="admin-conv-msgs">
+                    {openConvMessages.length === 0 ? (
+                      <p className="kb-empty">加载中…</p>
+                    ) : (
+                      openConvMessages.map((m: any) => (
+                        <div className={`admin-msg ${m.role} ${m.is_offtopic ? 'offtopic' : ''}`} key={m.id}>
+                          <div className="admin-msg-meta">
+                            <b>{m.role === 'user' ? '👤 用户' : '🤖 助手'}</b>
+                            {m.is_offtopic && <span className="kb-status indexed">越界拒答</span>}
+                            <small>{shortTime(m.created_at)}</small>
+                          </div>
+                          <pre>{m.content}</pre>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )}
     {user && activeTab === 'kb' && <>{<section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>}<section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section></>}
   </main>;
 }

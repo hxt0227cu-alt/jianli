@@ -29,7 +29,7 @@ def test_factory_uses_settings_and_mounts_only_public_routes() -> None:
 
 @pytest.mark.asyncio
 async def test_framework_openapi_endpoint_lists_public_paths() -> None:
-    app = create_app()
+    app = create_app(Settings(app_title="Test API", app_version="9.9.9"))
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/openapi.json")

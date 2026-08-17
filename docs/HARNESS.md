@@ -49,8 +49,8 @@ bash scripts/verify.sh --tc
 
 ### 门禁语义（harness 工程核心：失败必须如实暴露，绝不静默通过）
 
-- **硬门禁（失败 → 退出码非 0）**：测试库就绪、`pytest`、`ruff check`、`ruff format`（harness 自有文件）、`mypy`、`pnpm test`（前端单测）。
-- **已知存量问题（仅上报、不阻断）**：`pnpm typecheck` / `pnpm build`。当前 `apps/web/main.tsx` 存在**预存语法错误**（`TS1005: '}' expected`，约 515–516 行），属历史债务、非 harness 缺陷，见下方「已知问题」。harness 如实上报，不假装通过，也不让它阻塞后端评测。
+- **硬门禁（失败 → 退出码非 0）**：测试库就绪、`pytest`、`ruff check`、`ruff format`（harness 自有文件）、`mypy`、`pnpm test`（前端单测）、`pnpm typecheck`（前端类型检查）。
+- **已知存量问题（仅上报、不阻断）**：`pnpm build`。`apps/web/main.tsx` 原**预存语法错误**（`TS1005: '}' expected`，原约 515–516 行，实为 504/505 两行超长 JSX 触发的 tsc 行长解析上限）已于 TASK-QA-CLEANUP-001 修复，`pnpm typecheck` 已转绿并升级为硬门禁；`pnpm build` 失败源于 rolldown 原生二进制（`@rolldown/binding-*`）未随依赖安装，与 TS1005 无关的环境问题，仍仅上报不阻断，待依赖装齐后再转正。harness 如实上报，不假装通过。
 - `ruff format --check` 仅作用于 harness 自有文件（`scripts/record_pit.py`、`apps/api/tests/conftest.py`、`apps/api/scripts/harness_setup_db.py`），**不强制存量 `app/**` 代码**达到 ruff format 标准（那些文件属本任务禁止修改路径，且历史未格式化）。`ruff check` 跑全量（存量代码 ruff-clean）。
 - 缺失的已声明依赖 `python-multipart` 会由 `verify.sh` 自检并安装到 venv（WSL venv 历史缺口），不阻塞。
 
@@ -118,4 +118,4 @@ bash scripts/devlog.sh --save    # 同时写 docs/devlog/DEVLOG-YYYY-MM-DD.md
 - 本环境 Git Bash 的 `rm` 被 safe-delete 拦截 → **删文件走 `wsl rm -f`**（见 `windows-rm-via-wsl`）。
 - `.env.local` 为 CRLF → 任何加载脚本先 `sed 's/\r$//'`（见 `source-env-strip-crlf`）。
 - 缺失已声明依赖 `python-multipart` → `verify.sh` 自检并 `pip install`（WSL venv 历史缺口；缺它 pytest 在路由注册阶段报 `Form data requires "python-multipart"`），见 `python-multipart-missing-in-venv`。
-- **前端 `apps/web/main.tsx` 预存语法错误**（`TS1005: '}' expected`，约 515–516 行）→ `pnpm build`/`typecheck` 恒红，属历史债务、非 harness 缺陷；`verify.sh` 仅上报不阻断，`pnpm test`(vitest) 仍正常。该问题独立于本 harness，需单独 TASK 修复。
+- **前端 `apps/web/main.tsx` 预存语法错误（已解决）**：原 `TS1005: '}' expected'`（约 515–516 行）实为 504/505 两行超长单行 JSX（616/1057 字符）触发的 tsc 行长解析上限，代码本身合法（esbuild 可解析）。TASK-QA-CLEANUP-001 已将其拆分为多行 JSX，`pnpm typecheck` / `tsc --noEmit` 现均 0 错误；`pnpm build` 与 `pnpm test`(vitest v4 内部依赖 rolldown) 同源——二者仅在 WSL（rolldown 原生二进制 `@rolldown/binding-*` 齐备）下正常，本机原生 Git Bash 因缺失该原生二进制无法启动（vitest 报 `Cannot find native binding @rolldown/binding-wasm32-wasi`）。均属环境依赖问题，非代码缺陷；harness 目标运行环境为 WSL。

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 import os
 from datetime import UTC, datetime
 from typing import Any, cast
+from unittest import mock
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
@@ -395,80 +397,98 @@ async def test_cors_allows_only_configured_credentials_origin(passwords: Passwor
 
 @pytest.mark.asyncio
 async def test_login_rejects_missing_origin_and_73_byte_password(
-    passwords: PasswordHasher, caplog: pytest.LogCaptureFixture
+    passwords: PasswordHasher,
 ) -> None:
     runtime, _, _ = build_memory_runtime(passwords)
     app = create_app(Settings(), runtime)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
-        missing_origin = await client.post(
-            "/auth/login",
-            json={
-                "email": "person@example.invalid",
-                "password": "correct-password",
-                "remember_me": False,
-            },
-        )
-        assert missing_origin.status_code == 403
-        overlong_password = "sensitive-" + "a" * 64
-        overlong = await client.post(
-            "/auth/login",
-            headers={"Origin": ORIGIN},
-            json={
-                "email": "person@example.invalid",
-                "password": overlong_password,
-                "remember_me": False,
-            },
-        )
-        assert overlong.status_code == 422
-        assert overlong.headers["content-type"].startswith("application/problem+json")
-        assert overlong.json()["code"] == "INVALID_REQUEST"
-        assert overlong_password not in overlong.text
-        multibyte_overlong = await client.post(
-            "/auth/login",
-            headers={"Origin": ORIGIN},
-            json={"email": "person@example.invalid", "password": "密" * 25, "remember_me": False},
-        )
-        assert multibyte_overlong.status_code == 422
-        assert multibyte_overlong.json()["code"] == "INVALID_REQUEST"
-        invalid = await client.post(
-            "/auth/login",
-            headers={"Origin": ORIGIN},
-            json={
-                "email": "person@example.invalid",
-                "password": "wrong-password",
-                "remember_me": False,
-            },
-        )
-        assert invalid.status_code == 401
-        assert invalid.headers["content-type"].startswith("application/problem+json")
-        assert invalid.json()["code"] == "INVALID_CREDENTIALS"
-        missing = await client.post(
-            "/auth/login",
-            headers={"Origin": ORIGIN},
-            json={
-                "email": "missing@example.invalid",
-                "password": "wrong-password",
-                "remember_me": False,
-            },
-        )
-        assert missing.status_code == 401
-        comparable_fields = ("type", "title", "status", "code", "detail")
-        assert {key: invalid.json()[key] for key in comparable_fields} == {
-            key: missing.json()[key] for key in comparable_fields
-        }
-        event = next(
-            record.getMessage()
-            for record in reversed(caplog.records)
-            if record.name == "jianli.security.auth"
-            and '"event":"auth_account_failure"' in record.getMessage()
-        )
-        assert '"event":"auth_account_failure"' in event
-        assert '"account_id":"unknown"' not in event
-        assert "person@example.invalid" not in event
 
-        client.cookies.set(SESSION_COOKIE, "not-a-valid-session")
-        malformed = await client.get("/auth/me")
-        assert malformed.status_code == 401
+    # Intercept the security logger's ``warning`` call directly. This is immune to logging
+    # configuration: ``configure_logging`` flips ``jianli.propagate`` to False (and may leave
+    # child loggers disabled) when the database is configured, and pytest's logging plugin can
+    # also disable loggers — none of which affects an intercepted call. We only assert on the
+    # emitted event string, which is exactly the contract the production code logs.
+    captured: list[str] = []
+    auth_logger = logging.getLogger("jianli.security.auth")
+
+    def _capture(msg: str, *args: object, **_kwargs: object) -> None:
+        captured.append(msg % args if args else msg)
+
+    with mock.patch.object(auth_logger, "warning", side_effect=_capture):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
+            missing_origin = await client.post(
+                "/auth/login",
+                json={
+                    "email": "person@example.invalid",
+                    "password": "correct-password",
+                    "remember_me": False,
+                },
+            )
+            assert missing_origin.status_code == 403
+            overlong_password = "sensitive-" + "a" * 64
+            overlong = await client.post(
+                "/auth/login",
+                headers={"Origin": ORIGIN},
+                json={
+                    "email": "person@example.invalid",
+                    "password": overlong_password,
+                    "remember_me": False,
+                },
+            )
+            assert overlong.status_code == 422
+            assert overlong.headers["content-type"].startswith("application/problem+json")
+            assert overlong.json()["code"] == "INVALID_REQUEST"
+            assert overlong_password not in overlong.text
+            multibyte_overlong = await client.post(
+                "/auth/login",
+                headers={"Origin": ORIGIN},
+                json={
+                    "email": "person@example.invalid",
+                    "password": "密" * 25,
+                    "remember_me": False,
+                },
+            )
+            assert multibyte_overlong.status_code == 422
+            assert multibyte_overlong.json()["code"] == "INVALID_REQUEST"
+            invalid = await client.post(
+                "/auth/login",
+                headers={"Origin": ORIGIN},
+                json={
+                    "email": "person@example.invalid",
+                    "password": "wrong-password",
+                    "remember_me": False,
+                },
+            )
+            assert invalid.status_code == 401
+            assert invalid.headers["content-type"].startswith("application/problem+json")
+            assert invalid.json()["code"] == "INVALID_CREDENTIALS"
+            missing = await client.post(
+                "/auth/login",
+                headers={"Origin": ORIGIN},
+                json={
+                    "email": "missing@example.invalid",
+                    "password": "wrong-password",
+                    "remember_me": False,
+                },
+            )
+            assert missing.status_code == 401
+            comparable_fields = ("type", "title", "status", "code", "detail")
+            assert {key: invalid.json()[key] for key in comparable_fields} == {
+                key: missing.json()[key] for key in comparable_fields
+            }
+            failure_messages = [
+                message
+                for message in captured
+                if '"event":"auth_account_failure"' in message
+            ]
+            assert failure_messages
+            event = failure_messages[-1]
+            assert '"event":"auth_account_failure"' in event
+            assert '"account_id":"unknown"' not in event
+            assert "person@example.invalid" not in event
+
+            client.cookies.set(SESSION_COOKIE, "not-a-valid-session")
+            malformed = await client.get("/auth/me")
+            assert malformed.status_code == 401
 
 
 DATABASE_URL = os.environ.get("JIANLI_AUTH_TEST_DATABASE_URL")

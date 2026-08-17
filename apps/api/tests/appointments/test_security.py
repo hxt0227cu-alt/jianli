@@ -4,6 +4,7 @@ import base64
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
+from unittest import mock
 from uuid import uuid4
 
 import pytest
@@ -49,7 +50,7 @@ def test_key_material_requires_canonical_urlsafe_base64(invalid_key: str) -> Non
         FieldCipher("current", {"current": invalid_key})
 
 
-def test_aes_gcm_random_nonce_and_aad_binding(caplog: pytest.LogCaptureFixture) -> None:
+def test_aes_gcm_random_nonce_and_aad_binding() -> None:
     cipher = FieldCipher("current", {"current": _encoded_key()})
     record_id = uuid4()
     first = cipher.encrypt("secret", "appointments", "notes_ciphertext", record_id)
@@ -57,13 +58,26 @@ def test_aes_gcm_random_nonce_and_aad_binding(caplog: pytest.LogCaptureFixture) 
 
     assert first != second
     assert cipher.decrypt(first, "appointments", "notes_ciphertext", record_id) == "secret"
+
+    # Intercept the security logger's ``warning`` call directly. This is immune to logging
+    # configuration: ``configure_logging`` flips ``jianli.propagate`` to False (and may leave
+    # child loggers disabled) when the database is configured, and pytest's logging plugin can
+    # also disable loggers — none of which affects an intercepted call. We only assert on the
+    # emitted event string, which is exactly the contract the production code logs.
+    captured: list[str] = []
+    security_logger = logging.getLogger("jianli.security.booking")
+
+    def _capture(msg: str, *args: object, **_kwargs: object) -> None:
+        captured.append(msg % args if args else msg)
+
     with (
-        caplog.at_level(logging.WARNING, logger="jianli.security.booking"),
+        mock.patch.object(security_logger, "warning", side_effect=_capture),
         pytest.raises(BookingCryptoError),
     ):
         cipher.decrypt(first, "appointments", "contact_ciphertext", record_id)
-    assert "decrypt_failed" in caplog.text
-    assert "secret" not in caplog.text
+    joined = "\n".join(captured)
+    assert "decrypt_failed" in joined
+    assert "secret" not in joined
 
 
 def test_key_ring_is_current_write_and_current_previous_read() -> None:

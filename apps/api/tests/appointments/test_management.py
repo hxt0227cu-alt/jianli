@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -14,6 +15,13 @@ from .test_booking import (  # noqa: F401
     _seed_slots,
     _seed_user,
     real_stack,
+)
+
+DATABASE_URL = os.environ.get("JIANLI_BOOKING_TEST_DATABASE_URL")
+REDIS_URL = os.environ.get("JIANLI_BOOKING_TEST_REDIS_URL")
+
+pytestmark = pytest.mark.skipif(
+    not DATABASE_URL or not REDIS_URL, reason="real PostgreSQL and Redis are required"
 )
 
 
@@ -38,9 +46,10 @@ async def test_list_my_returns_only_own_active_appointments(real_stack) -> None:
     engine, _, app, settings = real_stack
     owner = _seed_user(engine)
     other = _seed_user(engine)
-    async with _authorized_client(app, engine, settings, owner) as client, _authorized_client(
-        app, engine, settings, other
-    ) as other_client:
+    async with (
+        _authorized_client(app, engine, settings, owner) as client,
+        _authorized_client(app, engine, settings, other) as other_client,
+    ):
         own_id, _ = await _create_appointment(
             client, engine, datetime(2030, 6, 3, 3, 0, tzinfo=UTC)
         )
@@ -111,27 +120,34 @@ async def test_reschedule_atomically_swaps_slots(real_stack) -> None:
     assert response.status_code == 200
     assert response.json()["version"] == 2
     with engine.connect() as connection:
-        old_status = connection.execute(
-            text(
-                "SELECT status::text FROM appointment_slots "
-                "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
-            ),
-            {"ids": old_slots},
-        ).scalars().all()
-        new_rows = connection.execute(
-            text(
-                "SELECT status::text,appointment_id FROM appointment_slots "
-                "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
-            ),
-            {"ids": new_slots},
-        ).mappings().all()
+        old_status = (
+            connection.execute(
+                text(
+                    "SELECT status::text FROM appointment_slots "
+                    "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
+                ),
+                {"ids": old_slots},
+            )
+            .scalars()
+            .all()
+        )
+        new_rows = (
+            connection.execute(
+                text(
+                    "SELECT status::text,appointment_id FROM appointment_slots "
+                    "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
+                ),
+                {"ids": new_slots},
+            )
+            .mappings()
+            .all()
+        )
         start_at = connection.execute(
             text("SELECT start_at FROM appointments WHERE id=:id"), {"id": appointment_id}
         ).scalar_one()
     assert all(status == "available" for status in old_status)
     assert all(
-        row["status"] == "booked" and row["appointment_id"] == appointment_id
-        for row in new_rows
+        row["status"] == "booked" and row["appointment_id"] == appointment_id for row in new_rows
     )
     assert start_at == datetime(2030, 7, 6, 3, 0, tzinfo=UTC)
 
@@ -149,24 +165,36 @@ async def test_cancel_releases_slots_and_sets_cancelled(real_stack) -> None:
         )
     assert response.status_code == 204
     with engine.connect() as connection:
-        status = connection.execute(
-            text(
-                "SELECT status::text FROM appointment_slots "
-                "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
-            ),
-            {"ids": slots},
-        ).scalars().all()
-        appointment = connection.execute(
-            text("SELECT status::text,cancelled_at FROM appointments WHERE id=:id"),
-            {"id": appointment_id},
-        ).mappings().one()
-        cancelled_events = connection.execute(
-            text(
-                "SELECT status::text FROM notification_events "
-                "WHERE biz_id=:id AND type='appointment_cancelled'"
-            ),
-            {"id": appointment_id},
-        ).scalars().all()
+        status = (
+            connection.execute(
+                text(
+                    "SELECT status::text FROM appointment_slots "
+                    "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
+                ),
+                {"ids": slots},
+            )
+            .scalars()
+            .all()
+        )
+        appointment = (
+            connection.execute(
+                text("SELECT status::text,cancelled_at FROM appointments WHERE id=:id"),
+                {"id": appointment_id},
+            )
+            .mappings()
+            .one()
+        )
+        cancelled_events = (
+            connection.execute(
+                text(
+                    "SELECT status::text FROM notification_events "
+                    "WHERE biz_id=:id AND type='appointment_cancelled'"
+                ),
+                {"id": appointment_id},
+            )
+            .scalars()
+            .all()
+        )
     assert all(slot == "available" for slot in status)
     assert appointment["status"] == "cancelled" and appointment["cancelled_at"] is not None
     assert cancelled_events == ["pending"]
@@ -177,9 +205,10 @@ async def test_cancel_others_appointment_is_forbidden(real_stack) -> None:
     engine, _, app, settings = real_stack
     owner = _seed_user(engine)
     intruder = _seed_user(engine)
-    async with _authorized_client(app, engine, settings, owner) as owner_client, _authorized_client(
-        app, engine, settings, intruder
-    ) as intruder_client:
+    async with (
+        _authorized_client(app, engine, settings, owner) as owner_client,
+        _authorized_client(app, engine, settings, intruder) as intruder_client,
+    ):
         appointment_id, _ = await _create_appointment(
             owner_client, engine, datetime(2030, 6, 8, 3, 0, tzinfo=UTC)
         )
@@ -212,9 +241,10 @@ async def test_reschedule_slot_taken_keeps_original(real_stack) -> None:
     engine, _, app, settings = real_stack
     owner = _seed_user(engine)
     rival = _seed_user(engine)
-    async with _authorized_client(app, engine, settings, owner) as owner_client, _authorized_client(
-        app, engine, settings, rival
-    ) as rival_client:
+    async with (
+        _authorized_client(app, engine, settings, owner) as owner_client,
+        _authorized_client(app, engine, settings, rival) as rival_client,
+    ):
         appointment_id, _ = await _create_appointment(
             owner_client, engine, datetime(2030, 6, 10, 3, 0, tzinfo=UTC)
         )
@@ -229,17 +259,25 @@ async def test_reschedule_slot_taken_keeps_original(real_stack) -> None:
     assert response.status_code == 409
     assert response.json()["code"] == "SLOT_TAKEN"
     with engine.connect() as connection:
-        appointment = connection.execute(
-            text("SELECT status::text,version FROM appointments WHERE id=:id"),
-            {"id": appointment_id},
-        ).mappings().one()
-        target_status = connection.execute(
-            text(
-                "SELECT status::text FROM appointment_slots "
-                "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
-            ),
-            {"ids": target},
-        ).scalars().all()
+        appointment = (
+            connection.execute(
+                text("SELECT status::text,version FROM appointments WHERE id=:id"),
+                {"id": appointment_id},
+            )
+            .mappings()
+            .one()
+        )
+        target_status = (
+            connection.execute(
+                text(
+                    "SELECT status::text FROM appointment_slots "
+                    "WHERE id=ANY(CAST(:ids AS uuid[])) ORDER BY id"
+                ),
+                {"ids": target},
+            )
+            .scalars()
+            .all()
+        )
     assert appointment["status"] == "active" and appointment["version"] == 1
     assert all(status == "booked" for status in target_status)
 

@@ -107,7 +107,7 @@ def build_pages() -> dict[str, PageContentData]:
                     "依据的问题一律拒答，绝不编造经历。"
                 ),
                 (
-                    "jianli 技术栈：FastAPI + SQLAlchemy + Alembic（0001-0007 迁移共 11 张表，"
+                    "jianli 技术栈：FastAPI + SQLAlchemy + Alembic（0001-0007 迁移共 15 张表，"
                     "up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7 + React 19/Vite 8 "
                     "+ TypeScript；LLM 用 DeepSeek V4 Flash（chat），embedding 用硅基流动 "
                     "BGE-M3（1024 维）。"

@@ -33,6 +33,7 @@
 - 不引入未跟踪的真实交付文件
 
 ## 状态
-- status: in_progress
-- 创建 commit: （待提交）
-- verified_commit: （待回填）
+- status: completed
+- 创建 commit: cf77b845ed3cbafec304be9228657d881a0d3f84
+- verified_commit: cf77b845ed3cbafec304be9228657d881a0d3f84
+- 验收：`python scripts/record_pit.py --help` 正常打印用法（exit=0）；脚本已入库

@@ -36,6 +36,7 @@
 - 不引入新的未跟踪交付文件
 
 ## 状态
-- status: in_progress
-- 创建 commit: （待提交）
-- verified_commit: （待回填）
+- status: completed
+- 创建 commit: 43a76a155bd1797e383613871d2b2a790e8fce22
+- verified_commit: 43a76a155bd1797e383613871d2b2a790e8fce22
+- 验收：8 个临时产物路径现已全部被 .gitignore 覆盖，`git status` 不再列为未跟踪项

@@ -56,7 +56,7 @@ def _corpus(page_key: str, project_key: str | None) -> list[PageChunk]:
 
 
 def retrieve(
-    question: str, page_key: str, project_key: str | None, top_k: int = 3
+    question: str, page_key: str, project_key: str | None, top_k: int = 5
 ) -> list[Candidate]:
     """Rank page chunks by term overlap with the question; empty list means off-topic."""
 

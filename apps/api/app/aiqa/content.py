@@ -79,6 +79,7 @@ def build_pages() -> dict[str, PageContentData]:
             "我偏好先设计后编码，重视可观测性、可演进性与契约测试。",
             "技术栈包括 Python/FastAPI、PostgreSQL、Redis、TypeScript 与 React。",
             "我也做过内容问答与检索相关功能，熟悉 RAG 与人格层问答的实现。",
+            "我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约。",
         ],
     )
 
@@ -181,3 +182,31 @@ def build_pages() -> dict[str, PageContentData]:
 
 
 PAGES = build_pages()
+
+
+def build_resume_facts_card() -> str:
+    """Hard, always-injected resume facts for the digital-twin voice.
+
+    These are verbatim anchors distilled from the ``resume`` page chunks
+    (R0–R4 + the R5 digital-twin chunk added by TASK-AIQA-GROUNDING-001).
+    They are injected into the *system* prompt (higher weight than the
+    retrieved 【已知资料】 block) and pinned with a "use verbatim" constraint,
+    so open-ended questions (methodology / what-you-value / other-directions)
+    cannot be answered with generic paraphrases that drift from the source.
+
+    MUST stay in sync with ``resume_chunks`` and ``docs/fact-consistency/fact-bank.md``.
+    """
+
+    return (
+        "【硬性事实卡·简历】(以下事实优先级最高，回答对应主题时必须逐字使用，"
+        "不得自行归纳或替换)\n"
+        "- 技术方向：我是一名后端与平台方向的工程师\n"
+        "- 关注领域：高并发服务、数据建模与开发者体验\n"
+        "- 做过的系统：预约与协作类系统的后端架构，落地过插槽快照、实时刷新与幂等写入\n"
+        "- 工程方法论：我偏好先设计后编码\n"
+        "- 最看重的工程品质：重视可观测性、可演进性与契约测试\n"
+        "- 技术栈：Python / FastAPI、PostgreSQL、Redis、TypeScript、React\n"
+        "- 熟悉的 AI 技术：RAG 与人格层问答\n"
+        "- 其他做过的方向：也做过内容问答与检索相关功能\n"
+        "- 站点本质：我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约"
+    )

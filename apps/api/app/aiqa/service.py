@@ -35,7 +35,7 @@ from app.auth.models import Principal
 
 from . import bm25
 from .chunking import chunk_text as _chunk_text
-from .content import PAGES, PageContentData
+from .content import PAGES, PageContentData, build_resume_facts_card
 from .embeddings import EmbeddingError, EmbeddingGateway
 from .gateway import GatewayError, LLMGateway
 from .models import (
@@ -489,7 +489,12 @@ class AnswerService:
             trace_id,
         )
         messages2 = [
-            {"role": "system", "content": build_system_prompt()},
+            {
+                "role": "system",
+                "content": build_system_prompt(
+                    build_resume_facts_card() if page_key == "resume" else None
+                ),
+            },
             *history,
             {
                 "role": "user",

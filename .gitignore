@@ -27,3 +27,13 @@ build/
 
 # 本地开发 env（含本地生成密钥，绝不入库）
 apps/api/.env.local
+
+# 本地验证 / 构建产物（非交付，绝不入库）
+_diag_verify.log
+scripts/_verify_rc.txt
+scripts/_verify_run*.log
+scripts/_tmp_test_parser.py
+scripts/fact_consistency_results.json
+tsconfig.tsbuildinfo
+apps/web/dist-check/
+typescript-typescript-win32-x64-7.0.2.tgz

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# pre-commit hook (TASK-HARNESS-001)
+# 仅 WSL 环境 + 仅本次提交改动 apps/ 时运行 verify --quick；其余情况跳过，不阻塞提交。
+set -uo pipefail
+
+# 非 WSL 环境：跳过（不阻塞 Windows 侧提交）
+if ! grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null && [[ "$(uname -r 2>/dev/null)" != *microsoft* ]]; then
+  echo "[pre-commit] 非 WSL 环境：跳过 harness 评测。"
+  exit 0
+fi
+
+# 应急跳过
+if [[ "${JIANLI_SKIP_HOOK:-}" == "1" ]]; then
+  echo "[pre-commit] JIANLI_SKIP_HOOK=1：跳过 harness 评测。"
+  exit 0
+fi
+
+# 仅当本次提交改动 apps/ 才评测（文档 / README 提交不阻塞）
+if git diff --cached --name-only | grep -q '^apps/'; then
+  echo "[pre-commit] 检测到 apps/ 变更，运行 verify --quick ..."
+  bash scripts/verify.sh --quick
+  exit $?
+else
+  echo "[pre-commit] 无 apps/ 变更，跳过 harness 评测。"
+  exit 0
+fi

@@ -89,6 +89,8 @@
 - **TASK-DEPLOY-001**：**已关闭（Closed，2026-08-14 用户显式授权）**——简历素材（真版 `14.pdf` 284KB）+ DeepSeek V4 Flash 支持（embedding 配置拆分独立 `JIANLI_LLM_EMBEDDING_*`，DeepSeek 无 /embeddings 端点）+ httpx utf-8 修复（`79e64d3`）+ 硅基流动 BGE-M3 dimensions 400 修复（`0aac1f8`）。**用户 WSL 验证**：env 齐全后启动正常、简历 PDF 显示、DeepSeek 问答通、BGE-M3 灌库成功。`verified_commit=fef6b26`。API key 由用户运行时 env 提供（不落文件）。详见任务单 `tasks/TASK-DEPLOY-001.md`。
 - **TASK-ARCH-IMPACT-001**：**已完成（Review 收口，2026-08-10）**——architecture v0.2 正文已同步 SRS v1.2 的 approved 状态、based_on、AUTH_EXPIRED/RATE_LIMITED 和 Override 错误码；spec_sync=clean，未改变架构行为。
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
+- **TASK-GOV-SYNC-002**：**Closed（2026-08-17 文档同步）**——将 PROJECT_STATE 对齐 master HEAD `62620df`。**如实补记 `beafbcf`→`62620df` 之间三个无独立 TASK 直接落地的提交（不追认、不否认、不重写）**：`4da0778`（chore(dev): scripts/dev-env.sh 固化本地开发 env——根治多终端 key 不一致）、`536d41e`（feat(web): 预约页补齐注册/找回/邮箱验证——账号自助闭环 M4 前端）、`62620df`（feat(admin): admin 运营驾驶舱 4 Tab）。本环境未对这些提交单独重跑全量验证，故不宣称新 verified 快照，仅对齐状态真相。verified_commit=本任务 commit（待回填）。
+- **TASK-HARNESS-001**：**Open（2026-08-17 实施中）**——评测 Harness 工程化（自动评测 + 留痕 + Codex 接手）。交付：`apps/api/tests/conftest.py`（集中 fixtures：`ensure_test_schema` autouse 幂等迁移测试库 / `test_settings` / `app_client`）、`apps/api/scripts/harness_setup_db.py`（幂等建 `jianli_test` + alembic upgrade + Redis 探活）、`scripts/verify.sh`（一键 verify：env→测试库→pytest+ruff+mypy+前端）、`scripts/git-hooks/pre-commit`·`pre-push` + `scripts/install-hooks.sh`（本地自动评测）、`scripts/devlog.sh`（自动开发日志）、`scripts/record_pit.py` + `docs/` 坑记录（半自动：机器记录、AI 提议、用户拍板提炼 Skill）、`docs/HARNESS.md`（接手文档）。**已确认决策**：测试库复用 docker-compose（方案 A，零新依赖）、不做 GitHub 远端走本地 git hook、开发日志自动生成不手填。验证结果待 `verify.sh` 全量跑通后回填。
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---
@@ -115,6 +117,8 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 > ⑤b ✅ 用户批准 UI 线框 v1.0 → ⑥ ✅ 领域模型修订并批准 v1.1.5 → ⑦ ✅ architecture v0.2 → ⑧ ✅ SRS v1.2 / security v0.1 / OpenAPI-SSE v0.1 / test-plan v0.1 全部 approved → ⑨ ✅ ADR-IMPL-001 accepted + TASK-READY-001 PASS → **当前执行 TASK-IMPL-WEB-001**。
 > ⑩ ✅ TASK-BE-001 + TASK-REVIEW-BE-001 关闭；下一后端主线为独立 DB/migration 任务，实际 SQL 须先经用户审批。
 > `development_gate` 全 10 项 approved 前不得进入编码。
+
+> 注（2026-08-17 增补）：当前主线为 **TASK-HARNESS-001**（评测 Harness 工程化）实施中；治理文档同步 **TASK-GOV-SYNC-002** 已收口（PROJECT_STATE 对齐 master HEAD 62620df，补记 `beafbcf`→`62620df` 三个无 TASK 提交）。harness 验证通过后由用户拍板是否将坑提炼为 Skill。
 
 ---
 
@@ -161,5 +165,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（门禁绿化 GOV-007）**：`d51b9e0` ——ruff/mypy 16 error 收口 + ruff `--fix` 写回（email.py / worker.py / appointments/service.py / auth/service.py）；repo 级双门禁 exit 0；TASK-GOV-007 Closed（先行提交 665a067/b01acaf 追认，历史不重写）。
 
 - **M5 验证锚点（Closed，2026-08-13 用户授权关闭）**：`cfb1854` ——M5 管理后台 7 operation 实现（`admin/` 包 + `appointments/service.py` 扩展 8 方法 + `factory.py` 挂载 + `tests/admin/test_admin_actions.py`）+ 契约偏离修正（a201578 证据回填 / 24665fb 3 处失败修正 / cfb1854 UUID 导入回归修复）；ruff/mypy repo 级全绿（29 source files）+ DB-free wiring smoke 通过 + **真实 PG/Redis 集成测试 6 passed in 10.78s**（用户 WSL，2026-08-13）；spec_sync=clean、verified_commit=cfb1854、关闭门禁三项全绿。用户显式授权关闭，TASK-M5 Closed。
+
+- **最新验证锚点（GOV-SYNC-002 文档同步）**：`<commit>` — PROJECT_STATE 对齐 master HEAD `62620df`；如实补记 `beafbcf`→`62620df` 之间三个无独立 TASK 提交（`4da0778` dev-env.sh / `536d41e` M4 前端 / `62620df` admin 驾驶舱）；harness 工程化 TASK-HARNESS-001 登记。纯文档同步，本环境未对这些提交单独重跑全量验证，不宣称新功能 verified 快照。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

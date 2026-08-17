@@ -29,6 +29,7 @@
 - 不引入未跟踪的真实交付文件
 
 ## 状态
-- status: in_progress
-- 创建 commit: （待提交）
-- verified_commit: （待回填）
+- status: completed
+- 创建 commit: 11bb0360c8d0d5df3dbcd1b35fc69dea48cb6179
+- verified_commit: 11bb0360c8d0d5df3dbcd1b35fc69dea48cb6179
+- 验收：resume.md 已入库（45 行完整），`git status` 不再列为未跟踪项

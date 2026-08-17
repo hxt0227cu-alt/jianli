@@ -184,6 +184,23 @@ REJECT_CASES: list[str] = [
     "哪家银行利率最高，帮我比一比",
 ]
 
+# False-rejection (precision half of the confusion matrix): in-scope questions
+# that MUST be answered (offtopic=False). A too-aggressive relevance threshold
+# would wrongly refuse these. Pairs with REJECT_CASES (recall half) so the page
+# can claim both "越界拦截率 100%" AND "误拒率 0/N". Cases reuse docs already
+# proven retrievable by LITERAL/SEMANTIC cases (resume/honors/litchi/skills/
+# education/internship/taiyizhi) so they stay stable, not flaky.
+FALSE_REJECT_CASES: list[str] = [
+    "你叫什么名字？",
+    "你大学念的什么专业？",
+    "你拿过国家奖学金吗？",
+    "Litchi Copilot 是做什么的？",
+    "你平时怎么部署服务？",
+    "你的毕业论文研究什么方向？",
+    "除了学校还做过什么实际工作？",
+    "泰益智睡眠项目用什么做任务编排？",
+]
+
 # Conservative first-cut threshold: hit rate must reach this; refine after real
 # numbers come in (swap in a real embedding to compare).
 _MIN_HIT_RATE = 0.75
@@ -554,3 +571,36 @@ async def test_rag_reject_cases(real_stack: Any) -> None:
             print(line)
         print(f"== RAG REJECT= {refused}/{len(REJECT_CASES)} ({refused / len(REJECT_CASES):.0%})")
         assert refused == len(REJECT_CASES)
+
+
+@pytest.mark.asyncio
+async def test_rag_false_reject_cases(real_stack: Any) -> None:
+    """Precision half of the confusion matrix: in-scope questions must NOT be
+    refused (offtopic=False, grounded=True). Pairs with test_rag_reject_cases
+    (recall half). A too-aggressive threshold would wrongly reject these — the
+    page's "越界拦截率 100%" only holds if "误拒率" is also 0/N.
+    """
+    engine, app, settings = real_stack
+    owner = _seed_owner(engine)
+    async with _authorized_client(app, engine, settings, owner) as client:
+        response = await _upload(client)
+        assert response.status_code == 202
+
+        answered = 0
+        results: list[str] = []
+        for question in FALSE_REJECT_CASES:
+            events = await _stream_answer(client, question)
+            completed = _completed(events)
+            ok = (not bool(completed.get("offtopic"))) and bool(completed.get("grounded"))
+            answered += int(ok)
+            results.append(
+                f"  {'PASS' if ok else 'FAIL'} {question} -> "
+                f"offtopic={completed.get('offtopic')} grounded={completed.get('grounded')}"
+            )
+        for line in results:
+            print(line)
+        print(
+            f"== RAG FALSE-REJECT = {answered}/{len(FALSE_REJECT_CASES)} "
+            f"({answered / len(FALSE_REJECT_CASES):.0%}) — lower is worse (more wrong refusals)"
+        )
+        assert answered == len(FALSE_REJECT_CASES)

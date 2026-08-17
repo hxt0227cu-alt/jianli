@@ -107,7 +107,8 @@
 
 **评测（真实）**
 - 命中 HIT 8/8（100%）
-- 拒答 REJECT 10/10（100%，从 0% → 100% 闭环）
+- 越界题拦截率 REJECT 10/10（100%，从 0% → 100% 闭环）
+- 误拒率 0/N（范围内正常问法零误拒，新增 FALSE_REJECT 对抗集，与 REJECT 成对构成完整混淆矩阵）
 - 纯向量 EXTREME avg-rank 1.8 → 1.3（换 BGE-M3）
 - AI 问答域真实 PG/Redis 集成 14 passed（迁移 5 + 会话 5 + 知识库 4）
 - ruff 全绿 + mypy 0 error（45 files）
@@ -120,4 +121,4 @@
 
 **工程纪律**：迁移全可逆；冻结验收测试不降级（断言 / 阈值不放宽、不 skip、不把集成改 mock）；双角色审查 + 人审批（迁移 / 鉴权 / 加密 / 通知）。
 
-**诚实边界**：SMTP 发信与上线部署在本地 PG+Redis 跑通，但待凭据 / 域名，runtime-unverified；**简历事实一致率实测 26/26 = 100%**（26 题事实锚点评测集，对齐 R1–R26，脚本可复跑；≥94% SLO 已达成）。评测方法：只读 POST `/answers:stream`，逐题对照 `docs/fact-consistency/fact-bank.md` 打 ✅/⚠️/❌/🚫，严格一致率 = ✅÷26。
+**诚实边界**：SMTP 发信与上线部署在本地 PG+Redis 跑通，但待凭据 / 域名，runtime-unverified；**简历事实一致率实测 26/26 = 100%**（评测集与知识源同源，验证事实在场时不编造；跨分布泛化需更大对抗集，规划中；对齐 R1–R26，脚本可复跑；≥94% SLO 已达成）。评测方法：只读 POST `/answers:stream`，逐题对照 `docs/fact-consistency/fact-bank.md` 打 ✅/⚠️/❌/🚫，严格一致率 = ✅÷26。

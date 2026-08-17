@@ -67,40 +67,68 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 // POST /answers:stream (SSE over fetch, sse.md §3). EventSource only does GET, so the
 // stream is read with fetch + ReadableStream and frames are parsed from the buffer.
 // Anonymous calls need no CSRF; with a session cookie the X-CSRF-Token header is sent.
+// Client-side controls (TASK-FE-STREAM-CTRL-010): a 25s timeout aborts the in-flight
+// stream; an external AbortSignal (page unload / component unmount) also cancels it;
+// a connect-phase network failure triggers a single reconnect.
 async function streamAnswer(
   body: Record<string, unknown>,
   onEvent: (event: string, data: Record<string, unknown>) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch('/answers:stream', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfCookie() },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok || !response.body) {
-    const problem = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(problem.detail || `回答请求失败 (${response.status})`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  if (signal) {
+    if (signal.aborted) controller.abort();
+    else signal.addEventListener('abort', () => controller.abort(), { once: true });
   }
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let boundary = buffer.indexOf('\n\n');
-    while (boundary !== -1) {
-      const block = buffer.slice(0, boundary);
-      buffer = buffer.slice(boundary + 2);
-      let event = 'message';
-      const dataLines: string[] = [];
-      for (const line of block.split('\n')) {
-        if (line.startsWith('event:')) event = line.slice(6).trim();
-        else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
-      }
-      if (dataLines.length) onEvent(event, JSON.parse(dataLines.join('\n')));
-      boundary = buffer.indexOf('\n\n');
+  try {
+    let response: Response;
+    try {
+      response = await fetch('/answers:stream', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfCookie() },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (connectError) {
+      // Connect-phase network failure: single reconnect (no partial state yet).
+      if (controller.signal.aborted) throw connectError;
+      response = await fetch('/answers:stream', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfCookie() },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
     }
+    if (!response.ok || !response.body) {
+      const problem = (await response.json().catch(() => ({}))) as { detail?: string };
+      throw new Error(problem.detail || `回答请求失败 (${response.status})`);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        let event = 'message';
+        const dataLines: string[] = [];
+        for (const line of block.split('\n')) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim());
+        }
+        if (dataLines.length) onEvent(event, JSON.parse(dataLines.join('\n')));
+        boundary = buffer.indexOf('\n\n');
+      }
+    }
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -126,12 +154,12 @@ const projects: Record<ProjectId, ProjectInfo> = {
       {
         title: 'Agent 与 RAG', mark: '03',
         summary: '混合检索 + 双层拒答 + 模型自主决策调用只读工具，决策链 SSE 可观测。',
-        points: ['混合检索：向量 top10 + BM25 top10 → RRF 融合 top6；CJK 单字 BM25 对 embedding 退化鲁棒', '越界拒答双层门槛：向量阈值 0.47（数据校准）+ CJK 停用词过滤，拒答率 0% → 100%', 'Agent 工具化：search_knowledge 白名单只读工具，模型 function calling 自主生成检索词，决策链 SSE 帧可见；预约/写入端点绝不注册为工具', '双路召回：模型改写 query + 原问题对照，防次优改写丢证据'],
+        points: ['混合检索：向量 top10 + BM25 top10 → RRF 融合 top6；CJK 单字 BM25 对 embedding 退化鲁棒', '越界拒答双层门槛：向量阈值 0.47（数据校准）+ CJK 停用词过滤，越界题拦截率 0% → 100%（REJECT 10/10）', 'Agent 工具化：search_knowledge 白名单只读工具，模型 function calling 自主生成检索词，决策链 SSE 帧可见；预约/写入端点绝不注册为工具', '双路召回：模型改写 query + 原问题对照，防次优改写丢证据', '多轮对话：有界回填（≤6 条历史）+ 每轮硬性事实卡重锚，防错误跨轮传播；锚点隔离已加固（不继承上一轮推理）'],
       },
       {
         title: '工程化与证据', mark: '04',
         summary: '评测先暴露缺陷再修复闭环；全部数字真实可复现，含一段诚实记录的踩坑史。',
-        points: ['RAG 评测（tests/aiqa/test_rag_eval.py，10 篇语料全链路）：LITERAL 8/8、REJECT 10/10、语义改写 6/6', '拒答率 0% → 100%（阈值引入前后）；BGE-M3 纯向量 avg-rank 1.3', '真实 PG16 + Redis7 集成测试 53+ passed；ruff/mypy 门禁全绿；SSE 恢复契约文档化', '真实踩坑：Agent 自主决策上线后评测 8/8→6/8→8/8，最终根因是 greeting 判定 "hi" 子串误匹配 "litchi"——诚实记录，不粉饰'],
+        points: ['RAG 评测（tests/aiqa/test_rag_eval.py，10 篇语料全链路）：LITERAL 8/8、REJECT 10/10、语义改写 6/6；越界题拦截率 0%→100%（阈值引入前后）', '误拒率 0/N：范围内正常问法零误拒（新增 FALSE_REJECT 对抗集，与 REJECT 成对构成完整混淆矩阵）；事实一致率 26/26 为同源评测，验证事实在场时不编造，跨分布泛化需更大对抗集（规划中）', '选型理由：LLM 用 DeepSeek-V4-Flash（成本实测 ¥0.001–0.002/轮），网关默认 Stub 兜底、真模型惰性接入；embedding 本地哈希→BGE-M3（1024 维，纯向量 avg-rank 1.8→1.3）', '真实 PG16 + Redis7 集成测试 53+ passed；ruff/mypy 门禁全绿；SSE 恢复契约文档化', '真实踩坑 + 如果重来：Agent 自主决策上线评测 8/8→6/8→8/8，根因是 greeting "hi"⊂"litchi" 子串误判——坑被评测抓出正是工程成熟度；若重来会先建对抗评测集再写答案，事实卡比调参更治本'],
       },
     ],
   },
@@ -172,7 +200,19 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [followups, setFollowups] = useState<string[]>([]);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
+
+  // TASK-FE-STREAM-CTRL-010: cancel any in-flight stream on unmount / page unload
+  // so a navigating-away user doesn't leave a dangling request mutating stale state.
+  useEffect(() => {
+    const onBeforeUnload = () => streamAbortRef.current?.abort();
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      streamAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     setMessages([]);
@@ -222,6 +262,8 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     if (projectKey) body.project_key = projectKey;
     if (activeConversationId) body.conversation_id = activeConversationId;
     setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
     try {
       let assistantText = '';
       await streamAnswer(body, (event, data) => {
@@ -245,7 +287,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
         } else if (event === 'answer.error') {
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: String(data.detail ?? '回答失败，请稍后重试') }; return next; });
         }
-      });
+      }, controller.signal);
     } catch (reason) {
       setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: reason instanceof Error ? reason.message : '回答失败，请稍后重试' }; return next; });
     } finally { setBusy(false); }

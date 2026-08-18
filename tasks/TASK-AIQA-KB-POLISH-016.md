@@ -46,10 +46,10 @@ TASK-015 收口后复盘知识库，发现占位残留与口径问题（用户 2
 
 ## 交付证据
 
-- commit / PR：（提交后回填）
-- 修改文件清单：apps/api/tests/aiqa/test_rag_eval.py、apps/api/app/aiqa/content.py、apps/web/main.tsx、tasks/TASK-AIQA-KB-POLISH-016.md
-- 测试命令及结果：（用户 WSL 复验后回填）
-- verified_commit：（收口后回填）
+- commit / PR：`491ed48`（实现提交，6 文件 208+/134-）
+- 修改文件清单：apps/api/tests/aiqa/test_rag_eval.py、apps/api/app/aiqa/content.py、apps/api/app/aiqa/service.py、apps/web/main.tsx、scripts/fact_consistency_results.json、tasks/TASK-AIQA-KB-POLISH-016.md
+- 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18 18:31**：① pytest tests/aiqa/test_rag_eval.py **7/7**（SEMANTIC/REJECT 回归修复生效，LITERAL 8/8 + SEMANTIC 6/6 + EXTREME 6/6 + REJECT 10/10 + FALSE-REJECT 8/8 + 隐私）；② seed_kb.py 灌库 indexed=55 无 WARN；③ measure_fact_consistency.py 38 题 **38/38 全 OK**，严格一致率 100%，SLO ≥94% 达成，🚫误拒 0
+- verified_commit：`491ed48`
 
 ## 关闭门禁
 

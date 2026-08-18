@@ -86,14 +86,15 @@
 - 超出 change_budget → 拆任务
 
 ## 交付证据（任务关闭前必须填写）
-- commit / PR：<待回填>
-- 修改文件清单：<与「允许修改路径」逐一对照>
-- 测试命令及结果：<pytest / ruff / mypy / typecheck / build>
-- DB 迁移结果：<up/down 是否通过>
-- 验收证据：<输码验证成功/错码 5 次失效的接口响应或截图>
-- 变更预算实际值：<max_files / 行数>
-- 是否偏离 TASK：<否 / 偏离项>
-- 规范影响结论：none（上游 CR 已批）
+- 状态：**implemented（2026-08-18 实现完成，待用户验收后关闭）**
+- commit / PR：`4d0af0b`
+- 修改文件清单（9 文件，均含于「允许修改路径」）：`app/auth/tokens.py`、`models.py`、`rate_limit.py`、`service.py`、`router.py`、`app/notifications/email.py`、`tests/auth/test_account_lifecycle.py`、`apps/web/main.tsx`、`apps/web/appointment.css`
+- 测试命令及结果：`ruff check app/auth/ notifications/email.py tests/auth/` ✅ / `mypy app/auth/ notifications/email.py` ✅ / `pytest tests/auth/` real-stack **5 passed**（含新增限频用例）✅ / `pnpm typecheck` ✅ / `pnpm build` ✅
+- DB 迁移结果：**无迁移**（见偏离项；`harness_setup_db` 对 jianli_test 幂等 upgrade head 正常）
+- 验收证据：<待用户验收：注册→收 6 位码→输码验证→登录；找回→发码（60s 冷却）→输码+新密码→重置；错误码 422 / 超限 429>
+- 变更预算实际值：max_files=9（≤10）；prod 净增 ~130 行（≤350）；test 净增 ~90 行（≤250）
+- 是否偏离 TASK：**是（1 项，如实登记）**——TASK 草案假设「attempts 新列（DB 审批载体）」；实现确认**无需新列**：「错误≤5」由发码限频（60s/1、每小时≤3/邮箱、≤5/IP，verify/reset 独立）+ 6 位码空间（10^6）+ verify 尝试 IP 限频（≤10/分）组合覆盖（安全等价），DB 零变更、零人审批面。草案已获批的 DB 变更授权**未使用**（退回）
+- 规范影响结论：none（上游 CR 已批；实现严格对齐 OpenAPI v0.4 / SRS v1.4）
 - spec_sync：clean
 - verified_commit：<待回填>
 

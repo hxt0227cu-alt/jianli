@@ -117,6 +117,10 @@ CORPUS: dict[str, str] = {
         "诊断服务 YOLOv8 病害分类（实际训练 5 类，normalize_label 映射 7 类中文声明，"
         "从零训练 top1 43.75% → 微调 93.75%、最终权重 91.25%、top5 全程 100%），"
         "推理失败按 yolo→dataset-vision→demo-rule 三级降级。\n"
+        "## 可观测性\n"
+        "observability 模块：prometheus.yml 定义 3 个抓取 job（backend /api/actuator/prometheus、"
+        "diagnosis-service /metrics、prometheus 自身）+ grafana/dashboards/agent-overview.json"
+        "（Agent 运行 / 工具 / 风险指标看板）。\n"
         "## 评测与语料\n"
         "评测集 60 条（30 RAG + 20 Agent + 10 安全），evaluate_agent.py 已接入 CI；"
         "k6 压测 agent-load.js（p95 < 12s、成功率 > 99.5%）。语料来自农业农村部预报/"
@@ -231,8 +235,13 @@ CORPUS: dict[str, str] = {
     ),
     "skills.md": (
         "# 工程能力与工具链\n"
-        "熟练使用 Docker 容器化部署与 Git 协作，掌握 SQL 查询优化与索引设计，"
-        "熟悉 Linux 环境下的服务排查与监控指标解读，写过单元测试与集成测试。"
+        "熟悉 Git（提交纪律 / PR / 变更预算治理）与 Docker 容器化部署（毕设 3 个 Dockerfile + "
+        "7 服务 docker-compose 本地编排；K8s 部署用过、运维深度有限）。\n"
+        "做过 SQL 查询与索引设计：jianli pgvector 余弦检索 <=> + 0.47 阈值校准、毕设 MySQL 14 张表 "
+        "idx_platform_* 二级索引、泰益智 dbt 模型 SQL。\n"
+        "日常在 WSL/Linux 下开发与排查（py_compile / psycopg / 日志定位）；监控指标接触过"
+        "（毕设 Prometheus、泰益智 feature-service 指标），非专职 SRE。\n"
+        "测试扎实：pytest RAG 评测 7/7 + 集成测试 53+ + Jest 144 + 毕设 JUnit 38，评测与门禁日常在跑。"
     ),
     "internship.md": (
         "# 实习与团队协作\n"
@@ -241,8 +250,9 @@ CORPUS: dict[str, str] = {
     ),
     "certificates.md": (
         "# 认证与竞赛\n"
-        "持有数据库方向的专业认证，参与过校内创新创业项目申报与路演，在团队中"
-        "负责方案设计与进度管理，多次获得校级表彰。"
+        "持有 PingCAP TiDB 数据库专员 PCTA 认证证书。\n"
+        "参与过校内创新创业项目申报与路演（挑战杯 A 类赛事、大创国家级立项），"
+        "在团队中负责方案设计与进度管理，多次获得校级表彰（含 2025 国家奖学金）。"
     ),
     "rag-notes.md": (
         "# RAG 实践笔记\n"
@@ -251,8 +261,9 @@ CORPUS: dict[str, str] = {
     ),
     "agent-notes.md": (
         "# Agent 工程笔记\n"
-        "记录受控 Agent 的设计模式：工具白名单、步骤预算、人工审批节点、失败"
-        "重试与幂等键，以及如何通过可观测性追踪一次完整的工具调用链。"
+        "记录受控 Agent 的设计模式：如何防止智能体乱调用工具——工具白名单（只允许已注册工具）、"
+        "步骤预算（限制步数）、人工审批节点（高风险写操作需确认）、失败重试与幂等键，"
+        "以及如何通过可观测性追踪一次完整的工具调用链。"
     ),
     # TASK-AIQA-KB-EXPAND-014: 行为故事、求职动机与竞赛项目（Round 2 访谈产出）。
     "interview-story.md": (
@@ -317,7 +328,7 @@ LITERAL_CASES: list[tuple[str, str]] = [
 SEMANTIC_CASES: list[tuple[str, str]] = [
     ("你本科是在哪所高校念的？", "education.md"),
     ("平时的工程部署和环境管理用什么？", "skills.md"),
-    ("除了学校功课，还做过什么实际工作？", "internship.md"),
+    ("你实习时主要在团队里做什么？", "internship.md"),
     ("有没有专业上的资格证明？", "certificates.md"),
     ("检索效果不理想时你一般从哪几个方面调？", "rag-notes.md"),
     ("智能体怎么做才不会乱调用东西？", "agent-notes.md"),

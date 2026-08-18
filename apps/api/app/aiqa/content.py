@@ -165,7 +165,10 @@ def build_pages() -> dict[str, PageContentData]:
         *_chunk(
             "sleep202603_an",
             [
-                "sleep202603_an 是睡眠数据可视化与分析原型，负责采集管道与前端看板。",
+                "sleep202603_an（泰益智智能睡眠监测台灯）是我实习主导的 AI 睡眠健康 Agent 平台："
+                "非接触毫米波雷达无感监测 + 智能照明 + 健康辅助，5 微服务 + 9 层 AI 能力矩阵，"
+                "LangGraph Agent + local/Temporal 双协调器，84 例确定性评测 100%，"
+                "四端形态（Taro 小程序 16 页 / Web / Android Capacitor 壳 / ESP32-S3 固件）。",
             ],
         ),
         *_chunk(

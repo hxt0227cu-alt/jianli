@@ -22,6 +22,8 @@ from app.admin.models import (
     AvailabilityOverrideInput,
     CompanyBookingException,
     CompanyBookingExceptionInput,
+    OwnerContactConfigInput,
+    OwnerContactConfigView,
 )
 from app.appointments.service import BookingService
 from app.auth.models import Principal
@@ -142,6 +144,21 @@ def create_admin_router(
                 payload.expires_at,
             )
         )
+
+    @router.put(
+        "/owner-contact-config",
+        response_model=OwnerContactConfigView,
+        operation_id="updateOwnerContactConfig",
+    )
+    def update_owner_contact(
+        payload: OwnerContactConfigInput, request: Request
+    ) -> OwnerContactConfigView:
+        # Contract ``updateOwnerContactConfig`` declares only ``CsrfToken``.
+        # CSRF + owner_admin RBAC are enforced by admin_owner (the actor identity is
+        # resolved from the unique active owner_admin, not from the session actor).
+        admin_owner(request)
+        booking_service.update_owner_contact_config(payload.candidate_feishu_open_id)
+        return OwnerContactConfigView(configured=True)
 
     # ----- Admin operations cockpit (2026-08-16): all-interviewers QA dashboard -----
 

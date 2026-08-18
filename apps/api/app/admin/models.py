@@ -60,3 +60,21 @@ class CompanyBookingException(BaseModel):
     reason: str
     expires_at: datetime
     created_at: datetime
+
+
+class OwnerContactConfigInput(BaseModel):
+    """Request body for configuring the candidate Feishu open_id (R13, OpenAPI v0.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_feishu_open_id: str = Field(min_length=5, max_length=100)
+
+
+class OwnerContactConfigView(BaseModel):
+    """Response body confirming the candidate Feishu open_id was configured.
+
+    The stored value is AES ciphertext (never echoed back in plaintext); the view
+    only reports that the configuration exists.
+    """
+
+    configured: bool

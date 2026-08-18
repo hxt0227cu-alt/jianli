@@ -504,12 +504,21 @@ function AdminView() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'qa' | 'kb'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'qa' | 'kb' | 'feishu'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [allAppts, setAllAppts] = useState<any[]>([]);
   const [qaConvs, setQaConvs] = useState<any[]>([]);
   const [openConvId, setOpenConvId] = useState<string | null>(null);
   const [openConvMessages, setOpenConvMessages] = useState<any[]>([]);
+  const [feishuOpenId, setFeishuOpenId] = useState('');
+
+  const saveFeishuOpenId = async () => {
+    if (!feishuOpenId.trim()) return; setBusy(true); setError('');
+    try {
+      await api('/admin/owner-contact-config', { method: 'PUT', headers: { 'X-CSRF-Token': csrf }, body: JSON.stringify({ candidate_feishu_open_id: feishuOpenId.trim() }) });
+      setError(''); setBusy(false); alert('候选人飞书 open_id 已保存');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败'); } finally { setBusy(false); }
+  };
 
   const loadDocs = async () => {
     const data = await api<{ items: KnowledgeDoc[] }>('/admin/knowledge-documents');
@@ -561,7 +570,7 @@ function AdminView() {
   return <main className="workspace admin-view"><div className="workspace-heading"><div><span className="eyebrow">OPERATIONS COCKPIT / ADMIN</span><h1>运营驾驶舱。</h1><p>预约全貌、AI 问答效果、所有 interviewer 的对话历史，以及知识库管理——只有 owner_admin 可访问。</p></div><span className="placeholder-badge">owner_admin</span></div>
     {error && <div className="booking-error">{error}</div>}
     {!user && <section className="login-panel"><div><span className="eyebrow">OWNER SIGN IN</span><h2>管理员登录</h2><p>使用 owner_admin 账号进入运营驾驶舱。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><button disabled={busy}>{busy ? '正在登录…' : '登录并管理'}</button></form></section>}
-    {user && <nav className="admin-tabs"><button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>效果大屏</button><button className={activeTab === 'appointments' ? 'active' : ''} onClick={() => setActiveTab('appointments')}>预约全貌 <small>({allAppts.length})</small></button><button className={activeTab === 'qa' ? 'active' : ''} onClick={() => setActiveTab('qa')}>问答历史 <small>({qaConvs.length})</small></button><button className={activeTab === 'kb' ? 'active' : ''} onClick={() => setActiveTab('kb')}>知识库 <small>({docs.length})</small></button></nav>}
+    {user && <nav className="admin-tabs"><button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>效果大屏</button><button className={activeTab === 'appointments' ? 'active' : ''} onClick={() => setActiveTab('appointments')}>预约全貌 <small>({allAppts.length})</small></button><button className={activeTab === 'qa' ? 'active' : ''} onClick={() => setActiveTab('qa')}>问答历史 <small>({qaConvs.length})</small></button><button className={activeTab === 'kb' ? 'active' : ''} onClick={() => setActiveTab('kb')}>知识库 <small>({docs.length})</small></button><button className={activeTab === 'feishu' ? 'active' : ''} onClick={() => setActiveTab('feishu')}>飞书配置</button></nav>}
     {user && activeTab === 'overview' && <section className="admin-overview">{!stats ? <p className="kb-empty">暂无统计数据。</p> : <>{<div className="dash-stats">{[
       { label: '总对话数', value: stats.totals.total_conversations, tone: 'green' },
       { label: '总消息数', value: stats.totals.total_messages, tone: 'blue' },
@@ -632,6 +641,7 @@ function AdminView() {
       </section>
     )}
     {user && activeTab === 'kb' && <>{<section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>}<section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section></>}
+    {user && activeTab === 'feishu' && <section className="kb-upload" style={{ alignItems: 'flex-start' }}><div><span className="eyebrow">R13 CANDIDATE FEISHU</span><h2 style={{ margin: '6px 0 10px' }}>候选人飞书 open_id 配置</h2><p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 14 }}>用于 R13 双通道提醒的飞书消息投递（候选人 = owner_admin 本人）。保存后 AES 加密落库，不会明文回显。</p></div><div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 560 }}><input value={feishuOpenId} onChange={(event) => setFeishuOpenId(event.currentTarget.value)} placeholder="如 ou_xxxxxxxx" style={{ flex: 1, padding: '9px 12px', border: '1px solid #dde6de', borderRadius: 6 }} /><button className="primary-command" disabled={busy || !feishuOpenId.trim()} onClick={saveFeishuOpenId}>{busy ? '保存中…' : '保存配置'}</button></div></section>}
   </main>;
 }
 

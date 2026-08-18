@@ -1122,6 +1122,72 @@ class BookingService:
             "created_at": now,
         }
 
+    def update_owner_contact_config(self, feishu_open_id: str) -> None:
+        """Upsert the candidate Feishu open_id for the unique active owner_admin (R13).
+
+        The open_id is AES-256-GCM encrypted at rest (``candidate_feishu_open_id_ciphertext``,
+        AAD = owner_contact_configs table/column + the config row id). Follows the
+        ``uq_active_owner_admin`` invariant: there is at most one active owner_admin; when
+        none exists the update fails loudly instead of silently picking a user.
+        """
+
+        with self._engine.begin() as connection:
+            owner = connection.execute(
+                text(
+                    "SELECT u.id,o.id AS config_id FROM users u "
+                    "LEFT JOIN owner_contact_configs o ON o.user_id=u.id "
+                    "WHERE u.role='owner_admin' AND u.deleted_at IS NULL"
+                )
+            ).mappings().one_or_none()
+            if owner is None:
+                raise AuthError(
+                    "NOT_CONFIGURABLE",
+                    500,
+                    "No owner admin",
+                    "No active owner_admin exists; cannot configure candidate contact",
+                )
+            config_id = owner["config_id"]
+            if config_id is None:
+                config_id = uuid4()
+                ciphertext = self._cipher.encrypt(
+                    feishu_open_id,
+                    "owner_contact_configs",
+                    "candidate_feishu_open_id_ciphertext",
+                    config_id,
+                )
+                connection.execute(
+                    text(
+                        "INSERT INTO owner_contact_configs "
+                        "(id,user_id,candidate_feishu_open_id_ciphertext,updated_at) "
+                        "VALUES (:id,:user_id,:ciphertext,:now)"
+                    ),
+                    {
+                        "id": config_id,
+                        "user_id": owner["id"],
+                        "ciphertext": ciphertext,
+                        "now": datetime.now(UTC),
+                    },
+                )
+            else:
+                ciphertext = self._cipher.encrypt(
+                    feishu_open_id,
+                    "owner_contact_configs",
+                    "candidate_feishu_open_id_ciphertext",
+                    config_id,
+                )
+                connection.execute(
+                    text(
+                        "UPDATE owner_contact_configs SET "
+                        "candidate_feishu_open_id_ciphertext=:ciphertext,"
+                        "updated_at=:now WHERE id=:id"
+                    ),
+                    {
+                        "id": config_id,
+                        "ciphertext": ciphertext,
+                        "now": datetime.now(UTC),
+                    },
+                )
+
     def _rematerialize_window(
         self, connection: Any, start_at: datetime, end_at: datetime
     ) -> None:

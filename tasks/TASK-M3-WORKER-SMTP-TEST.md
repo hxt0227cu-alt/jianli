@@ -103,8 +103,8 @@
 - 是否偏离 TASK：否（发现桩测试已于 `1c44372` 存在后，如实收敛为「只补真 E2E」，未复制桩测试；已撤销冗余的 `tests/appointments/test_worker.py`；`SecretStr` 包装修复属于本任务真 E2E 用例自身缺陷，不越界）
 - 规范影响结论：none
 - spec_sync：clean（本任务不改任何规范工件）
-- verified_commit：<待提交后回填>
-- **关闭门禁（四条件）**：① 测试通过 ✅（真 E2E 用户 WSL 2026-08-18 `1 passed in 5.73s`）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit 待提交后记录。当前任务保持 open，待提交 + 用户邮箱核对后闭合。
+- verified_commit：`e77f3e9`（实现+任务单提交，2026-08-18）
+- **关闭门禁（四条件）**：① 测试通过 ✅（真 E2E 用户 WSL 2026-08-18 `1 passed in 5.73s`）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit=`e77f3e9` ✅。任务可关闭；等待用户邮箱核对收信 + 显式授权关闭。
 
 ## 关联
 - Change Request：无

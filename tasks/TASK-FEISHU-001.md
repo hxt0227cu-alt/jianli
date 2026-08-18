@@ -1,6 +1,6 @@
 # TASK-FEISHU-001 飞书通道：R14 多维表格完整视图同步 + R13 候选人双通道提醒（feishu 侧）
 
-> **状态：Closed（2026-08-18 用户真连冒烟截图确认 R14 写入成功 + 集成测试 8 passed/1 skipped；待用户最终批准正式关闭）**
+> **状态：Closed（2026-08-18 用户真连冒烟截图确认 R14 写入成功 + 集成测试 8 passed/1 skipped；2026-08-18 用户显式授权正式关闭）**
 > 依据已批准 SRS v1.3 §3.8（R13/R14/R21）+ 领域模型 v1.1.5 §6.12（NotificationDelivery）+ architecture v0.2 §6（飞书通道）。实现的是已批准 MVP 行为，**非新需求，无需 Change Request**。
 
 ## 任务类型

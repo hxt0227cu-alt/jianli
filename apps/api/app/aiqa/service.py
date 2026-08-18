@@ -23,6 +23,7 @@ import hashlib
 import io
 import json
 import logging
+import re
 import time
 from collections.abc import AsyncIterator, Sequence
 from typing import Any, cast
@@ -65,6 +66,29 @@ logger = logging.getLogger("jianli.aiqa")
 
 _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
+_PRIVACY_CODE = "PRIVACY"
+
+# Privacy guard (TASK-AIQA-PRIVACY-GUARD-012): refuse PII / private-life questions
+# directly, independent of retrieval score. The expanded real corpus contains
+# location/GPA chunks that push some privacy queries (家庭住址 / 工资) just above
+# the 0.47 relevance threshold, so a score-only gate is insufficient — the intent
+# is refused explicitly. Matches the project's "隐私拦截" stance (no fabrication,
+# no privacy leak from loosely-matched chunks).
+_PRIVACY_REPLY = (
+    "这个问题涉及我的个人隐私，我不太方便回答～"
+    "你可以问我关于技术、项目或经历的问题，我很乐意聊那些。"
+)
+_PRIVACY_PATTERN = re.compile(
+    r"(家庭住址|住址|家庭地址|老家|住在哪里|住在哪|"
+    r"工资|薪资|收入|月薪|年薪|薪酬|年终奖|提成|月入|赚|挣|"
+    r"身份证|手机号|电话号码|银行卡|社保|公积金|"
+    r"私生活|私事|感情|男朋友|女朋友|结婚|老婆|老公|"
+    r"生日|出生日期|几月几号出生|哪天出生)"
+)
+
+
+def _is_privacy_question(question: str) -> bool:
+    return bool(_PRIVACY_PATTERN.search(question))
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
 _SUPPORTED_TYPES = {"md", "txt", "pdf"}
 # Multi-turn memory backfill (TASK-M6-HARDENING-001): inject at most this many of the most
@@ -396,6 +420,38 @@ class AnswerService:
             if persist:
                 assert conversation_id is not None
                 await self._persist_assistant(conversation_id, GREETING_REPLY, False)
+            return
+
+        # Privacy guard (TASK-AIQA-PRIVACY-GUARD-012): refuse PII / private-life questions
+        # directly, before any model round-trip or retrieval. The score-only off-topic
+        # gate is insufficient once the real corpus contains location/GPA chunks that
+        # make privacy queries score just above the 0.47 threshold.
+        if _is_privacy_question(question):
+            latency_ms = int((time.monotonic() - start) * 1000)
+            logger.info(
+                "answer_privacy",
+                extra={
+                    "trace_id": trace_id,
+                    "conversation_id": str(conversation_id) if persist else None,
+                    "grounded": False,
+                    "offtopic": True,
+                    "model": _PRIVACY_CODE,
+                    "latency_ms": latency_ms,
+                },
+            )
+            yield delta_frame(seq := seq + 1, _PRIVACY_REPLY, trace_id)
+            yield citations_frame(seq := seq + 1, [], trace_id)
+            yield completed_frame(
+                seq := seq + 1,
+                grounded=False,
+                offtopic=True,
+                model=_PRIVACY_CODE,
+                usage=None,
+                trace_id=trace_id,
+            )
+            if persist:
+                assert conversation_id is not None
+                await self._persist_assistant(conversation_id, _PRIVACY_REPLY, True)
             return
 
         # Agent tooling (TASK-AGENT-TOOLS-002): two-phase function calling. Phase 1 —

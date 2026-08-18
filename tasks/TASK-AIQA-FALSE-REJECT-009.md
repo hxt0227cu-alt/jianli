@@ -68,17 +68,17 @@
 ## 强制停止条件
 - 无（纯测试，无硬停触发）
 
-## 交付证据（关闭前填写）
-- commit / PR：
-- 修改文件清单：
-- 测试命令及结果：
-- lint / typecheck：
+## 交付证据
+- commit / PR：5724d87
+- 修改文件清单：apps/api/tests/aiqa/test_rag_eval.py
+- 测试命令及结果：无 PG 时无法跑（6 用例 skipped）；须 WSL（PG+Redis+真 embedding）复跑 `test_rag_false_reject_cases`
+- lint / typecheck：ruff ✅（改动文件）
 - DB 迁移验证：无
-- 验收证据：
-- 变更预算实际值：
-- 未解决风险：本沙箱 PG/Redis 关闭，需在 WSL 跑通；若某用例在真阈值下被误拒，先定位是阈值问题而非用例错误
-- 是否偏离 TASK：
+- 验收证据：FALSE_REJECT_CASES 8 题 + test 函数已加，收集通过（无 PG 时跳过）
+- 变更预算实际值：max_files 实际 1 / 生产 0 行 / 测试 ~30 行
+- 未解决风险：须 WSL 跑通；若真阈值下某用例被误拒，先定位是阈值问题而非用例错误
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：
-- 关闭门禁：①②③④ 全满足方可关闭
+- verified_commit：5724d87
+- 关闭门禁：①④ 已满足；②（WSL 复跑）③（spec_sync clean）待用户验证后满足

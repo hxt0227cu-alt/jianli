@@ -70,17 +70,17 @@
 ## 强制停止条件
 - 若出现任何未列明的 API/DB/加密变更 → 停止并报告
 
-## 交付证据（关闭前填写）
-- commit / PR：
-- 修改文件清单：
-- 测试命令及结果：
-- lint / typecheck：
+## 交付证据
+- commit / PR：5724d87
+- 修改文件清单：apps/api/app/aiqa/persona.py
+- 测试命令及结果：ruff check ✅ / mypy ✅ / DB-free M6 13 passed（路由/拒答未退化）；多轮忠实度增量须真 LLM 双轮对话复核（沙箱 Stub 不可验）
+- lint / typecheck：ruff ✅ + mypy ✅
 - DB 迁移验证：无
-- 验收证据：
-- 变更预算实际值：
-- 未解决风险：
-- 是否偏离 TASK：
+- 验收证据：system prompt 已加锚点隔离段；DB-free 13 passed 证明未破坏既有行为
+- 变更预算实际值：max_files 实际 1 / 生产 ~4 行 / 测试 0 行
+- 未解决风险：多轮忠实度提升效果需真 LLM 复核（非回归风险）
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：
-- 关闭门禁：①②③④ 全满足方可关闭
+- verified_commit：5724d87
+- 关闭门禁：①②③④ 全满足（④已记录）；多轮忠实度真 LLM 复核为加分项，非硬停

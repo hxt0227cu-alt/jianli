@@ -1,6 +1,8 @@
 # 密钥 / 运行时配置（绝不入库）
 .env
 .env.*
+# 生产 env 模板（无真实密钥）应入库
+!apps/api/.env.prod.example
 *.local
 secrets.*.yml
 credentials*

@@ -1,0 +1,91 @@
+# TASK-DEPLOY-001: production stack for the Aliyun lightweight server.
+# Usage:
+#   cp apps/api/.env.prod.example .env          # fill real secrets (server-side, gitignored)
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Frontend dist/ is built on the host (npm run build) and served by nginx.
+# API + Worker share the same image; Worker is a separate process (architecture §6).
+
+name: jianli-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      POSTGRES_DB: ${JIANLI_POSTGRES_DB:-jianli_prod}
+      POSTGRES_USER: ${JIANLI_POSTGRES_USER:-jianli}
+      POSTGRES_PASSWORD: ${JIANLI_POSTGRES_PASSWORD:?must be set in .env}
+    volumes:
+      - jianli_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${JIANLI_POSTGRES_USER:-jianli} -d $${JIANLI_POSTGRES_DB:-jianli_prod}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    volumes:
+      - jianli_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./apps/api
+    restart: always
+    env_file: .env
+    environment:
+      JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
+      JIANLI_REDIS_URL: redis://redis:6379/0
+      JIANLI_ALLOWED_ORIGINS: ${JIANLI_ALLOWED_ORIGINS}
+      JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
+    volumes:
+      - jianli_knowledge:/srv/jianli/var/knowledge
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  worker:
+    build: ./apps/api
+    restart: always
+    env_file: .env
+    environment:
+      JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
+      JIANLI_REDIS_URL: redis://redis:6379/0
+      JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
+    volumes:
+      - jianli_knowledge:/srv/jianli/var/knowledge
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certbot/conf:/etc/letsencrypt:ro
+      - ./deploy/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - api
+
+volumes:
+  jianli_pgdata:
+  jianli_redisdata:
+  jianli_knowledge:

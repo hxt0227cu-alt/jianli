@@ -92,18 +92,18 @@
 - 超出 change_budget → 拆任务
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<待提交后回填>
-- 修改文件清单：<与「允许修改路径」逐一对照>
-- 测试命令及结果：<命令> → <pass/fail 数>
-- lint / typecheck：<结果>
-- DB 迁移验证：无
-- 验收证据：<配置成功响应 + 密文落库核对 + 前端输入框截图>
-- 变更预算实际值：<max_files / 生产行数 / 测试行数>
-- 未解决风险：<或「无」>
-- 是否偏离 TASK：<否 / 偏离项及原因>
+- commit / PR：`668c840`（实现：5 文件，351+/2-）
+- 修改文件清单：`apps/api/app/admin/router.py`（PUT /admin/owner-contact-config + admin/models import）/ `apps/api/app/admin/models.py`（OwnerContactConfigInput/View）/ `apps/api/app/appointments/service.py`（update_owner_contact_config）/ `apps/web/main.tsx`（飞书配置 tab）/ `apps/api/tests/admin/test_owner_contact_config.py`（新，5 用例）——与「允许修改路径」一致
+- 测试命令及结果：<待用户 WSL 回填：pytest tests/admin/test_owner_contact_config.py 预期 5 passed；回归 test_feishu + test_worker>
+- lint / typecheck：ruff ✅ / mypy 47 files 0 error ✅ / py_compile ✅ / tsc 0 error ✅（本机沙箱）
+- DB 迁移验证：无（0001 已建表）
+- 验收证据：<待用户 WSL：配置成功响应 + 密文落库核对 + 前端输入框截图 + R13 真发飞书消息>
+- 变更预算实际值：max_files=6 实际 5（未超）/ 生产 ~100 行（≤180）✅ / 测试 ~240 行（≤250）✅
+- 未解决风险：无（R13 真连验证完成后闭合 TASK-FEISHU-001 遗留）
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：<待提交后回填>
+- verified_commit：<待用户 WSL 验证后回填>
 - **关闭门禁（四条件）**：① 测试通过；② 规范影响 none；③ spec_sync clean；④ verified_commit 真实 sha。
 
 ## 关联

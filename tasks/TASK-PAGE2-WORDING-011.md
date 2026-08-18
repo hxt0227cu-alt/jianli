@@ -69,17 +69,17 @@
 ## 强制停止条件
 - 无
 
-## 交付证据（关闭前填写）
-- commit / PR：
-- 修改文件清单：
-- 测试命令及结果：无
+## 交付证据
+- commit / PR：5724d87
+- 修改文件清单：apps/web/main.tsx（projects.jianli.steps 01-04）+ docs/page2-jianli-01-04-draft.md
+- 测试命令及结果：无（纯文案）
 - lint / typecheck：无
 - DB 迁移验证：无
-- 验收证据：
-- 变更预算实际值：
+- 验收证据："拒答率"歧义已消除（→"越界题拦截率"）；补误拒率/多轮/选型/如果重来边界，全部不编造
+- 变更预算实际值：max_files 实际 2 / 生产 0 行 / 测试 0 行
 - 未解决风险：无
-- 是否偏离 TASK：
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：
-- 关闭门禁：①②③④ 全满足方可关闭
+- verified_commit：5724d87
+- 关闭门禁：①②③④ 全满足

@@ -28,7 +28,7 @@
 
 设计约束优先级：**真实性 > 稳定性 > 成本**。
 
-北极星：简历事实一致率 ≥ 94%（SLO）。已用 26 题事实锚点评测集（对齐 R1–R26，脚本 `scripts/measure_fact_consistency.py` 可复跑）实测 **26/26 = 100%**，超过 SLO。
+北极星：简历事实一致率 ≥ 94%（SLO）。26 题同源事实锚点评测集已就绪（对齐 R1–R26，脚本 `scripts/measure_fact_consistency.py` 可复跑），**实测待跑**——最近一次跑 `scripts/fact_consistency_results.json`（2026-08-17）显示 26 题全 `503 Service Unavailable`，无任何一题真测出答案，故无真实数字；当前以 LITERAL 8/8 + REJECT 10/10 作为代理指标，SLO ≥ 94% 为达成目标。
 
 ---
 
@@ -121,4 +121,4 @@
 
 **工程纪律**：迁移全可逆；冻结验收测试不降级（断言 / 阈值不放宽、不 skip、不把集成改 mock）；双角色审查 + 人审批（迁移 / 鉴权 / 加密 / 通知）。
 
-**诚实边界**：SMTP 发信与上线部署在本地 PG+Redis 跑通，但待凭据 / 域名，runtime-unverified；**简历事实一致率实测 26/26 = 100%**（评测集与知识源同源，验证事实在场时不编造；跨分布泛化需更大对抗集，规划中；对齐 R1–R26，脚本可复跑；≥94% SLO 已达成）。评测方法：只读 POST `/answers:stream`，逐题对照 `docs/fact-consistency/fact-bank.md` 打 ✅/⚠️/❌/🚫，严格一致率 = ✅÷26。
+**诚实边界**：SMTP 发信与上线部署在本地 PG+Redis 跑通，但待凭据 / 域名，runtime-unverified；**简历事实一致率**：26 题同源评测集已就绪（对齐 R1–R26，脚本可复跑），实测待跑（最近一次跑 results 全 503 未测成）；以 LITERAL 8/8 + REJECT 10/10 为代理指标，≥94% SLO 为达成目标。评测方法：只读 POST `/answers:stream`，逐题对照 `docs/fact-consistency/fact-bank.md` 打 ✅/⚠️/❌/🚫，严格一致率 = ✅÷26。

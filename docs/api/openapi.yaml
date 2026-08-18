@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.3.0
+  version: 0.4.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
-    Approved contract based on SRS 1.3, domain-model 1.1.5, architecture 0.2
+    Approved contract based on SRS 1.4, domain-model 1.1.5, architecture 0.2
     and security 0.1. Implementation remains gated by the development_gate.
+    v0.4 (TASK-CR-VERIFY-CODE-001): verifyEmail / confirmPasswordReset change
+    from opaque link token to 6-digit verification code.
 servers:
   - url: /api/v1
 security: []
@@ -149,16 +151,17 @@ paths:
   /auth/verify-email:
     post:
       tags: [Auth]
-      summary: Verify a registration email
+      summary: Verify a registration email with a 6-digit code
       operationId: verifyEmail
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/TokenRequest' }
+            schema: { $ref: '#/components/schemas/VerifyCodeRequest' }
       responses:
-        '400': { $ref: '#/components/responses/Error' }
         '204': { description: Verified }
+        '422': { $ref: '#/components/responses/InvalidVerifyCode' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Error' }
   /auth/login:
     post:
@@ -216,7 +219,7 @@ paths:
           application/json:
             schema:
               allOf:
-                - $ref: '#/components/schemas/TokenRequest'
+                - $ref: '#/components/schemas/VerifyCodeRequest'
                 - type: object
                   required: [new_password]
                   properties:
@@ -226,8 +229,9 @@ paths:
                       maxLength: 72
                       description: UTF-8 byte length must be 10-72; server rejects values over 72 bytes and never silently truncates.
       responses:
-        '400': { $ref: '#/components/responses/Error' }
         '204': { description: Password changed and all sessions revoked }
+        '422': { $ref: '#/components/responses/InvalidVerifyCode' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Error' }
   /auth/me:
     get:
@@ -762,6 +766,17 @@ components:
                 properties:
                   status: { const: 422 }
                   code: { const: INVALID_REQUEST }
+    InvalidVerifyCode:
+      description: Verification code invalid or expired (10-minute TTL); after 5 failed attempts the code is invalidated and a new one must be requested (RATE_LIMITED).
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Problem'
+              - type: object
+                properties:
+                  status: { const: 422 }
+                  code: { const: INVALID_VERIFY_CODE }
   schemas:
     Problem:
       type: object
@@ -828,11 +843,11 @@ components:
       required: [email]
       properties:
         email: { type: string, format: email }
-    TokenRequest:
+    VerifyCodeRequest:
       type: object
-      required: [token]
+      required: [code]
       properties:
-        token: { type: string, minLength: 32 }
+        code: { type: string, pattern: '^\d{6}$', minLength: 6, maxLength: 6, description: 6-digit numeric verification code from email }
     LoginRequest:
       type: object
       required: [email, password, remember_me]

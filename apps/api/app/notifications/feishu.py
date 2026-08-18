@@ -17,7 +17,7 @@ cleanly); tests inject a stub with the same shape.
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -40,10 +40,14 @@ _APPOINTMENT_ID_FIELD = "预约ID"
 _STATUS_FIELD = "状态"
 
 
-def _iso(dt: datetime) -> str:
-    """Format an aware datetime as a Bitable datetime cell (ms epoch)."""
+def _iso(dt: datetime) -> int:
+    """Format an aware datetime as a Bitable datetime cell (ms epoch number).
 
-    return str(int(dt.timestamp() * 1000))
+    The Feishu bitable API accepts a numeric ms timestamp for datetime fields; a
+    stringified number is rejected with 1254064 DatetimeFieldConvFail.
+    """
+
+    return int(dt.timestamp() * 1000)
 
 
 def bitable_fields(appointment: Appointment) -> dict[str, Any]:
@@ -61,7 +65,7 @@ def bitable_fields(appointment: Appointment) -> dict[str, Any]:
         "联系电话": appointment.contact_phone,
         "备注": appointment.notes or "",
         _STATUS_FIELD: appointment.status,
-        "更新时间": _iso(datetime.now()),
+        "更新时间": _iso(datetime.now(UTC)),
     }
 
 

@@ -67,6 +67,7 @@ logger = logging.getLogger("jianli.aiqa")
 _OFFTOPIC_CODE = "OFFTOPIC"
 _GREETING_CODE = "GREETING"
 _PRIVACY_CODE = "PRIVACY"
+_MALICIOUS_CODE = "MALICIOUS"
 
 # Privacy guard (TASK-AIQA-PRIVACY-GUARD-012): refuse PII / private-life questions
 # directly, independent of retrieval score. The expanded real corpus contains
@@ -89,6 +90,62 @@ _PRIVACY_PATTERN = re.compile(
 
 def _is_privacy_question(question: str) -> bool:
     return bool(_PRIVACY_PATTERN.search(question))
+
+
+# Malicious-intent guard (TASK-AIQA-KB-DOMAIN-015): refuse harmful / illegal requests
+# (hacking, forgery, theft, attacks on others' systems) directly, on the same
+# deterministic layer as the privacy guard. The expanded corpus now contains wifi /
+# OTA content that pushes "怎么破解邻居家的 wifi 密码" just above the 0.47 relevance
+# threshold, so a score-only gate is insufficient — the intent is refused explicitly.
+# The regex is applied to the *question only* (never to corpus text), so legitimate
+# interview questions (which never contain these phrasings) are unaffected.
+_MALICIOUS_REPLY = (
+    "这类涉及非法或攻击性行为的问题，我没办法回答～"
+    "如果你对网络安全防护、系统加固这些技术本身感兴趣，我很乐意聊聊。"
+)
+_MALICIOUS_PATTERN = re.compile(
+    r"(黑进|越权访问|暴力破解|撞库|薅羊毛|"
+    r"破解.{0,8}(密码|wifi|wifi 密码|系统|账号)|"
+    r"(密码|账号|wifi).{0,4}(破解|入侵|盗)|"
+    r"窃取|盗取|骗取|伪造|造假|"
+    r"攻击.{0,4}(他人|别人|系统|网站|服务器|账户|账号)|"
+    r"入侵.{0,4}(别人|他人|系统|电脑|服务器|账号|网站)|"
+    r"黑进.{0,6}(系统|账号|电脑))"
+)
+# Defensive-context exemption: "怎么防止别人入侵/破解/攻击" is a legitimate security
+# question, not an attack request. Checked before the malicious pattern so defensive
+# phrasings are never refused.
+_DEFENSIVE_PREFIX = re.compile(
+    r"(防止|防范|防御|防护|如何防|怎么防|安全防护|加固|拦截).{0,6}(入侵|攻击|破解|盗|黑客)"
+)
+
+
+def _is_malicious_question(question: str) -> bool:
+    if _DEFENSIVE_PREFIX.search(question):
+        return False
+    return bool(_MALICIOUS_PATTERN.search(question))
+
+
+# KB domain scoping (TASK-AIQA-KB-DOMAIN-015): the KB is one shared pgvector corpus
+# across all pages, but each projects page must only retrieve its own documents —
+# otherwise a jianli question pulls Taiyizhi/Litchi chunks (observed 2026-08-18:
+# FQ-13 answered NestJS/115REST/35 表, FQ-24 answered the thesis load-test, FQ-27
+# answered Python+FastAPI for a Spring Boot project). Mapping:
+#   resume                  -> None (any experience topic may be asked on the resume page)
+#   projects / jianli       -> []  (jianli facts live in static pages only)
+#   projects / litchi       -> ["litchi.md"]
+#   projects / sleep202603_an -> ["taiyizhi.md"]
+#   projects / (none)       -> None (competition / behavioural questions)
+# None = unrestricted (legacy behaviour); [] = no KB docs for this domain.
+def _kb_domain_docs(page_key: str, project_key: str | None) -> list[str] | None:
+    if page_key == "projects":
+        if project_key == "jianli":
+            return []
+        if project_key == "litchi":
+            return ["litchi.md"]
+        if project_key == "sleep202603_an":
+            return ["taiyizhi.md"]
+    return None
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
 _SUPPORTED_TYPES = {"md", "txt", "pdf"}
 # Multi-turn memory backfill (TASK-M6-HARDENING-001): inject at most this many of the most
@@ -454,6 +511,36 @@ class AnswerService:
                 await self._persist_assistant(conversation_id, _PRIVACY_REPLY, True)
             return
 
+        # Malicious-intent guard (TASK-AIQA-KB-DOMAIN-015): refuse harmful / illegal
+        # requests before any model round-trip, same deterministic layer as privacy.
+        if _is_malicious_question(question):
+            latency_ms = int((time.monotonic() - start) * 1000)
+            logger.info(
+                "answer_malicious",
+                extra={
+                    "trace_id": trace_id,
+                    "conversation_id": str(conversation_id) if persist else None,
+                    "grounded": False,
+                    "offtopic": True,
+                    "model": _MALICIOUS_CODE,
+                    "latency_ms": latency_ms,
+                },
+            )
+            yield delta_frame(seq := seq + 1, _MALICIOUS_REPLY, trace_id)
+            yield citations_frame(seq := seq + 1, [], trace_id)
+            yield completed_frame(
+                seq := seq + 1,
+                grounded=False,
+                offtopic=True,
+                model=_MALICIOUS_CODE,
+                usage=None,
+                trace_id=trace_id,
+            )
+            if persist:
+                assert conversation_id is not None
+                await self._persist_assistant(conversation_id, _MALICIOUS_REPLY, True)
+            return
+
         # Agent tooling (TASK-AGENT-TOOLS-002): two-phase function calling. Phase 1 —
         # the model decides whether to call the whitelisted read-only `search_knowledge`
         # tool and generates its own retrieval terms (`tool_choice=auto`). The service
@@ -630,7 +717,7 @@ class AnswerService:
         merged: list[Candidate] = []
         seen: set[tuple[str, int]] = set()
         for query in (primary, fallback):
-            kb = await self._knowledge_candidates(query)
+            kb = await self._knowledge_candidates(query, page_key, project_key)
             static = retrieve(query, page_key, project_key) if not kb else []
             for candidate in [*kb, *static]:
                 key = (candidate.doc, candidate.fragment)
@@ -639,18 +726,31 @@ class AnswerService:
                     merged.append(candidate)
         return merged
 
-    async def _knowledge_candidates(self, question: str) -> list[Candidate]:
+    async def _knowledge_candidates(
+        self, question: str, page_key: str, project_key: str | None
+    ) -> list[Candidate]:
         """Chunk-level hybrid retrieval (vector + BM25 fused with RRF, TASK-KB-RAG-001).
-        Empty list falls back to static pages."""
+
+        KB results are scoped to the current page domain (``_kb_domain_docs``), so a
+        projects page never pulls another project's chunks. Empty list falls back to
+        static pages."""
 
         if self._knowledge_repository is None or self._embedder is None or self._storage is None:
             return []
+        doc_names = _kb_domain_docs(page_key, project_key)
+        if doc_names is not None and not doc_names:
+            return []  # domain has no KB docs (e.g. projects/jianli) -> static only
         try:
             vector = (await asyncio.to_thread(self._embedder.embed, [question]))[0]
             vector_hits = await asyncio.to_thread(
-                self._knowledge_repository.search_chunks, vector, min_score=self._min_score
+                self._knowledge_repository.search_chunks,
+                vector,
+                min_score=self._min_score,
+                doc_names=doc_names,
             )
-            corpus = await asyncio.to_thread(self._knowledge_repository.load_chunk_corpus)
+            corpus = await asyncio.to_thread(
+                self._knowledge_repository.load_chunk_corpus, doc_names=doc_names
+            )
         except EmbeddingError:
             return []
         # P1 relevance threshold (TASK-KB-THRESHOLD-001): no semantically similar chunk

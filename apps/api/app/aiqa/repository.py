@@ -251,14 +251,32 @@ class KnowledgeRepository:
                 )
 
     def search_chunks(
-        self, embedding: list[float], top_k: int = 10, min_score: float = 0.0
+        self,
+        embedding: list[float],
+        top_k: int = 10,
+        min_score: float = 0.0,
+        doc_names: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Vector retrieval over chunks of active documents. Score = 1 - distance.
 
         ``min_score`` (P1, TASK-KB-THRESHOLD-001): drop chunks below the cosine
         relevance threshold (0 = disabled, legacy top-k hard recall).
+        ``doc_names`` (TASK-AIQA-KB-DOMAIN-015): restrict retrieval to a page domain's
+        documents (None = all active docs; [] = no docs -> caller skips KB entirely).
         """
 
+        where = (
+            "WHERE d.retrieval_disabled_at IS NULL AND c.embedding IS NOT NULL "
+            "AND (1 - (c.embedding <=> :query)) >= :min_score"
+        )
+        params: dict[str, object] = {
+            "query": _vector_literal(embedding),
+            "min_score": min_score,
+            "top_k": top_k,
+        }
+        if doc_names is not None:
+            where += " AND d.name = ANY(:doc_names)"
+            params["doc_names"] = doc_names
         with self._engine.connect() as connection:
             rows = connection.execute(
                 text(
@@ -266,24 +284,35 @@ class KnowledgeRepository:
                     "1 - (c.embedding <=> :query) AS score "
                     "FROM knowledge_chunks c "
                     "JOIN knowledge_documents d ON d.id = c.doc_id "
-                    "WHERE d.retrieval_disabled_at IS NULL AND c.embedding IS NOT NULL "
-                    "AND (1 - (c.embedding <=> :query)) >= :min_score "
+                    f"{where} "
                     "ORDER BY c.embedding <=> :query LIMIT :top_k"
                 ),
-                {"query": _vector_literal(embedding), "min_score": min_score, "top_k": top_k},
+                params,
             ).mappings().all()
         return [dict(row) for row in rows]
 
-    def load_chunk_corpus(self) -> list[tuple[str, str]]:
-        """(chunk_id, content) pairs of active documents for BM25 indexing."""
+    def load_chunk_corpus(
+        self, doc_names: list[str] | None = None
+    ) -> list[tuple[str, str]]:
+        """(chunk_id, content) pairs of active documents for BM25 indexing.
 
+        ``doc_names`` (TASK-AIQA-KB-DOMAIN-015): keep the BM25 corpus consistent with
+        the vector scope (None = all active docs).
+        """
+
+        where = "WHERE d.retrieval_disabled_at IS NULL"
+        params: dict[str, object] = {}
+        if doc_names is not None:
+            where += " AND d.name = ANY(:doc_names)"
+            params["doc_names"] = doc_names
         with self._engine.connect() as connection:
             rows = connection.execute(
                 text(
                     "SELECT c.id, c.content FROM knowledge_chunks c "
                     "JOIN knowledge_documents d ON d.id = c.doc_id "
-                    "WHERE d.retrieval_disabled_at IS NULL"
+                    f"{where}"
                 ),
+                params,
             ).mappings().all()
         return [(str(row["id"]), row["content"]) for row in rows]
 

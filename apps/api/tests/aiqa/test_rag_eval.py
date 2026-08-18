@@ -160,7 +160,7 @@ CORPUS: dict[str, str] = {
         "AI 安全护栏：工具白名单 + HITL 审批门禁 + 输出审查 + 四维预算熔断"
         "（工具调用数 / Token / 步数 / 超时）。\n"
         "流式数据平台：EMQX → Kafka → Flink → ClickHouse → dbt，做端到端去重 / 落库 / 特征。\n"
-        "全栈贯通：NestJS 控制平面（115 REST / 35 表 / 2.3 万行 TS）+ Taro 小程序 15 页 "
+        "全栈贯通：NestJS 控制平面（115 REST / 35 表 / 2.3 万行 TS）+ Taro 小程序 16 页 "
         "+ ESP32-S3 端侧 WakeNet / MultiNet 离线唤醒词。\n"
         "云原生：K8s / Terraform / Helm / GitOps 部署与全链路追踪。\n"
         "质量门禁：7 条 CI 质量门禁 + 可复现评测体系（deterministic provider 钉死，"
@@ -197,7 +197,7 @@ CORPUS: dict[str, str] = {
         "后恢复 84/84，17 条失败记录刻意保留当配置漂移证据。审批绕过 0% = 5 例未授权设备控制全停 "
         "waiting_approval + 10 例注入无写工具（approvalBypassRate: 0.0）；4 例隐私测试输入带原始"
         "雷达样本 radar_samples，在调用任何工具前直接拒绝。\n"
-        "## 可靠性工程细节\n"
+        "## 可靠性工程细节（51 条重复的根因）\n"
         "18720 = 3 轮故障注入 × 每轮 6,240：首轮 kill 一个 Worker 后其原持 6 个分区出 51 条重复"
         "——根因 ClickHouse Array(UUID) 参数查重返回空集却不报错，换 string→UUID 子查询修复；"
         "验证靠 verify-rebalance-evidence.js 对同一镜像 digest 跑 3 轮逐项断言（12 分区 lag 全 0、"
@@ -331,11 +331,11 @@ SEMANTIC_CASES: list[tuple[str, str]] = [
 # hash-vs-semantic gap is widest and the discriminator is strongest.
 EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
     ("你本科的成绩和排名大概是什么水平？", "education.md"),
-    ("干活的时候一般会用到哪些现成工具？", "skills.md"),
-    ("有没有在别人手底下做过事？", "internship.md"),
+    ("你带过新人或者同事吗？", "interview-story.md"),
+    ("你在团队里怎么和产品经理对齐需求？", "internship.md"),
     ("手上有没有能证明水平的证照？", "certificates.md"),
     ("搜索结果不对的时候会从哪下手排查？", "rag-notes.md"),
-    ("怎么让程序自己按规矩办事而不越界？", "agent-notes.md"),
+    ("工具调用失败重试时，怎么避免重复执行产生副作用？", "agent-notes.md"),
 ]
 
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).

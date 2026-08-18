@@ -39,18 +39,21 @@ from app.factory import create_app  # noqa: E402
 from tests.aiqa.test_rag_eval import CORPUS  # noqa: E402
 
 SEED_EMAIL = os.environ.get("JIANLI_SEED_ADMIN_EMAIL", "seed-kb@jianli.local")
-_ENV_LINE = re.compile(r"^export\s+([A-Z0-9_]+)\s*=\s*(.+?)\s*$")
+# Bare `KEY=value` (the .env.local format) with an optional `export ` prefix
+# (TASK-AIQA-KB-DOMAIN-015: the previous regex required `export ` and loaded 0 vars
+# from the real .env.local — it only worked when the shell already had the env).
+_ENV_LINE = re.compile(r"^(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.+?)\s*$")
 
 
 def _load_env_local(env_path: Path) -> None:
-    """Parse `export KEY='value'` lines into os.environ (never overwrite inherited values)."""
+    """Parse `[export] KEY='value'` lines into os.environ (never overwrite inherited values)."""
     if not env_path.exists():
         print(f"[env] {env_path} not found — rely on inherited env")
         return
     loaded = 0
     for raw in env_path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
-        if not line or line.startswith("#") or not line.startswith("export "):
+        if not line or line.startswith("#"):
             continue
         m = _ENV_LINE.match(line)
         if not m:
@@ -143,11 +146,16 @@ async def _main(clear: bool) -> int:
             return 1
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         indexed = sum(1 for i in listed if i["status"] == "indexed")
-        print(f"== KB now {len(listed)} doc(s): indexed={indexed}, failed={len(listed)-indexed}")
-        if indexed != len(listed):
+        print(
+            f"== KB now {len(listed)} doc(s): indexed={indexed}, "
+            f"non-indexed={len(listed)-indexed} (含软删/失败残留)"
+        )
+        # WARN only when THIS upload's docs did not all index (soft-deleted leftovers
+        # from previous failed runs stay in the list and are not this run's failures).
+        if indexed < len(CORPUS):
             print(
-                "[WARN] 存在 failed 文档——请确认 .env.local 的 JIANLI_LLM_EMBEDDING_API_KEY "
-                "有效（embedding 失败会 mark_failed）",
+                "[WARN] 本次上传未全部 indexed——请确认 .env.local 的 "
+                "JIANLI_LLM_EMBEDDING_API_KEY 有效（embedding 失败会 mark_failed）",
                 file=sys.stderr,
             )
             return 1

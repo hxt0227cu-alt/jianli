@@ -180,7 +180,7 @@ def build_pages() -> dict[str, PageContentData]:
                     "litchi 技术要点：Planner/Guard/Executor/Synthesizer 四段受控 Agent"
                     "（AgentService.java 实现），Milvus 哈希向量 + Neo4j 图谱双路检索，本地 Ollama "
                     "qwen2.5:0.5b（无 GPU 笔记本可演示）；诚实局限：并发压测 200 并发仅 19% 达标、"
-                    "混合检索 BM25+RRF 未完成、数据平台为可部署模板未生产验证。",
+                    "混合检索 BM25+RRF 未完成、数据平台为可部署模板未生产验证。"
                 ),
             ],
         ),

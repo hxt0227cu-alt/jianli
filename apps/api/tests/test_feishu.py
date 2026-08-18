@@ -184,7 +184,7 @@ def test_candidate_dual_channel_delivers_email_and_feishu() -> None:
         assert len(feishu.messages) == 1
         assert feishu.messages[0][0] == "ou_candidate_001"
         assert len(feishu.rows) == 1
-        metadata = json.loads(by_channel["feishu"]["channel_metadata"])  # type: ignore[arg-type]
+        metadata = by_channel["feishu"]["channel_metadata"]
         assert metadata["feishu_record_id"] is not None
         assert metadata["open_id_configured"] is True
     finally:
@@ -258,7 +258,7 @@ def test_missing_open_id_feishu_row_succeeds_without_message() -> None:
         assert by_channel["email"]["status"] == "succeeded"
         assert by_channel["feishu"]["status"] == "succeeded"  # mirror only, no message
         assert len(feishu.messages) == 0
-        metadata = json.loads(by_channel["feishu"]["channel_metadata"])  # type: ignore[arg-type]
+        metadata = by_channel["feishu"]["channel_metadata"]
         assert metadata["open_id_configured"] is False
     finally:
         redis_client.close()

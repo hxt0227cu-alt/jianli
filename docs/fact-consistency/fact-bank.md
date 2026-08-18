@@ -1,4 +1,4 @@
-# 简历事实一致率 · 题库（FQ-01 … FQ-26）
+# 简历事实一致率 · 题库（FQ-01 … FQ-38）
 
 > **事实源（ground truth）**：`apps/api/app/aiqa/content.py` 的 `build_pages()` 中
 > `resume` 页 chunks（`doc="简历"`，R0–R4）与 `projects` 页 `projects_jianli` chunks
@@ -14,7 +14,7 @@
 > 设计上并行于需求 R1–R26 的覆盖意图，但本题库以 content.py chunk 为唯一事实锚点，
 > 不反向依赖 PRD 文本。
 >
-> **判定口径**：见 `rubric.md`。一致率 = ✅数 ÷ 26；目标 ✅ ≥ 25（即最多 1 题 ❌/🚫）。
+> **判定口径**：见 `rubric.md`。一致率 = ✅数 ÷ 题库总数（现 38）；SLO ≥94% 下需 ✅ ≥ 36（即最多 2 题 ❌/🚫）。
 
 ---
 
@@ -156,6 +156,75 @@
 
 ---
 
+## C 组 · Litchi 毕设域（page_key=`projects`，project_key=`litchi`；TASK-AIQA-KB-EXPAND-014 新增）
+
+### FQ-27 · litchi 毕设用了什么技术栈？
+- **期望事实**：Spring Boot 3.2 / Java 17 后端（100 文件 / 12,622 行）+ Vue3 + TS 前端（34 文件 / 11,076 行，21 视图三角色）+ Python YOLOv8 诊断服务 + MySQL 14 张表（platform_*），Controller 49 接口。
+- **溯源**：CORPUS `litchi.md`「规模与实现」/ content.py litchi chunk。
+- **判定要点**：命中 Spring Boot + Vue3 + YOLOv8 + MySQL 主体 ✅；说成 FastAPI/React 主栈 ❌（那是 jianli）。
+
+### FQ-28 · litchi 的四段受控 Agent 是怎么实现的？
+- **期望事实**：AgentService.java（458 行）：Planner 用 LLM 生成 JSON 计划（硬上限 4 步、失败走 fallbackPlan）→ Executor 顺序执行 → Synthesizer 仅依工具证据作答 + 模型不可用降级；Guard 无独立类、职责内嵌（白名单 availableTools.containsKey / maxSteps 截断 / RBAC AgentTool.supports / HITL requiresApproval+confirm）。
+- **溯源**：CORPUS `litchi.md`「受控 Agent 实现细节」。
+- **判定要点**：命中四段 + Guard 内嵌（白名单/预算/RBAC/HITL 至少两项）✅；说成"没实现/纯概念"❌。
+
+### FQ-29 · litchi 的 LLM 和向量是怎么选的？
+- **期望事实**：本地 Ollama qwen2.5:0.5b（CPU 可跑，无 GPU 笔记本本地演示约束）+ Milvus 哈希向量 1024 维（SimpleEmbeddingService，非语义 embedding）。
+- **溯源**：CORPUS `litchi.md`「模型与降级」「检索与图谱」。
+- **判定要点**：命中"本地 Ollama 0.5b + 哈希向量 + 无 GPU 约束" ✅；说成"云端大模型 + BGE-M3 语义向量"❌（那是泰益智/jianli）。
+
+### FQ-30 · litchi 的并发压测结果如何？
+- **期望事实**：200 并发仅 19% 成功、P95 15.18s；修复 4 项（旧接口路径 / PowerShell 5 兼容 / 外部依赖重复探测 / 文档检索对象级同步 CopyOnWriteArrayList）后仍不达标，按时间边界停止调优，报告如实保留（README / KNOWN_LIMITATIONS 列为未通过）。
+- **溯源**：CORPUS `litchi.md`「已知局限（诚实记录）」。
+- **判定要点**：命中"19% 成功 + 按时间边界停止 + 如实保留" ✅；说成"压测全过"❌。
+
+## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
+
+### FQ-31 · 泰益智的 84 例评测怎么分类？
+- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20（10 正常问答 + 10 注入）/ device_control 20（10 审批通过 + 5 未审批 + 5 模拟超时）/ algorithm_optimization 9（5 优化 + 4 隐私拒绝）/ sleep_report 5 / sleep_improvement 5 / voice_companion 5；曾因继承 `AGENT_MODEL_PROVIDER=openai_compatible` 只过 67/84，评测入口钉死 deterministic provider（不读环境变量）后 84/84，17 条失败刻意保留当漂移证据。
+- **溯源**：CORPUS `taiyizhi.md`「评测细分与漂移记录」。
+- **判定要点**：命中 7 类细分或 67/84 漂移与钉死 ✅；说"没有细分/没有漂移"❌。
+
+### FQ-32 · 泰益智 51 条重复的根因是什么？
+- **期望事实**：故障注入重平衡首轮被杀 Worker 的原 6 分区出 51 条重复，根因 ClickHouse `Array(UUID)` 参数查重返回空集却不报错，换 string→UUID 子查询修复；3 轮 × 6,240 事件验证（12 分区 lag 全 0、恢复 median 12.605s、300 次显式重放全抑制）。
+- **溯源**：CORPUS `taiyizhi.md`「可靠性工程细节」。
+- **判定要点**：命中"Array(UUID) 返回空集不报错 → UUID 子查询" ✅；说"重复是网络问题"❌。
+
+### FQ-33 · 泰益智同一套代码出了几个端？
+- **期望事实**：三端——Taro 小程序（16 页，rpx 单位 / TARO_ENV 分支 / 统一 API 封装做跨端规避）+ Web（dist）+ Android（Capacitor 壳 appId=com.sleep202603.app，MainActivity 一行 extends BridgeActivity、零自定义原生代码）。
+- **溯源**：CORPUS `taiyizhi.md`「端形态与固件」。
+- **判定要点**：命中"三端 + Capacitor 壳零原生代码" ✅；说"写过 Java/Kotlin 业务代码"❌（诚实边界）。
+
+## E 组 · 行为/动机/竞赛（interview-story，TASK-AIQA-KB-EXPAND-014 新增）
+
+### FQ-34 · 你在泰益智是怎么带人的？
+- **期望事实**：团队 1→3 人；教同事 Figma（UI/UX）与 MQTT（数据上报）；方式 = 1 对 1 实操演示 → 布置任务 + 验收 → 不停改版迭代；Figma 设计稿与小程序端能力冲突 → 列转换成本清单对齐、先还原核心页再迭代。
+- **溯源**：CORPUS `interview-story.md`「带人与协作」。
+- **判定要点**：命中"1 对 1 实操→任务+验收→改版"或"先还原核心页" ✅；说"没带过人"❌。
+
+### FQ-35 · 你工程上最大的教训是什么？
+- **期望事实**：① 67/84 配置漂移——"失败记录是证据不是污点、评测自己暴露漂移比上线后被用户发现好"；② 静默错误——"错误不报 ≠ 没问题、零报错最危险、对每个探针结果做语义核验"；③ 并发压测时间边界止损。
+- **溯源**：CORPUS `interview-story.md`「失败与复盘」。
+- **判定要点**：命中任意一条核心教训 ✅；说"没什么教训"❌（与诚实记录相悖）。
+
+### FQ-36 · 你的求职动机和职业规划是什么？
+- **期望事实**：科班 + 2023 年起用 AI 工具编程 → 前后端项目 → 泰益智从 0 做项目、从架构角度思考工程 → AI 全栈方向；意向深圳南山（充满理想的城市 + AI 产业密集）；选公司看重更大平台；5 年目标一步步往架构师方向走；一句话自荐"文档/契约/评测/门禁都是交付物，让任何接手的人（同事或 AI）无缝上手"。
+- **溯源**：CORPUS `interview-story.md`「求职动机」「文档化沟通」。
+- **判定要点**：命中"2023 起 AI 编程 / 深圳南山 / 架构师 / 可交接"至少两项 ✅；说成"没有规划"❌。
+
+### FQ-37 · 慧眼识蚁项目是做什么的？
+- **期望事实**：红火蚁精准防控的"大数据 + 机器人"装备（挑战杯科技发明制作 A 类、团队 5 人我任第一作者）：① 蚁丘-蚁巢识别估算（CNN 多核卷积 + GANs 还原运动蚂蚁轮廓区分红火蚁与本地蚁 + 回归模型估蚁巢大小）；② 户外巡检 + 药剂投放机器人（多传感器融合 + GPS + 环境感知）；③ 大数据决策云平台（时间序列 + 稀疏门控 MoE 预测繁殖/迁徙趋势，输出重点巡检区域）。
+- **溯源**：CORPUS `interview-story.md`「慧眼识蚁」。
+- **判定要点**：命中"红火蚁 + 大数据/机器人 + CNN/GANs/MoE 任一项" ✅；说成"与蚂蚁无关"❌。
+
+### FQ-38 · 慧眼识蚁做到了什么程度？
+- **期望事实**：完成实物中试/原型、已落地实测；识别准确率 ≥95% 为申报书目标指标（非必达实测数字）；相关专利属学校（申报号 [专利号已脱敏]）；对应 2024 大创国家级立项（第一负责人）。
+- **溯源**：CORPUS `interview-story.md`「慧眼识蚁」。
+- **判定要点**：命中"实物中试/原型 + 已落地实测" ✅；把 ≥95% 说成"实测已达成"⚠️（如实标注为目标指标）；专利说成个人申报 ❌（属学校）。
+
+---
+
 ## 备注
-- **不考项**：教育背景（仅 `sections` 有、不进检索语料）、sleep / litchi 项目细节（本次题库聚焦 jianli 一致性）。如需扩展，新增 FQ-27+ 并在脚本 `QUESTION_BANK` 同步。
+- **不考项**：教育背景（仅 `sections` 有、不进检索语料）。**FQ-27+ 已由 TASK-AIQA-KB-EXPAND-014 扩展**：C 组 litchi 架构（FQ-27~30）、D 组 sleep 泰益智（FQ-31~33）、E 组行为/动机/竞赛（FQ-34~38，溯源 interview-story.md）。FQ-27+ 的 page_key/project_key 与 `measure_fact_consistency.py` QUESTION_BANK 同步。
 - **漂移风险**：若 `content.py` chunk 文本变更，本题库期望事实须同步修订，否则一致率失真。修订须走内容变更流程，不可静默改期望值凑分。
+- **题库口径变更（2026-08-18）**：分母 26 → 38（FQ-27+ 扩展，rubric.md §3 同步）；SLO ≥94% 不变，38 题下需 ✅ ≥ 36。

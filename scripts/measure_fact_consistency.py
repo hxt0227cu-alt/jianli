@@ -60,6 +60,21 @@ QUESTION_BANK = [
     {"id": "FQ-24", "q": "jianli 的集成测试情况如何？", "page_key": "projects", "project_key": "jianli"},
     {"id": "FQ-25", "q": "jianli 的 embedding 经历过什么演进？", "page_key": "projects", "project_key": "jianli"},
     {"id": "FQ-26", "q": "jianli 开发中有过什么值得记录的坑？", "page_key": "projects", "project_key": "jianli"},
+    # ---- C 组 · Litchi 毕设域（TASK-AIQA-KB-EXPAND-014 新增）----
+    {"id": "FQ-27", "q": "litchi 毕设用了什么技术栈？", "page_key": "projects", "project_key": "litchi"},
+    {"id": "FQ-28", "q": "litchi 的四段受控 Agent 是怎么实现的？", "page_key": "projects", "project_key": "litchi"},
+    {"id": "FQ-29", "q": "litchi 的 LLM 和向量是怎么选的？", "page_key": "projects", "project_key": "litchi"},
+    {"id": "FQ-30", "q": "litchi 的并发压测结果如何？", "page_key": "projects", "project_key": "litchi"},
+    # ---- D 组 · sleep 泰益智域 ----
+    {"id": "FQ-31", "q": "泰益智的 84 例评测怎么分类？", "page_key": "projects", "project_key": "sleep202603_an"},
+    {"id": "FQ-32", "q": "泰益智 51 条重复的根因是什么？", "page_key": "projects", "project_key": "sleep202603_an"},
+    {"id": "FQ-33", "q": "泰益智同一套代码出了几个端？", "page_key": "projects", "project_key": "sleep202603_an"},
+    # ---- E 组 · 行为/动机/竞赛（interview-story.md）----
+    {"id": "FQ-34", "q": "你在泰益智是怎么带人的？", "page_key": "resume", "project_key": None},
+    {"id": "FQ-35", "q": "你工程上最大的教训是什么？", "page_key": "resume", "project_key": None},
+    {"id": "FQ-36", "q": "你的求职动机和职业规划是什么？", "page_key": "resume", "project_key": None},
+    {"id": "FQ-37", "q": "慧眼识蚁项目是做什么的？", "page_key": "projects", "project_key": None},
+    {"id": "FQ-38", "q": "慧眼识蚁做到了什么程度？", "page_key": "projects", "project_key": None},
 ]
 
 

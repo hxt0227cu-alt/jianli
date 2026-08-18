@@ -106,7 +106,12 @@ def build_pages() -> dict[str, PageContentData]:
     }
     projects_litchi: dict[str, object] = {
         "heading": "荔枝问答平台（litchi，毕设）",
-        "body": "上传文档后由真实语料补充，当前为占位。",
+        "body": (
+            "2026 届优秀毕业设计（90.4 分）：基于大模型 RAG 的荔枝智能问答平台，"
+            "一人独立完成 8 个模块（Spring Boot 3.2 后端 / Vue3 前端 / YOLOv8 诊断 / "
+            "数据平台 / 可观测 / Helm 部署 / 评测 / 语料）；四段受控 Agent + Milvus/Neo4j "
+            "双路检索 + 本地 Ollama 小模型，60 条评测集门禁。"
+        ),
     }
     projects_sections: list[dict[str, object]] = [projects_jianli, projects_sleep, projects_litchi]
     projects_chunks = [
@@ -166,7 +171,17 @@ def build_pages() -> dict[str, PageContentData]:
         *_chunk(
             "litchi",
             [
-                "litchi 荔枝问答平台：毕设项目，上传文档后由真实语料补充正文。",
+                (
+                    "litchi 荔枝问答平台是我的 2026 届优秀毕业设计（90.4 分）：《基于大模型 RAG 的"
+                    "荔枝智能问答平台设计与实现》，一人独立完成 8 个模块（Spring Boot 3.2 后端 / "
+                    "Vue3 前端 / YOLOv8 诊断服务 / 数据平台 / 可观测 / Helm 部署 / 评测 / 语料）。"
+                ),
+                (
+                    "litchi 技术要点：Planner/Guard/Executor/Synthesizer 四段受控 Agent"
+                    "（AgentService.java 实现），Milvus 哈希向量 + Neo4j 图谱双路检索，本地 Ollama "
+                    "qwen2.5:0.5b（无 GPU 笔记本可演示）；诚实局限：并发压测 200 并发仅 19% 达标、"
+                    "混合检索 BM25+RRF 未完成、数据平台为可部署模板未生产验证。",
+                ),
             ],
         ),
     ]

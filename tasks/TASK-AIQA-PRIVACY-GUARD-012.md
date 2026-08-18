@@ -74,7 +74,7 @@
 - 若隐私正则误伤正常题（FALSE_REJECT 任一变 FAIL）→ 停止并收窄正则
 
 ## 交付证据
-- commit / PR：待提交（工作区改动，基线 5724d87）
+- commit / PR：53133e2
 - 修改文件清单：apps/api/app/aiqa/service.py、apps/api/tests/aiqa/test_rag_eval.py
 - 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18，7/7 passed（62.33s）**
   - test_rag_reject_cases PASSED（REJECT 10/10，原 8/10 失败项被护栏接住）
@@ -89,5 +89,5 @@
 - 是否偏离 TASK：部分（test_rag_eval.py 同文件含 009 真实语料改动，非纯 012 范围；提交时与 009 合并或按文件说明）
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待提交后回填
+- verified_commit：53133e2
 - 关闭门禁：①②③④ 全满足（④ WSL 全量复验已于 2026-08-18 通过）

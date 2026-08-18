@@ -50,12 +50,13 @@
 - git 回退文案改动
 
 ## 交付证据
-- commit / PR：待填写
+- commit / PR：48c3b6c
 - 修改文件清单：apps/web/main.tsx（projects.jianli.steps 01-04）+ docs/page2-jianli-01-04-draft.md
-- 测试命令及结果：待 WSL 构建
-- lint / typecheck：待 WSL
+- 测试命令及结果：用户 WSL 2026-08-18 `npm run build` 通过（✓ built in 21.70s）；纯文案无逻辑变更
+- lint / typecheck：通过（同上 build，tsc -b 无错误）
 - DB 迁移验证：无
 - 未解决风险：事实一致率 26/26 仍为"实测待跑"，需用户起服务跑 `measure_fact_consistency.py` 后回填真实数字
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
+- verified_commit：48c3b6c

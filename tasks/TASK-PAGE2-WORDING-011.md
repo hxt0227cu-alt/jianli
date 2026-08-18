@@ -70,7 +70,7 @@
 - 无
 
 ## 交付证据
-- commit / PR：5724d87
+- commit / PR：5724d87（措辞落地）+ 48c3b6c（诚实校正：移除无依据 26/26）
 - 修改文件清单：apps/web/main.tsx（projects.jianli.steps 01-04）+ docs/page2-jianli-01-04-draft.md
 - 测试命令及结果：无（纯文案）
 - lint / typecheck：无
@@ -81,5 +81,5 @@
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：5724d87
+- verified_commit：48c3b6c
 - 关闭门禁：①②③④ 全满足

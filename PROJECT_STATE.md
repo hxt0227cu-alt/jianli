@@ -3,7 +3,7 @@
 > 本文件**只记录任务态**：当前阶段 / 当前任务 / 本周阻塞 / 下一步 / 最后通过测试的 commit。
 > **不重复维护任何版本号、评审状态、优先级或延后项**——那些只存在于 `docs/baseline.yml`（唯一规范源）。
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
-> 最后更新：2026-08-08（**SRS v1.1 / approved**（v1.0 于 `26ae844` 批准、v1.1 退信(Bounce) 缺陷修正于 `00e125c` 批准；TASK-SRS-002 已关闭、TASK-UI-002 已同步退信并关闭、SRS 现为行为唯一源）；domain_model **v1.1.5 / approved**（TASK-DM-003 已关闭、下游 SRS/架构已同步）；TASK-DM-001 历史已关闭、`f64b6de` 为旧版 1.1.3 真实批准锚点、v1.1.4 批准锚点 `f537296` 保留为历史；**UI 线框 v1.0 / approved**（经用户 2026-08-08 独立评审批准，approval_commit=`38b102a`；TASK-UI-002/TASK-UI-003 均已闭合、TASK-UI-001 已关闭）；现进入架构/ADR 阶段）
+> 最后更新：2026-08-18（**SRS v1.1 / approved**（v1.0 于 `26ae844` 批准、v1.1 退信(Bounce) 缺陷修正于 `00e125c` 批准；TASK-SRS-002 已关闭、TASK-UI-002 已同步退信并关闭、SRS 现为行为唯一源）；domain_model **v1.1.5 / approved**（TASK-DM-003 已关闭、下游 SRS/架构已同步）；TASK-DM-001 历史已关闭、`f64b6de` 为旧版 1.1.3 真实批准锚点、v1.1.4 批准锚点 `f537296` 保留为历史；**UI 线框 v1.0 / approved**（经用户 2026-08-08 独立评审批准，approval_commit=`38b102a`；TASK-UI-002/TASK-UI-003 均已闭合、TASK-UI-001 已关闭）；现进入架构/ADR 阶段）
 
 > ### 交接模式（2026-08-12 切换 — Codex / 下一 AI 接手必读）
 > - **治理节奏已切换为功能交付优先**：用户批准 4 条提速口径 —— ① 合并同域主线；② 独立审查按风险分级（同域 CRUD 不单列 REVIEW 任务，仅内联自审并发/归属/乐观版本）；③ 交付证据一次写全（关闭时不补纯回填 commit）；④ 验证批处理（一轮 pytest+ruff+mypy+pnpm typecheck/build/test）。
@@ -91,6 +91,14 @@
 - **TASK-DM-003**：**已关闭（Closed，2026-08-08 末）**——领域模型 v1.1.4→v1.1.5 修订（多投递目的修复 + 单 owner 方案 A：`User.uq_active_owner_admin` + `OwnerContactConfig.candidate_feishu_open_id_ciphertext`）。执行顺序：① 用户批准 v1.1.5 → 独立批准锚点 `f412c7d`（baseline.domain_model review→approved）；② SRS impact review（`10fb2f2`：based_on→1.1.5、版本引用同步、行为不变、不复制物理索引）；③ architecture v0.2 sync（`f0d3264`：§6 纳入 delivery_purpose/幂等键/uq_delivery_attempt 5 列/单 owner 解析/飞书标识缺失处理，based_on 升 1.1.5）；④ spec_sync 转 clean 后关闭。关闭门禁四条件满足（测试=一致性校验通过 / 规范影响已处理 / spec_sync=clean / verified_commit=`f0d3264`）。不建 TASK-GOV-*；未进入下游阶段。架构待办 §13 两项后续修正（用户取消 Slot 重新物化 / created_at 租约区分未发送与结果未知）已于 2026-08-09 经 TASK-ARCH-002 三项修正执行并裁定（§4.6 重新物化 / §6.4 两类超时），非待执行；另 2026-08-09（续）两项并发竞态修正见 §12.3 条目 20/21。
 - **TASK-GOV-SYNC-002**：**Closed（2026-08-17 文档同步）**——将 PROJECT_STATE 对齐 master HEAD `62620df`。**如实补记 `beafbcf`→`62620df` 之间三个无独立 TASK 直接落地的提交（不追认、不否认、不重写）**：`4da0778`（chore(dev): scripts/dev-env.sh 固化本地开发 env——根治多终端 key 不一致）、`536d41e`（feat(web): 预约页补齐注册/找回/邮箱验证——账号自助闭环 M4 前端）、`62620df`（feat(admin): admin 运营驾驶舱 4 Tab）。本环境未对这些提交单独重跑全量验证，故不宣称新 verified 快照，仅对齐状态真相。verified_commit=本任务 commit（待回填）。
 - **TASK-HARNESS-001**：**Open（2026-08-17 实施中）**——评测 Harness 工程化（自动评测 + 留痕 + Codex 接手）。交付：`apps/api/tests/conftest.py`（集中 fixtures：`ensure_test_schema` autouse 幂等迁移测试库 / `test_settings` / `app_client`）、`apps/api/scripts/harness_setup_db.py`（幂等建 `jianli_test` + alembic upgrade + Redis 探活）、`scripts/verify.sh`（一键 verify：env→测试库→pytest+ruff+mypy+前端）、`scripts/git-hooks/pre-commit`·`pre-push` + `scripts/install-hooks.sh`（本地自动评测）、`scripts/devlog.sh`（自动开发日志）、`scripts/record_pit.py` + `docs/` 坑记录（半自动：机器记录、AI 提议、用户拍板提炼 Skill）、`docs/HARNESS.md`（接手文档）。**已确认决策**：测试库复用 docker-compose（方案 A，零新依赖）、不做 GitHub 远端走本地 git hook、开发日志自动生成不手填。验证结果待 `verify.sh` 全量跑通后回填。
+
+- **TASK-AIQA-ANCHOR-ISO-008**：**已关闭（Closed，2026-08-18 收口，verified_commit=5724d87）**——多轮锚点隔离（persona.py system prompt 加固：每轮独立基于检索证据/事实卡作答，不继承上一轮推理）；代码随 5724d87 落地，文档于 53133e2 回填收口。spec_sync=clean、规范影响 none。详见 `tasks/TASK-AIQA-ANCHOR-ISO-008.md`。
+- **TASK-AIQA-FALSE-REJECT-009**：**已关闭（Closed，2026-08-18 用户 WSL 7/7 验证，verified_commit=53133e2）**——误拒率评测 + 真实语料扩产：test_rag_eval.py CORPUS 落真实简历/泰益智/毕设事实、content.py 落真实 resume facts（[姓名已脱敏]/[学校已脱敏]/泰益智7月/毕设90.4）；用户 WSL `pytest tests/aiqa/test_rag_eval.py` 7/7 passed（FALSE_REJECT 8/8、REJECT 10/10、privacy 测试 PASS）。详见 `tasks/TASK-AIQA-FALSE-REJECT-009.md`。
+- **TASK-AIQA-PRIVACY-GUARD-012**：**已关闭（Closed，2026-08-18 用户 WSL 验证，verified_commit=53133e2）**——隐私护栏：service.py 问候门禁后插入 PII 正则拒答（住址/工资/身份证/私生活/生日），不检索不调模型；新增 test_privacy_questions_refused。原 reject 8/10（住址/工资 0.492 越阈）经护栏修复为 10/10。详见 `tasks/TASK-AIQA-PRIVACY-GUARD-012.md`。
+- **TASK-FE-STREAM-CTRL-010**：**已关闭（Closed，2026-08-18 用户 WSL `npm run build` 验证，verified_commit=5724d87）**——前端流式控制（streamAnswer AbortController+25s 超时+连接失败单次重连；ChatPanel 卸载/beforeunload abort）；用户 WSL build 2026-08-18 通过（✓ 21.70s）。详见 `tasks/TASK-FE-STREAM-CTRL-010.md`。
+- **TASK-PAGE2-WORDING-011**：**已关闭（Closed，2026-08-18 诚实校正，verified_commit=48c3b6c）**——页面二措辞落地 + 诚实校正（移除无依据"26/26=100%"，results.json 全 503 未实测）。详见 `tasks/TASK-PAGE2-WORDING-011.md`。
+- **TASK-PAGE2-JIANLI-STEPS-LANDING**：**已关闭（Closed，2026-08-18 用户 WSL build 验证，verified_commit=48c3b6c）**——页面二 01-04 jianli 内容落地前端 main.tsx（校正"11→15 张表"、加隐私护栏层、诚实事实一致率表述）；纯文案无逻辑变更。详见 `tasks/TASK-PAGE2-JIANLI-STEPS-LANDING.md`。
+
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
 ---
@@ -167,5 +175,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **M5 验证锚点（Closed，2026-08-13 用户授权关闭）**：`cfb1854` ——M5 管理后台 7 operation 实现（`admin/` 包 + `appointments/service.py` 扩展 8 方法 + `factory.py` 挂载 + `tests/admin/test_admin_actions.py`）+ 契约偏离修正（a201578 证据回填 / 24665fb 3 处失败修正 / cfb1854 UUID 导入回归修复）；ruff/mypy repo 级全绿（29 source files）+ DB-free wiring smoke 通过 + **真实 PG/Redis 集成测试 6 passed in 10.78s**（用户 WSL，2026-08-13）；spec_sync=clean、verified_commit=cfb1854、关闭门禁三项全绿。用户显式授权关闭，TASK-M5 Closed。
 
 - **最新验证锚点（GOV-SYNC-002 文档同步）**：`<commit>` — PROJECT_STATE 对齐 master HEAD `62620df`；如实补记 `beafbcf`→`62620df` 之间三个无独立 TASK 提交（`4da0778` dev-env.sh / `536d41e` M4 前端 / `62620df` admin 驾驶舱）；harness 工程化 TASK-HARNESS-001 登记。纯文档同步，本环境未对这些提交单独重跑全量验证，不宣称新功能 verified 快照。
+
+- **当前 master HEAD 校正（2026-08-18）**：实际 master HEAD = `5724d87`（非本文件前述 stale 的 `62620df`；`62620df` 为其祖先）。PROJECT_STATE 曾滞后若干轮收口未记入，本回合一并补记：介于 `62620df`→`5724d87` 之间已提交闭合的任务——`TASK-HARNESS-PIT-001`(verified_commit=cf77b84)、`TASK-CONTENT-RESUME-001`(verified_commit=11bb036)、`TASK-MAINT-GITIGNORE-001`(verified_commit=43a76a1)、`TASK-AIQA-GROUNDING-001`(verified_commit=eba0103)；以及本轮 `TASK-AIQA-ANCHOR-ISO-008`(5724d87)、`TASK-AIQA-FALSE-REJECT-009`(53133e2)、`TASK-AIQA-PRIVACY-GUARD-012`(53133e2)、`TASK-FE-STREAM-CTRL-010`(5724d87)、`TASK-PAGE2-WORDING-011`(48c3b6c)、`TASK-PAGE2-JIANLI-STEPS-LANDING`(48c3b6c)。最新有效 verified commit 以各 TASK 单为准。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

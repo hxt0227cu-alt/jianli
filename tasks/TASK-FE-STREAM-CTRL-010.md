@@ -78,7 +78,7 @@
 - commit / PR：5724d87
 - 修改文件清单：apps/web/main.tsx
 - 测试命令及结果：前端构建须 WSL `cd apps/web && npm run build`（沙箱缺 win32 原生包，无法本地构建）；须手动验证 25s 超时 / 卸载取消 / 连接失败重连
-- lint / typecheck：待 WSL tsc/build
+- lint / typecheck：用户 WSL 2026-08-18 `npm run build` 通过（tsc -b && vite build，✓ built in 21.70s）
 - DB 迁移验证：无
 - 验收证据：streamAnswer 加 AbortController+25s 超时+连接失败单次重连；ChatPanel 卸载/beforeunload abort 在途流
 - 变更预算实际值：max_files 实际 1 / 生产 ~40 行 / 测试 0 行
@@ -87,4 +87,4 @@
 - 规范影响结论：none
 - spec_sync：clean
 - verified_commit：5724d87
-- 关闭门禁：①④ 已满足；②（WSL 构建+手动验证）③（spec_sync clean）待用户验证后满足
+- 关闭门禁：①②③④ 全满足（②于 2026-08-18 WSL `npm run build` 验证通过）

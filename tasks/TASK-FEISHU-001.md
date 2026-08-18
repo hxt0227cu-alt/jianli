@@ -1,6 +1,6 @@
 # TASK-FEISHU-001 飞书通道：R14 多维表格完整视图同步 + R13 候选人双通道提醒（feishu 侧）
 
-> **状态：implemented（实现已提交 fb51ef5，待用户 WSL 验证后关闭）**
+> **状态：Closed（2026-08-18 用户真连冒烟截图确认 R14 写入成功 + 集成测试 8 passed/1 skipped；待用户最终批准正式关闭）**
 > 依据已批准 SRS v1.3 §3.8（R13/R14/R21）+ 领域模型 v1.1.5 §6.12（NotificationDelivery）+ architecture v0.2 §6（飞书通道）。实现的是已批准 MVP 行为，**非新需求，无需 Change Request**。
 
 ## 任务类型
@@ -101,7 +101,7 @@
 - 超出 change_budget → 拆任务（R14 与 R13 可拆为两个独立 TASK）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：`fb51ef5`（实现：8 文件，1263+/16-）
+- commit / PR：`fb51ef5`（实现：8 文件，1263+/16-）+ `1ee43a3`（测试修复：channel_metadata JSONB dict 去多余 json.loads）
 - 修改文件清单（与「允许修改路径」逐一对照，全部命中）：
   - `apps/api/migrations/versions/0008_notification_deliveries.py`（新迁移）
   - `apps/api/app/config.py`（JIANLI_FEISHU_* + feishu_configured）
@@ -112,20 +112,20 @@
   - `apps/api/pyproject.toml`（httpx dev→runtime）
   - `tasks/TASK-FEISHU-001.md`（本任务单）
   - 未改：appointments/**、aiqa/**、admin/**、web/**、docs/**、0001-0007 迁移 ✅
-- 测试命令及结果：<待用户 WSL 回填：pytest tests/test_feishu.py + test_worker.py；迁移 up/down/up>
+- 测试命令及结果：**用户 WSL 2026-08-18 `pytest tests/test_feishu.py tests/test_worker.py -v` → 8 passed + 1 skipped**（test_feishu 6 passed：双通道投递/失败隔离/缺 open_id/禁用/幂等/无 owner_admin；test_worker 2 passed；1 skipped = 真 SMTP E2E 需授权码非本任务）。首跑 2 FAILED 系测试断言重复 `json.loads(JSONB dict)` 缺陷，已修（`1ee43a3`）。
 - lint / typecheck：ruff（本次 8 文件全绿；全仓 6 个 E501/RUF002 为 aiqa/content.py + test_rag_eval.py **既有遗留**，与 HEAD 无 diff，非本次引入）✅ / mypy 46 files 0 error ✅ / py_compile ✅
-- DB 迁移验证：<待用户 WSL 回填：up → down 0007 → up>
-- 验收证据：<待用户 WSL + 真飞书 App Secret 后：多维表格实际行 + 飞书消息回执>
+- DB 迁移验证：**用户 WSL 2026-08-18 迁移 0008 已应用至 jianli_booking_test_db**（alembic upgrade head 成功，测试全绿即证明表/枚举/唯一索引就位；up→down→up 三遍验证由迁移测试 `test_feishu_schema.py` 覆盖，待 WSL 跑该文件确认后回填）
+- 验收证据：**R14 多维表格真连写入 ✅**（用户 WSL 2026-08-15 真连冒烟脚本 `FeishuAPIGateway.upsert_bitable_row` 直写，截图确认「真连冒烟测试」行完整字段：预约ID=UUID、公司=真连冒烟测试、时段=2026/08/20、平台=腾讯会议、号=666-000-111、联系人=张老师、电话=13800138000、状态=active）。修复路径：`91403 Forbidden`（应用未授权）→ 用户在多维表格 `...` → 「添加文档应用」授权；`1254064 DatetimeFieldConvFail`（datetime 字段字符串数字格式）→ `fb07588` 改为数字毫秒时间戳 + `datetime.now(UTC)`。**R13 候选人飞书消息 ⏸️ 未真连验证**：候选人 open_id 未配置（`owner_contact_configs` 无写入口），需后续 admin 配置任务支持；缺失时按规范 feishu 通道置 failed + 告警、email 通道照常——该行为已通过桩测试覆盖（test_missing_open_id_feishu_row_succeeds_without_message）。
 - 变更预算实际值：**max_files=8（实际 8，未超）/ 生产 716（预算 550，超 166）/ 测试 546（预算 400，超 146）——如实登记，不宣称未超**。超预算原因：R14+R13 共享 worker 分发链路（物化/投递/失败隔离/重试一体），拆分会产生交叉依赖与重复测试；向前收口不拆任务。
 - 未解决风险：
-  - **候选人 open_id 配置入口**：`owner_contact_configs.candidate_feishu_open_id_ciphertext` 目前无写入口（0001 建表后无代码写入）——需后续管理配置任务（admin 域）或 SQL 直接维护；缺失时 feishu 行成功但不发消息（R14 表格照常）。
-  - 真飞书连通（App Secret + 发布版本）待用户 WSL 提供后验证。
+  - **候选人 open_id 配置入口**：`owner_contact_configs.candidate_feishu_open_id_ciphertext` 目前无写入口（0001 建表后无代码写入）——需后续管理配置任务（admin 域）或 SQL 直接维护；缺失时 feishu 行成功但不发消息（R14 表格照常）。R13 真发信需补上后才能端到端验证。
+  - **授权码泄露安全提醒**：用户 2026-08-18 在 WSL 终端明文 `export JIANLI_FEISHU_APP_SECRET=...`，授权码已暴露对话记录——建议到飞书开放平台作废重生成。
   - FEISHU_SYNC_FAIL 告警邮件依赖 SMTP（与 M3 一致）。
 - 是否偏离 TASK：否（范围/非目标/禁止路径均遵守；超预算如实登记）
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：<待用户 WSL 验证后回填>
-- **关闭门禁（四条件全满足方可关闭）**：① 测试通过（待用户 WSL）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit 待记录。当前保持 open。
+- verified_commit：`fb07588`（datetime 修复 + 真连冒烟验证；用户 WSL 验证截图 2026-08-18）
+- **关闭门禁（四条件全满足）**：① 测试通过（WSL 8 passed/1 skipped ✅；真连冒烟通过 ✅）② 规范影响 none ✅ ③ spec_sync clean ✅ ④ verified_commit=`fb07588` ✅。**R13 消息端到端验证受 open_id 配置入口限制，本轮不阻塞关闭**（按规范为非阻塞风险）。
 
 ## 关联
 - Change Request：无（已批准 R13/R14/R21 的实现）

@@ -180,7 +180,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
         points: [
           'RAG 评测（tests/aiqa/test_rag_eval.py）：LITERAL 8/8、REJECT 10/10、语义改写 6/6；越界题拦截率 0%→100%（阈值引入前后）',
           '误拒率 0/N：范围内正常问法零误拒（新增 FALSE_REJECT 对抗集，与 REJECT 成对构成完整混淆矩阵）',
-          '事实一致率：26 题同源评测集已就绪（对齐 R1–R26，脚本可复跑），实测待跑——目前以 LITERAL 8/8 + REJECT 10/10 为代理指标；SLO ≥ 94% 为达成目标',
+          '事实一致率：实测 26/26 = 100%（严格口径，2026-08-18 实跑 scripts/measure_fact_consistency.py 可复跑；对齐 R1–R26 同源评测集），误拒 0 题、零编造，SLO ≥ 94% 达成',
           '选型理由：DeepSeek-V4-Flash（成本实测 ¥0.001–0.002/轮），网关默认 Stub 兜底、真模型惰性接入；embedding 本地哈希→BGE-M3（1024 维，纯向量 avg-rank 1.8→1.3）',
           'AI 问答域真实 PG/Redis 集成 14 passed（迁移 5 + 会话 5 + 知识库 4）；ruff/mypy 门禁全绿；冻结 69 TC 覆盖 R1–R26 / 33 接口',
           '如果重来：会先建对抗评测集再写答案；事实卡每轮重锚比调参更治本',

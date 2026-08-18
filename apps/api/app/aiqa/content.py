@@ -83,9 +83,11 @@ def build_pages() -> dict[str, PageContentData]:
             "我的毕业设计是《基于大模型 RAG 的荔枝智能问答平台设计与实现》"
             "（2026 届优秀毕业设计，得分 90.4）。",
             "技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React；"
-            "熟悉 RAG 与受约束的 AI Agent 编排，用过 Kafka / Flink / ClickHouse 数据平台。",
+            "熟悉 RAG 与人格层问答、受约束的 AI Agent 编排，用过 Kafka / Flink / ClickHouse 数据平台。",
             "我偏好先设计后编码，重视可观测性、可演进性与契约测试。",
             "我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约。",
+            "我曾负责预约与协作类系统的后端架构，落地过插槽快照、实时刷新与幂等写入；"
+            "也做过内容问答与检索相关功能。偏好先设计后编码，重视可观测与可演进。",
         ],
     )
 
@@ -205,7 +207,8 @@ def build_resume_facts_card() -> str:
     """Hard, always-injected resume facts for the digital-twin voice.
 
     These are verbatim anchors distilled from the ``resume`` page chunks
-    (R0–R4 + the R5 digital-twin chunk added by TASK-AIQA-GROUNDING-001).
+    (R0–R4 + the R5 digital-twin chunk added by TASK-AIQA-GROUNDING-001 + the
+    R6 工作经历 chunk added by TASK-AIQA-FACTCOVERAGE-013).
     They are injected into the *system* prompt (higher weight than the
     retrieved 【已知资料】 block) and pinned with a "use verbatim" constraint,
     so open-ended questions (methodology / what-you-value / other-directions)
@@ -222,6 +225,8 @@ def build_resume_facts_card() -> str:
         "（国家一流专业建设点），2026 届本科，中共党员，专业排名 3/153，GPA 3.38/4.0\n"
         "- 实习：泰益智医疗科技（广州）有限公司，7 个月，AI 全栈开发工程师 / 技术负责人，"
         "主导智能睡眠监测台灯（Sleep AIoT）从 IoT 原型升级为以 LLM Agent 为核心的 AI Native 平台\n"
+        "- 工作经历：曾负责预约与协作类系统的后端架构，落地插槽快照、实时刷新与幂等写入；"
+        "也做过内容问答与检索相关功能\n"
         "- 最骄傲的项目：AI 睡眠健康 Agent 平台——84 例工程评测 100% 通过、工具选择准确率 100%、"
         "审批绕过率 0%、10 例 Prompt 注入 0 越权写、4 例隐私测试 0 泄露\n"
         "- 毕业设计：2026 届优秀毕业设计（得分 90.4）《基于大模型 RAG 的荔枝智能问答平台设计与实现》\n"
@@ -229,7 +234,8 @@ def build_resume_facts_card() -> str:
         "- 工程方法论：我偏好先设计后编码\n"
         "- 最看重的工程品质：重视可观测性、可演进性与契约测试\n"
         "- 技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React\n"
-        "- 熟悉的 AI 技术：RAG 与受策略/审批/持久化约束的 AI Agent 编排；Kafka / Flink / ClickHouse 数据平台\n"
+        "- 熟悉的 AI 技术：RAG 与人格层问答、受策略/审批/持久化约束的 AI Agent 编排；"
+        "Kafka / Flink / ClickHouse 数据平台\n"
         "- 求职意向：AI 全栈开发工程师，意向深圳市南山区\n"
         "- 站点本质：我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约"
     )

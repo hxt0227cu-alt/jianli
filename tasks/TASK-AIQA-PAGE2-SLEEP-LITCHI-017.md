@@ -44,10 +44,10 @@
 
 ## 交付证据
 
-- commit / PR：（提交后回填）
+- commit / PR：`3e22085`（实现提交，2 文件 154+/7-）
 - 修改文件清单：apps/web/main.tsx、tasks/TASK-AIQA-PAGE2-SLEEP-LITCHI-017.md
-- 测试命令及结果：（用户 WSL 复验后回填）
-- verified_commit：（收口后回填）
+- 测试命令及结果：**PASS — 用户 WSL 2026-08-18 19:29 `npm run build` ✓ built in 21.73s**（build 脚本 = `tsc -b && vite build`，类型门禁与构建全通过；独立 `npx tsc -b --force` 报 tsconfig not found 为 npx 参数解析问题，不影响官方门禁）
+- verified_commit：`3e22085`
 
 ## 关闭门禁
 

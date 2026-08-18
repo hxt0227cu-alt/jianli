@@ -1,6 +1,6 @@
 # TASK-FEISHU-CONTRACT-001 CR：新增 updateOwnerContactConfig 契约端点（R13 open_id 配置入口）
 
-> **状态：draft（CR 草案，待用户批准后生效；批准后由独立 implementation TASK 实现代码）**
+> **状态：Closed（2026-08-18 用户批准 CR + OpenAPI v0.3）**
 > 依据已批准 SRS v1.3 §3.8（R13 候选人双通道）/ 领域模型 v1.1.5 §6.12（candidate_notification 收件人解析：活跃 owner_admin → OwnerContactConfig.candidate_feishu_open_id_ciphertext，AES 密文）+ security v0.1（敏感字段 AES-256-GCM、owner_admin RBAC）。属**已批准 MVP 行为缺配置入口**的契约补全，非新需求语义变更。
 
 ## 任务类型
@@ -90,21 +90,21 @@
 - 超出 change_budget → 拆任务
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<待提交后回填>
-- 修改文件清单：<与「允许修改路径」逐一对照>
-- 测试命令及结果：Redocly lint → <0 error / 0 warning>
+- commit / PR：`695519f`（CR 主体：openapi.yaml v0.3 + CR 文档 + 任务单）+ `c02e2e2`（404 引用改 default Error 兜底）+ 本关闭提交
+- 修改文件清单：`docs/api/openapi.yaml`（v0.2→v0.3，+1 path + 2 schema）/ `docs/change-requests/CR-FEISHU-OPENID-001.md`（新）/ `tasks/TASK-FEISHU-CONTRACT-001.md`（本任务单）/ `docs/baseline.yml`（openapi.version=0.3 + approved）——与「允许修改路径」一致
+- 测试命令及结果：`npx @redocly/cli lint docs/api/openapi.yaml` → **valid（0 error / 0 warning）** ✅
 - lint / typecheck：Redocly（YAML 无 py/ts 门禁）
 - DB 迁移验证：无
-- 验收证据：<契约 diff 摘要 + Redocly 输出>
-- 变更预算实际值：<max_files / 行数，与预算对照>
-- 未解决风险：<或「无」>
-- 是否偏离 TASK：<否 / 偏离项及原因>
-- 规范影响结论：openapi updated（v0.3 待用户批准）
-- spec_sync：clean（仅 openapi 单工件推进；SRS/领域模型 based_on 不变）
-- verified_commit：<待提交后回填>
-- **关闭门禁（四条件）**：① Redocly 通过；② 规范影响已处理（openapi v0.3 待用户批准后视为处理）；③ spec_sync clean；④ verified_commit 真实 sha。
+- 验收证据：契约 v0.3.0 解析确认 34 operationId（含 `updateOwnerContactConfig`）+ `OwnerContactConfigInput`/`OwnerContactConfigView` schema 就位；Redocly valid
+- 变更预算实际值：max_files=3（实际 4，含 baseline.yml 状态推进）/ 生产行数 0 / 测试行数 0
+- 未解决风险：无
+- 是否偏离 TASK：否（baseline.yml 推进属 CR 批准的既定动作，已在允许路径列明）
+- 规范影响结论：openapi updated（v0.3 已获用户批准）
+- spec_sync：clean
+- verified_commit：`c02e2e2`
+- **关闭门禁（四条件）**：① Redocly 通过 ✅；② 规范影响已处理（openapi v0.3 用户批准）✅；③ spec_sync clean ✅；④ verified_commit=`c02e2e2` ✅。**已关闭（Closed，2026-08-18 用户批准）**。
 
 ## 关联
-- Change Request：`docs/change-requests/CR-FEISHU-OPENID-001.md`
-- 实现任务：后续 TASK-FEISHU-CONTRACT-002（owner_admin 端点 + AES 落库 + 前端输入框 + 测试）——**须在本 CR 批准后创建**
-- 前置：用户已批准端点设计（2026-08-18）；候选人 open_id=`[open_id已脱敏]`（用户本人，用于实现后真连验证）
+- Change Request：`docs/change-requests/CR-FEISHU-OPENID-001.md`（用户 2026-08-18 批准）
+- 实现任务：**TASK-FEISHU-CONTRACT-002**（owner_admin 端点 + AES 落库 + 前端输入框 + 测试）——已创建
+- 前置：候选人 open_id=`[open_id已脱敏]`（用户本人，实现后真连验证用）

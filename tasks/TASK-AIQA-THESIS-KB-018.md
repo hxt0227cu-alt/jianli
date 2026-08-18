@@ -34,14 +34,14 @@
 
 ## 交付证据
 
-- commit / PR：（提交后回填）
-- 修改文件清单：apps/api/tests/aiqa/test_rag_eval.py、apps/api/app/aiqa/content.py、tasks/TASK-AIQA-THESIS-KB-018.md
-- 测试命令及结果：（用户 WSL 复验后回填）
-- verified_commit：（收口后回填）
+- commit / PR：`2e0e939`（与 TASK-019 合并提交，8 文件 507+/158-）
+- 修改文件清单：apps/api/tests/aiqa/test_rag_eval.py（litchi.md 论文章节 + 删除口径说明）、apps/api/app/aiqa/content.py（litchi 论文 chunk）、apps/api/app/aiqa/service.py（伪造证件护栏）、apps/api/app/aiqa/persona.py、apps/api/tests/aiqa/test_persona_style.py、scripts/fact_consistency_results.json、tasks/TASK-AIQA-THESIS-KB-018.md、tasks/TASK-AIQA-PERSONA-STYLE-019.md
+- 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18**：pytest 7/7（REJECT 恢复 10/10，伪造证件护栏生效）；measure 38 题 38/38=100% 保持；test_persona_style 5/5
+- verified_commit：`2e0e939`
 
 ## 关闭门禁
 
 - [x] 论文章节整理写入（CORPUS litchi.md 追加 10 节论文真源：定位/五层架构/RAG 链路/病害识别/数据库/评测体系/TC 测试/四大亮点/存在不足/口径说明——全部数字来自论文提取，零新编；content.py litchi 新增论文要点 chunk；两套口径（论文 vs 仓库四段 Agent）标注来源）
 - [x] py_compile / 导入验证通过（litchi.md 5499 字符 11 关键词就位；litchi chunks=3 全 str；论文问法静态检索 0.7746 命中）
-- [ ] 用户 WSL pytest 7/7 + 重灌库无 WARN + 38 题保持
-- [ ] 提交 + verified_commit 回填 + PROJECT_STATE 同步
+- [x] 用户 WSL pytest 7/7（REJECT 恢复 10/10，伪造证件护栏生效）+ measure 38 题 38/38 保持
+- [x] 提交 + verified_commit 回填 + PROJECT_STATE 同步

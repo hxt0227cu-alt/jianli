@@ -30,14 +30,14 @@
 
 ## 交付证据
 
-- commit / PR：（提交后回填）
-- 修改文件清单：apps/api/app/aiqa/persona.py、apps/api/tests/aiqa/test_persona_style.py、tasks/TASK-AIQA-PERSONA-STYLE-019.md
-- 测试命令及结果：（用户 WSL 复验后回填）
-- verified_commit：（收口后回填）
+- commit / PR：`2e0e939`（与 TASK-018 合并提交，8 文件 507+/158-）
+- 修改文件清单：apps/api/app/aiqa/persona.py（_SYSTEM_PROMPT 风格强化 + STYLE_FEW_SHOT 12 组）、apps/api/tests/aiqa/test_persona_style.py（新增 5 断言）、apps/api/tests/aiqa/test_rag_eval.py、apps/api/app/aiqa/content.py、apps/api/app/aiqa/service.py、scripts/fact_consistency_results.json、tasks/TASK-AIQA-PERSONA-STYLE-019.md、tasks/TASK-AIQA-THESIS-KB-018.md
+- 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18**：test_persona_style 5/5；pytest 7/7；measure 38/38=100% 保持（persona 风格生效，全结论前置、事实零变化）
+- verified_commit：`2e0e939`
 
 ## 关闭门禁
 
 - [x] persona 风格改写完成：_SYSTEM_PROMPT 强化（结论前置/客观陈述/知之为知之/分段表达/技术岗偏好做了什么vs学到什么/踩坑取舍/指标绑定）+ STYLE_FEW_SHOT 12 组（数字全部来自 CORPUS/content.py，零新编）+ build_system_prompt 注入
 - [x] 风格断言测试通过（本地 5/5：风格指令 11 词 / few-shot 数量 12 / 情绪词负例 9 词 / 结论前置 / 数字可溯源 10 项）
-- [ ] 用户 WSL：风格测试 + pytest 7/7 + measure 38/38
-- [ ] 提交 + verified_commit 回填 + PROJECT_STATE 同步
+- [x] 用户 WSL：风格测试 5/5 + pytest 7/7 + measure 38/38
+- [x] 提交 + verified_commit 回填 + PROJECT_STATE 同步

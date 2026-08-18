@@ -185,6 +185,15 @@ def build_pages() -> dict[str, PageContentData]:
                     "qwen2.5:0.5b（无 GPU 笔记本可演示）；诚实局限：并发压测 200 并发仅 19% 达标、"
                     "混合检索 BM25+RRF 未完成、数据平台为可部署模板未生产验证。"
                 ),
+                (
+                    "litchi 论文版（毕设论文真源，90.4 分）：系统为「荔枝智能问答与协同诊断平台」，"
+                    "五层架构（Vue3 表现层 / Nginx+Spring Boot 接入层 / Spring Boot 3.2 业务层 / "
+                    "AI 服务层 / MySQL+Neo4j+Milvus 数据层，Docker Compose 10 服务）；RAG 链路 = "
+                    "查询→向量+图谱并行检索→候选筛选→Qwen2.5:0.5b 生成→证据约束与降级"
+                    "（分块 480/120）；病害识别 = YOLOv8 + 标签映射 + 三级降级（yolo→dataset-vision→"
+                    "demo-rule）；四大亮点 = 双增强架构 / 三级降级 / 多角色闭环 / 可进化评测；"
+                    "验证报告 = 30 分钟稳定性 119 轮全成功 + 50 并发问答全成功。"
+                ),
             ],
         ),
     ]

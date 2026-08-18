@@ -111,7 +111,8 @@ _MALICIOUS_PATTERN = re.compile(
     r"攻击.{0,4}(他人|别人|系统|网站|服务器|账户|账号)|"
     r"入侵.{0,4}(别人|他人|系统|电脑|服务器|账号|网站)|"
     r"黑进.{0,6}(系统|账号|电脑)|"
-    r"爬虫.{0,10}(抓取|采集|爬取).{0,10}(微博|微信|淘宝|抖音|小红书|京东|评论区|帖子|账号|私信))"
+    r"爬虫.{0,10}(抓取|采集|爬取).{0,10}(微博|微信|淘宝|抖音|小红书|京东|评论区|帖子|账号|私信)|"
+    r"(生成|制作|伪造|造假|编造|办一张|做一张|搞一张).{0,10}(病假条|请假条|诊断证明|病历|证明|证件|文凭|发票|毕业证|学位证|资格证))"
 )
 # Defensive-context exemption: "怎么防止别人入侵/破解/攻击" is a legitimate security
 # question, not an attack request. Checked before the malicious pattern so defensive

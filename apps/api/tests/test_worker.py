@@ -18,12 +18,15 @@ import asyncio
 import json
 import os
 import secrets
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
 import redis
 from httpx import ASGITransport, AsyncClient
+from pydantic import SecretStr
 from sqlalchemy import Engine, create_engine, text
 
 from app.appointments.runtime import build_booking_runtime
@@ -251,6 +254,125 @@ def test_worker_smtp_path_claims_renders_marks() -> None:
             }
         assert final["appointment_created"] == "processed"
         assert final["reminder_due"] == "pending"
+    finally:
+        auth_runtime.close()
+        redis_client.close()
+        _reset_database(engine)
+        engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# Real SMTP E2E (optional): really send over smtp.163.com to the owner's email
+# ---------------------------------------------------------------------------
+
+E2E_RECIPIENT = "[邮箱已脱敏]"
+
+
+def _seed_user_with_email(engine: Engine, email: str, role: str = "interviewer") -> UUID:
+    """Insert a user with a specific registered email (the SMTP recipient)."""
+
+    user_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users (id,email,password_hash,role,verified) "
+                "VALUES (:id,:email,:password_hash,:role,true)"
+            ),
+            {
+                "id": user_id,
+                "email": email,
+                "password_hash": PasswordHasher().hash("correct-password"),
+                "role": role,
+            },
+        )
+    return user_id
+
+
+def _smtp_settings() -> Settings:
+    """Settings with the real SMTP channel, read only from the runtime environment."""
+
+    base = _settings()
+    # model_copy 的 update 不做类型校验（str 不会自动转 SecretStr），必须显式包装，
+    # 否则 EmailSender 里 password.get_secret_value() 会 AttributeError。
+    return base.model_copy(
+        update={
+            "smtp_host": os.environ.get("JIANLI_SMTP_HOST", "smtp.163.com"),
+            "smtp_port": int(os.environ.get("JIANLI_SMTP_PORT", "465")),
+            "smtp_user": os.environ.get("JIANLI_SMTP_USER", E2E_RECIPIENT),
+            "smtp_password": SecretStr(os.environ["JIANLI_SMTP_PASSWORD"]),
+            "smtp_from": os.environ.get("JIANLI_SMTP_FROM", E2E_RECIPIENT),
+        }
+    )
+
+
+@_NEEDS_DB
+@pytest.mark.skipif(
+    not os.environ.get("JIANLI_SMTP_PASSWORD"),
+    reason="requires real SMTP credentials via JIANLI_SMTP_PASSWORD",
+)
+def test_worker_real_smtp_e2e() -> None:
+    """Really send the confirmation over smtp.163.com:465 to the owner's email.
+
+    The event reaches ``processed`` only if ``smtplib`` connected, authenticated and
+    sent without raising (a send failure would leave it ``failed``). The authorization
+    code is read only from the runtime ``JIANLI_SMTP_PASSWORD`` — never from source.
+    """
+
+    settings = _smtp_settings()
+    engine = create_engine(settings.database_url)
+    redis_client = redis.Redis.from_url(settings.redis_url)
+    redis_client.flushdb()
+    _reset_database(engine)
+    auth_runtime = build_auth_runtime(settings)
+    booking = build_booking_runtime(settings, auth_runtime)
+    app = create_app(settings, auth_runtime, booking)
+    try:
+        owner = _seed_user_with_email(engine, E2E_RECIPIENT)
+        slot_ids = _seed_slots(engine, datetime.now(UTC) + timedelta(days=1, minutes=30))
+        draft = _draft(slot_ids)
+
+        async def _create_appointment() -> None:
+            async with _authorized_client(app, engine, settings, owner) as client:
+                preview = await client.post("/appointment-confirmations", json=draft)
+                assert preview.status_code == 200, preview.text
+                created = await client.post(
+                    "/appointments",
+                    headers={"Origin": ORIGIN, "Idempotency-Key": str(uuid4())},
+                    json={
+                        "confirmation_token": preview.json()["confirmation_token"],
+                        "appointment": draft,
+                    },
+                )
+                assert created.status_code == 201, created.text
+
+        asyncio.run(_create_appointment())
+
+        stop_event = threading.Event()
+        thread = threading.Thread(
+            target=notification_worker.run_notification_worker,
+            args=(settings, engine, booking, AuthRepository(engine), stop_event),
+            daemon=True,
+        )
+        thread.start()
+
+        delivered = False
+        deadline = time.monotonic() + 40.0
+        while time.monotonic() < deadline:
+            with engine.connect() as connection:
+                status = connection.execute(
+                    text(
+                        "SELECT status FROM notification_events "
+                        "WHERE type='appointment_created'"
+                    )
+                ).scalar()
+            if status == "processed":
+                delivered = True
+                break
+            time.sleep(0.1)
+        stop_event.set()
+        thread.join(timeout=10.0)
+
+        assert delivered, "appointment_created 事件未达 processed（SMTP 真发送失败）"
     finally:
         auth_runtime.close()
         redis_client.close()

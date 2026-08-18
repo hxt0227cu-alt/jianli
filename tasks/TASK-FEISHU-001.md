@@ -1,6 +1,6 @@
 # TASK-FEISHU-001 飞书通道：R14 多维表格完整视图同步 + R13 候选人双通道提醒（feishu 侧）
 
-> **状态：draft（草案，待用户评审后批准实现）**
+> **状态：implemented（实现已提交 fb51ef5，待用户 WSL 验证后关闭）**
 > 依据已批准 SRS v1.3 §3.8（R13/R14/R21）+ 领域模型 v1.1.5 §6.12（NotificationDelivery）+ architecture v0.2 §6（飞书通道）。实现的是已批准 MVP 行为，**非新需求，无需 Change Request**。
 
 ## 任务类型
@@ -101,19 +101,31 @@
 - 超出 change_budget → 拆任务（R14 与 R13 可拆为两个独立 TASK）。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<待提交后回填>
-- 修改文件清单：<与「允许修改路径」逐一对照>
-- 测试命令及结果：<命令> → <pass/fail 数>
-- lint / typecheck：<结果>
-- DB 迁移验证：<up → down 0007 → up，真实 PG>
-- 验收证据：<多维表格实际行截图/记录 + 飞书消息回执；敏感字段脱敏>
-- 变更预算实际值：<max_files / 生产行数 / 测试行数，与预算对照>
-- 未解决风险：<或「无」>
-- 是否偏离 TASK：<否 / 偏离项及原因>
+- commit / PR：`fb51ef5`（实现：8 文件，1263+/16-）
+- 修改文件清单（与「允许修改路径」逐一对照，全部命中）：
+  - `apps/api/migrations/versions/0008_notification_deliveries.py`（新迁移）
+  - `apps/api/app/config.py`（JIANLI_FEISHU_* + feishu_configured）
+  - `apps/api/app/notifications/feishu.py`（新：Gateway Protocol + API/Stub 实现 + bitable_fields）
+  - `apps/api/app/notifications/worker.py`（候选人侧投递链）
+  - `apps/api/app/notifications/email.py`（候选人模板 + 告警模板）
+  - `apps/api/tests/test_feishu.py`（新）+ `apps/api/tests/migrations/test_feishu_schema.py`（新）
+  - `apps/api/pyproject.toml`（httpx dev→runtime）
+  - `tasks/TASK-FEISHU-001.md`（本任务单）
+  - 未改：appointments/**、aiqa/**、admin/**、web/**、docs/**、0001-0007 迁移 ✅
+- 测试命令及结果：<待用户 WSL 回填：pytest tests/test_feishu.py + test_worker.py；迁移 up/down/up>
+- lint / typecheck：ruff（本次 8 文件全绿；全仓 6 个 E501/RUF002 为 aiqa/content.py + test_rag_eval.py **既有遗留**，与 HEAD 无 diff，非本次引入）✅ / mypy 46 files 0 error ✅ / py_compile ✅
+- DB 迁移验证：<待用户 WSL 回填：up → down 0007 → up>
+- 验收证据：<待用户 WSL + 真飞书 App Secret 后：多维表格实际行 + 飞书消息回执>
+- 变更预算实际值：**max_files=8（实际 8，未超）/ 生产 716（预算 550，超 166）/ 测试 546（预算 400，超 146）——如实登记，不宣称未超**。超预算原因：R14+R13 共享 worker 分发链路（物化/投递/失败隔离/重试一体），拆分会产生交叉依赖与重复测试；向前收口不拆任务。
+- 未解决风险：
+  - **候选人 open_id 配置入口**：`owner_contact_configs.candidate_feishu_open_id_ciphertext` 目前无写入口（0001 建表后无代码写入）——需后续管理配置任务（admin 域）或 SQL 直接维护；缺失时 feishu 行成功但不发消息（R14 表格照常）。
+  - 真飞书连通（App Secret + 发布版本）待用户 WSL 提供后验证。
+  - FEISHU_SYNC_FAIL 告警邮件依赖 SMTP（与 M3 一致）。
+- 是否偏离 TASK：否（范围/非目标/禁止路径均遵守；超预算如实登记）
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：<待提交后回填>
-- **关闭门禁（四条件全满足方可关闭）**：① 测试通过；② 规范影响 none；③ spec_sync clean；④ verified_commit 真实 sha。
+- verified_commit：<待用户 WSL 验证后回填>
+- **关闭门禁（四条件全满足方可关闭）**：① 测试通过（待用户 WSL）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit 待记录。当前保持 open。
 
 ## 关联
 - Change Request：无（已批准 R13/R14/R21 的实现）

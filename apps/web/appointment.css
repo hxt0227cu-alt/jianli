@@ -135,3 +135,8 @@
 .empty-state svg { color: #315f43; }
 .reschedule-board { margin-top: 14px; border-top: 1px dashed #e4e9e4; padding-top: 14px; }
 .reschedule-board .booking-calendar { background: #fbfcfb; }
+
+/* 6 位数字验证码输入行（TASK-AUTH-VERIFY-CODE-001） */
+.code-row { display: flex; gap: 8px; align-items: center; }
+.code-row input { flex: 1; min-width: 0; }
+.code-row button { white-space: nowrap; }

@@ -82,17 +82,16 @@ class RegisterRequest(BaseModel):
         return value
 
 
-class TokenRequest(BaseModel):
-    """Opaque one-time token (verification or reset link); stored only as its SHA-256 hash.
+class VerifyCodeRequest(BaseModel):
+    """6-digit numeric verification code (registration email verify).
 
-    Mirrors ``docs/api/openapi.yaml`` ``TokenRequest``: only ``minLength: 32`` is
-    declared (no upper bound), so we do not cap length here and avoid a 422 the
-    contract does not define.
+    Mirrors ``docs/api/openapi.yaml`` ``VerifyCodeRequest`` (pattern ``^\\d{6}$``):
+    exactly six ASCII digits; stored only as its SHA-256 digest.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str = Field(min_length=32)
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 class EmailRequest(BaseModel):
@@ -118,11 +117,11 @@ class EmailRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    """Consume a password reset link and set a new BCrypt password (``confirmPasswordReset``)."""
+    """Consume a 6-digit reset code and set a new BCrypt password (``confirmPasswordReset``)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str = Field(min_length=32)
+    code: str = Field(pattern=r"^\d{6}$")
     new_password: str = Field(min_length=10, max_length=72)
 
     @field_validator("new_password")

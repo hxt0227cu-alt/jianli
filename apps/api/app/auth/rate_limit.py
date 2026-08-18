@@ -80,6 +80,65 @@ class LoginRateLimiter:
                 decision.retry_after_seconds,
             )
 
+    # --- Verification-code issuance / verify throttling (TASK-AUTH-VERIFY-CODE-001) ---
+    # PRD §5: registration code send = 60s/1 per email, ≤3 per hour per email,
+    #         ≤5 per hour per IP (SRS §5.6). Brute force on the 6-digit code is
+    #         additionally throttled per IP (≤10 verify attempts / min).
+
+    @staticmethod
+    def _code_send_email_key(email: str, kind: str) -> str:
+        return f"auth:code:send:{kind}:email:{email}"
+
+    @staticmethod
+    def _code_send_email_hour_key(email: str, kind: str) -> str:
+        return f"auth:code:send:{kind}:email:{email}:hour"
+
+    @staticmethod
+    def _code_send_ip_hour_key(ip: str) -> str:
+        truncated = ip.rsplit(".", 1)[0] if "." in ip else ip[:19]
+        return f"auth:code:send:ip:{truncated}:hour"
+
+    @staticmethod
+    def _verify_ip_key(ip: str) -> str:
+        truncated = ip.rsplit(".", 1)[0] if "." in ip else ip[:19]
+        return f"auth:code:verify:ip:{truncated}"
+
+    def check_verify_code_send(self, email: str, ip: str, kind: str) -> None:
+        """Enforce issuance limits before emailing a code (register / reset request).
+
+        ``kind`` ("verify" | "reset") keeps the two code streams counted
+        independently (PRD §5 throttles the registration stream; the reset stream
+        gets the same thresholds so abuse of either is bounded).
+        """
+
+        for key, block_at, window in (
+            (self._code_send_email_key(email, kind), 2, 60),          # 60s / 1
+            (self._code_send_email_hour_key(email, kind), 4, 3600),   # ≤3 per hour
+            (self._code_send_ip_hour_key(ip), 6, 3600),               # ≤5 per hour per IP
+        ):
+            decision = self._consume(key, block_at, window)
+            if not decision.allowed:
+                raise AuthError(
+                    "RATE_LIMITED",
+                    429,
+                    "Verification code rate limited",
+                    "Too many code requests, try again later",
+                    decision.retry_after_seconds,
+                )
+
+    def check_verify_ip(self, ip: str) -> None:
+        """Throttle verify attempts per IP (≤10 / min) to block 6-digit brute force."""
+
+        decision = self._consume(self._verify_ip_key(ip), 11, 60)
+        if not decision.allowed:
+            raise AuthError(
+                "RATE_LIMITED",
+                429,
+                "Rate limited",
+                "Too many verification attempts, try again later",
+                decision.retry_after_seconds,
+            )
+
     def record_failure(self, email: str) -> None:
         decision = self._consume(self._account_key(email), 5, 900)
         if decision.allowed:

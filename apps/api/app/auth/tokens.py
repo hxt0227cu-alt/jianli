@@ -19,6 +19,17 @@ class SessionTokens:
         return secrets.token_urlsafe(32)
 
     @staticmethod
+    def generate_code() -> str:
+        """6-digit numeric verification code (TASK-AUTH-VERIFY-CODE-001).
+
+        Cryptographically random; stored only as its SHA-256 digest. The 10^6
+        space is safe because issuance is rate-limited (60s/1, ≤3 per hour per
+        email, PRD §5) and verify attempts are throttled per IP.
+        """
+
+        return f"{secrets.randbelow(10**6):06d}"
+
+    @staticmethod
     def digest(token: str) -> str:
         return hashlib.sha256(token.encode("ascii")).hexdigest()
 

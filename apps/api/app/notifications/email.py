@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import smtplib
 import ssl
 from datetime import datetime
@@ -16,17 +15,6 @@ if TYPE_CHECKING:  # annotations are lazy (PEP 563), so this stays import-cycle 
     from app.appointments.models import Appointment
 
 _LOCAL = ZoneInfo("Asia/Shanghai")
-
-
-def web_base_url() -> str:
-    """Front-end base URL used to build magic-link emails.
-
-    Override per deployment via ``JIANLI_WEB_BASE_URL``; defaults to the local dev
-    server. Reads the environment directly (no new Settings field) so M4 stays
-    within its approved change surface.
-    """
-
-    return os.environ.get("JIANLI_WEB_BASE_URL", "http://localhost:5173")
 
 
 def _fmt(dt: datetime) -> str:
@@ -146,26 +134,32 @@ def render_sync_fail_email(appt: Appointment | None, error: str) -> tuple[str, s
     return subject, body
 
 
-def render_verification_email(email: str, link: str) -> tuple[str, str]:
-    """Return (subject, plain_text) for a new-account email verification link (M4)."""
+def render_verification_email(email: str, code: str) -> tuple[str, str]:
+    """Return (subject, plain_text) for a 6-digit registration verification code (M4).
+
+    Matches the approved content baseline (PRD §8.6): code valid 10 minutes,
+    max 5 failed attempts then request a new one.
+    """
 
     subject = "请验证你的简历面试站点邮箱"
     body = (
-        f"你好，\n\n感谢注册简历面试站点。请点击以下链接验证邮箱（{email}）：\n"
-        f"{link}\n\n"
-        "链接 24 小时内有效。如非本人操作，请忽略本邮件。\n"
+        f"你好，\n\n感谢注册简历面试站点。您的邮箱验证码为（{email}）：\n\n"
+        f"{code}\n\n"
+        "验证码 10 分钟内有效，错误次数上限 5 次，超限需重新获取。\n"
+        "如非本人操作，请忽略本邮件，无需任何处理。\n"
     )
     return subject, body
 
 
-def render_reset_email(email: str, link: str) -> tuple[str, str]:
-    """Return (subject, plain_text) for a password reset link (M4)."""
+def render_reset_email(email: str, code: str) -> tuple[str, str]:
+    """Return (subject, plain_text) for a 6-digit password reset code (M4)."""
 
     subject = "重置你的简历面试站点密码"
     body = (
-        f"你好，\n\n我们收到了重置密码的请求（{email}）。请点击以下链接重置密码：\n"
-        f"{link}\n\n"
-        "链接 1 小时内有效。如非本人操作，请忽略本邮件，账号仍然安全。\n"
+        f"你好，\n\n我们收到了重置密码的请求（{email}）。您的重置验证码为：\n\n"
+        f"{code}\n\n"
+        "验证码 10 分钟内有效，错误次数上限 5 次，超限需重新获取。\n"
+        "如非本人操作，请忽略本邮件，账号仍然安全。\n"
     )
     return subject, body
 

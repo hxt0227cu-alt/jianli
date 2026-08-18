@@ -15,8 +15,8 @@ from .models import (
     Principal,
     RegisterRequest,
     ResetPasswordRequest,
-    TokenRequest,
     UserSummary,
+    VerifyCodeRequest,
 )
 from .runtime import AuthRuntime
 
@@ -138,9 +138,10 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
         runtime.service.register(payload.email, payload.password, ip)
 
     @router.post("/verify-email", status_code=204, operation_id="verifyEmail")
-    def verify_email(payload: TokenRequest, request: Request) -> None:
+    def verify_email(payload: VerifyCodeRequest, request: Request) -> None:
         _require_same_origin(request, runtime)
-        runtime.service.verify_email(payload.token)
+        ip = request.client.host if request.client else "unknown"
+        runtime.service.verify_email(payload.code, ip)
 
     @router.post(
         "/password-reset/request", status_code=202, operation_id="requestPasswordReset"
@@ -154,6 +155,7 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
     @router.post("/password-reset/confirm", status_code=204, operation_id="confirmPasswordReset")
     def confirm_password_reset(payload: ResetPasswordRequest, request: Request) -> None:
         _require_same_origin(request, runtime)
-        runtime.service.reset_password(payload.token, payload.new_password)
+        ip = request.client.host if request.client else "unknown"
+        runtime.service.reset_password(payload.code, payload.new_password, ip)
 
     return router

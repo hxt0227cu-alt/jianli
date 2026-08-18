@@ -12,7 +12,6 @@ from app.notifications.email import (
     EmailSender,
     render_reset_email,
     render_verification_email,
-    web_base_url,
 )
 
 from .errors import AuthError
@@ -24,8 +23,8 @@ from .tokens import SessionTokens
 
 SESSION_HOURS = 12
 REMEMBER_DAYS = 14
-VERIFICATION_TTL = timedelta(hours=24)
-RESET_TTL = timedelta(hours=1)
+VERIFICATION_TTL = timedelta(minutes=10)  # PRD §5: verification code valid 10 min
+RESET_TTL = timedelta(minutes=10)         # PRD §5: same 10-min window for reset codes
 DEFAULT_ROLE: UserRole = "interviewer"
 SECURITY_LOGGER = logging.getLogger("jianli.security.auth")
 
@@ -147,11 +146,12 @@ class AuthService:
     # --- Account self-service (M4): register / verify / reset -------------------
 
     def register(self, email: str, password: str, ip: str) -> UserSummary:
-        """Create an unverified interviewer and issue a verification token.
+        """Create an unverified interviewer and email a 6-digit verification code.
 
         Security invariants: password is BCrypt-hashed (policy enforced by
-        ``PasswordHasher``); the verification token is stored only as its SHA-256
-        hash; email delivery is best-effort (skipped when no SMTP is configured).
+        ``PasswordHasher``); the code is stored only as its SHA-256 hash; code
+        issuance is rate-limited (PRD §5: 60s/1, ≤3 per hour per email); email
+        delivery is best-effort (skipped when no SMTP is configured).
         """
 
         self._rate_limiter.check_ip(ip)
@@ -162,6 +162,7 @@ class AuthService:
                 "Email already registered",
                 "Use login or reset your password",
             )
+        self._rate_limiter.check_verify_code_send(email, ip, "verify")
         try:
             password_hash = self._passwords.hash(password)
         except PasswordPolicyError as err:
@@ -175,59 +176,63 @@ class AuthService:
         self._repository.create_user(
             user_id, email, password_hash, DEFAULT_ROLE, False
         )
-        token = self._tokens.generate()
+        code = self._tokens.generate_code()
         self._repository.create_verification_token(
-            uuid4(), user_id, self._tokens.digest(token), datetime.now(UTC) + VERIFICATION_TTL
+            uuid4(), user_id, self._tokens.digest(code), datetime.now(UTC) + VERIFICATION_TTL
         )
-        self._send_verification_email(email, token)
+        self._send_verification_email(email, code)
         return UserSummary(id=user_id, email=email, role=DEFAULT_ROLE, verified=False)
 
-    def verify_email(self, token: str) -> None:
-        """Consume a verification token and mark the account verified.
+    def verify_email(self, code: str, ip: str) -> None:
+        """Consume a 6-digit verification code and mark the account verified.
 
         Idempotent: a second call for an already-verified account succeeds (204).
+        Brute force on the 6-digit code is throttled per IP (≤10 / min).
         """
 
-        token_hash = self._tokens.digest(token)
-        valid = self._repository.find_verification_token(token_hash, datetime.now(UTC))
+        self._rate_limiter.check_verify_ip(ip)
+        code_hash = self._tokens.digest(code)
+        valid = self._repository.find_verification_token(code_hash, datetime.now(UTC))
         if valid is not None:
             self._repository.consume_verification_token(valid["id"], datetime.now(UTC))
             self._repository.mark_user_verified(valid["user_id"], datetime.now(UTC))
             return
-        existing = self._repository.find_verification_token_user(token_hash)
+        existing = self._repository.find_verification_token_user(code_hash)
         if existing is not None and existing["verified"]:
-            return  # already verified via this (or another) link
+            return  # already verified via this (or another) code
         raise AuthError(
-            "INVALID_TOKEN",
-            409,
-            "Invalid or expired token",
-            "Request a new verification email",
+            "INVALID_VERIFY_CODE",
+            422,
+            "Invalid or expired verification code",
+            "Check the 6-digit code in your email or request a new one",
         )
 
     def request_password_reset(self, email: str, ip: str) -> None:
-        """Create a reset token and email it. Always returns (202); never reveals
+        """Create a reset code and email it. Always returns (202); never reveals
         whether the email exists (anti-enumeration)."""
 
         self._rate_limiter.check_ip(ip)
+        self._rate_limiter.check_verify_code_send(email, ip, "reset")
         user = self._repository.find_user_by_email(email)
         if user is None:
             return
-        token = self._tokens.generate()
+        code = self._tokens.generate_code()
         self._repository.create_reset_token(
             uuid4(),
             user["id"],
-            self._tokens.digest(token),
+            self._tokens.digest(code),
             datetime.now(UTC) + RESET_TTL,
         )
-        self._send_reset_email(email, token)
+        self._send_reset_email(email, code)
 
-    def reset_password(self, token: str, new_password: str) -> None:
-        """Consume a reset token, set a new BCrypt password, and revoke all sessions.
+    def reset_password(self, code: str, new_password: str, ip: str) -> None:
+        """Consume a 6-digit reset code, set a new BCrypt password, and revoke all sessions.
 
         Revoking every session on reset prevents a stolen/old session from surviving
-        a password change.
+        a password change. Brute force on the code is throttled per IP.
         """
 
+        self._rate_limiter.check_verify_ip(ip)
         try:
             password_hash = self._passwords.hash(new_password)
         except PasswordPolicyError as err:
@@ -237,28 +242,27 @@ class AuthService:
                 "Weak password",
                 "Password must be 10-72 UTF-8 bytes",
             ) from err
-        token_hash = self._tokens.digest(token)
-        row = self._repository.find_reset_token(token_hash, datetime.now(UTC))
+        code_hash = self._tokens.digest(code)
+        row = self._repository.find_reset_token(code_hash, datetime.now(UTC))
         if row is None:
             raise AuthError(
-                "INVALID_TOKEN",
-                409,
-                "Invalid or expired token",
-                "Request a new reset link",
+                "INVALID_VERIFY_CODE",
+                422,
+                "Invalid or expired reset code",
+                "Check the 6-digit code in your email or request a new one",
             )
         self._repository.update_password(row["user_id"], password_hash)
         self._repository.consume_reset_token(row["id"], datetime.now(UTC))
         self._repository.revoke_all_sessions(row["user_id"], datetime.now(UTC))
 
-    def _send_verification_email(self, email: str, token: str) -> None:
+    def _send_verification_email(self, email: str, code: str) -> None:
         if self._email_sender is None:
             return
-        link = f"{web_base_url()}/verify-email?token={token}"
-        subject, body = render_verification_email(email, link)
+        subject, body = render_verification_email(email, code)
         self._email_sender.send(email, subject, body)
 
-    def _send_reset_email(self, email: str, token: str) -> None:
+    def _send_reset_email(self, email: str, code: str) -> None:
         if self._email_sender is None:
             return
-        subject, body = render_reset_email(email, f"{web_base_url()}/reset-password?token={token}")
+        subject, body = render_reset_email(email, code)
         self._email_sender.send(email, subject, body)

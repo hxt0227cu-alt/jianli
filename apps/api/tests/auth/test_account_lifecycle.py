@@ -146,12 +146,12 @@ async def test_register_creates_unverified_user_and_token(real_stack) -> None:
 
 
 @pytest.mark.asyncio
-async def test_verify_email_consumes_token_and_is_idempotent(real_stack, monkeypatch) -> None:
+async def test_verify_email_consumes_code_and_is_idempotent(real_stack, monkeypatch) -> None:
     engine, _, app, _ = real_stack
-    known = "verify-known-token-0123456789abcdef"
+    known = "123456"
     runtime = app.state.auth_runtime
-    # Control the raw token so we can exercise the verify endpoint end-to-end.
-    monkeypatch.setattr(runtime.service._tokens, "generate", lambda: known)
+    # Control the raw code so we can exercise the verify endpoint end-to-end.
+    monkeypatch.setattr(runtime.service._tokens, "generate_code", lambda: known)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
         await client.post(
@@ -160,25 +160,23 @@ async def test_verify_email_consumes_token_and_is_idempotent(real_stack, monkeyp
             json={"email": "verify@example.com", "password": "correct-horse"},
         )
         ok = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": known}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": known}
         )
         assert ok.status_code == 204
-        # Idempotent: a second verify with the same (now consumed) token still 204.
+        # Idempotent: a second verify with the same (now consumed) code still 204.
         again = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": known}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": known}
         )
         assert again.status_code == 204
-        # An unknown token of contract-valid length is rejected as INVALID_TOKEN.
-        unknown = "unknown-verification-token-0123456789abcdef"
-        assert len(unknown) >= 32  # TokenRequest.token minLength in the approved contract
+        # A wrong code is rejected as INVALID_VERIFY_CODE (422, per OpenAPI v0.4).
         bad = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": unknown}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "000000"}
         )
-        assert bad.status_code == 409
-        assert bad.json()["code"] == "INVALID_TOKEN"
-        # A token shorter than the contract minimum never reaches the service layer.
+        assert bad.status_code == 422
+        assert bad.json()["code"] == "INVALID_VERIFY_CODE"
+        # A non-6-digit code never reaches the service layer.
         too_short = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": "nope"}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "nope"}
         )
         assert too_short.status_code == 422
         assert too_short.json()["code"] == "INVALID_REQUEST"
@@ -201,9 +199,9 @@ async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerat
     real_stack, monkeypatch
 ) -> None:
     engine, _, app, _ = real_stack
-    known = "reset-known-token-0123456789abcdef"
+    known = "654321"
     runtime = app.state.auth_runtime
-    monkeypatch.setattr(runtime.service._tokens, "generate", lambda: known)
+    monkeypatch.setattr(runtime.service._tokens, "generate_code", lambda: known)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
         await client.post(
@@ -212,9 +210,9 @@ async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerat
             json={"email": "reset@example.com", "password": "correct-horse"},
         )
         # A registered account is unverified; verification is required before login.
-        # Drive it via the same known token so the reset flow below starts verified.
+        # Drive it via the same known code so the reset flow below starts verified.
         verify = await client.post(
-            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"token": known}
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": known}
         )
         assert verify.status_code == 204
         user = _user_row(engine, "reset@example.com")
@@ -236,20 +234,20 @@ async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerat
         assert missing.status_code == 202
         assert _token_count(engine, "password_reset_tokens", user["id"]) == 1
 
-        # Weak password is rejected (422) BEFORE consuming the token.
+        # Weak password is rejected (422) BEFORE consuming the code.
         weak = await client.post(
             "/auth/password-reset/confirm",
             headers={"Origin": ORIGIN},
-            json={"token": known, "new_password": "short"},
+            json={"code": known, "new_password": "short"},
         )
         assert weak.status_code == 422
         assert weak.json()["code"] == "INVALID_REQUEST"
 
-        # Consume the reset token with a new password.
+        # Consume the reset code with a new password.
         done = await client.post(
             "/auth/password-reset/confirm",
             headers={"Origin": ORIGIN},
-            json={"token": known, "new_password": "brand-new-pass"},
+            json={"code": known, "new_password": "brand-new-pass"},
         )
         assert done.status_code == 204
 
@@ -282,6 +280,54 @@ async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerat
             {"h": runtime.tokens.digest(old_session)},
         ).scalar()
     assert revoked is not None
+
+
+@pytest.mark.asyncio
+async def test_verify_code_issuance_and_attempt_throttling(real_stack) -> None:
+    _, _, app, _ = real_stack
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
+        # Registration sends one code; a second send for the same email is 409
+        # (DUPLICATE_EMAIL, checked before the 60s/1 send limit).
+        first = await client.post(
+            "/auth/register",
+            headers={"Origin": ORIGIN},
+            json={"email": "throttle@example.com", "password": "correct-horse"},
+        )
+        assert first.status_code == 202
+        dup = await client.post(
+            "/auth/register",
+            headers={"Origin": ORIGIN},
+            json={"email": "throttle@example.com", "password": "correct-horse"},
+        )
+        assert dup.status_code == 409
+        assert dup.json()["code"] == "DUPLICATE_EMAIL"
+
+        # Reset stream: two requests for the same email within 60s → second is 429.
+        first_reset = await client.post(
+            "/auth/password-reset/request",
+            headers={"Origin": ORIGIN},
+            json={"email": "throttle@example.com"},
+        )
+        assert first_reset.status_code == 202
+        second_reset = await client.post(
+            "/auth/password-reset/request",
+            headers={"Origin": ORIGIN},
+            json={"email": "throttle@example.com"},
+        )
+        assert second_reset.status_code == 429
+        assert second_reset.json()["code"] == "RATE_LIMITED"
+
+        # Verify attempts are throttled per IP: 11 wrong codes → 429 on the last.
+        for _ in range(10):
+            wrong = await client.post(
+                "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "000000"}
+            )
+            assert wrong.status_code == 422
+        throttled = await client.post(
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "111111"}
+        )
+        assert throttled.status_code == 429
+        assert throttled.json()["code"] == "RATE_LIMITED"
 
 
 @pytest.mark.asyncio

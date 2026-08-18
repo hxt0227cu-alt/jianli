@@ -48,10 +48,10 @@ TASK-AIQA-KB-EXPAND-014 灌库后（11 篇全 indexed），KB 检索路径首次
 
 ## 交付证据
 
-- commit / PR：（提交后回填）
-- 修改文件清单：apps/api/app/aiqa/service.py、apps/api/app/aiqa/repository.py、apps/api/tests/aiqa/test_rag_eval.py、apps/api/scripts/seed_kb.py、tasks/TASK-AIQA-KB-DOMAIN-015.md
-- 测试命令及结果：（用户 WSL 复验后回填）
-- verified_commit：（收口后回填）
+- commit / PR：`7f33cf2`（实现提交，7 文件 505+/114-）
+- 修改文件清单：apps/api/app/aiqa/service.py、apps/api/app/aiqa/repository.py、apps/api/app/aiqa/content.py、apps/api/tests/aiqa/test_rag_eval.py、apps/api/scripts/seed_kb.py、scripts/fact_consistency_results.json、tasks/TASK-AIQA-KB-DOMAIN-015.md
+- 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18 17:45**：① pytest tests/aiqa/test_rag_eval.py 7/7（EXTREME 恢复、REJECT 10/10）；② seed_kb.py 灌库 indexed=33 无 WARN；③ measure_fact_consistency.py 38 题 **38/38 全 OK**，严格一致率 100%，SLO ≥94% 达成，🚫误拒 0（FQ-29 静态兜底恢复、FQ-32 标题锚定转 ✅、FQ-33 16 页）
+- verified_commit：`7f33cf2`
 
 ## 关闭门禁
 

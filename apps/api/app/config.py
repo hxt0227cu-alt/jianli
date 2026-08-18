@@ -36,6 +36,13 @@ class Settings(BaseModel):
     smtp_user: str | None = None
     smtp_password: SecretStr | None = None
     smtp_from: str | None = None
+    # Feishu channel (R13/R14, TASK-FEISHU-001): tenant_access_token credentials +
+    # the Bitable table that mirrors appointments. Runtime-only secrets, never in source.
+    feishu_app_id: str | None = None
+    feishu_app_secret: SecretStr | None = None
+    feishu_bitable_base_token: str | None = None
+    feishu_bitable_table_id: str | None = None
+    feishu_timeout_seconds: float = Field(default=15.0, gt=0, le=60)
     # Optional LLM gateway (Answer domain, M6). When unset the Answer service uses a
     # deterministic in-process StubGateway so the site runs and is testable with no LLM.
     llm_base_url: str | None = None
@@ -98,6 +105,20 @@ class Settings(BaseModel):
 
         return all((self.database_url, self.smtp_host, self.smtp_user, self.smtp_password))
 
+    @property
+    def feishu_configured(self) -> bool:
+        """Return whether the Feishu channel can run (runtime-only secrets)."""
+
+        return all(
+            (
+                self.database_url,
+                self.feishu_app_id,
+                self.feishu_app_secret,
+                self.feishu_bitable_base_token,
+                self.feishu_bitable_table_id,
+            )
+        )
+
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
         """Load only supported variables; unknown values, including secrets, are ignored."""
@@ -124,6 +145,11 @@ class Settings(BaseModel):
             "smtp_user": "JIANLI_SMTP_USER",
             "smtp_password": "JIANLI_SMTP_PASSWORD",
             "smtp_from": "JIANLI_SMTP_FROM",
+            "feishu_app_id": "JIANLI_FEISHU_APP_ID",
+            "feishu_app_secret": "JIANLI_FEISHU_APP_SECRET",
+            "feishu_bitable_base_token": "JIANLI_FEISHU_BITABLE_BASE_TOKEN",
+            "feishu_bitable_table_id": "JIANLI_FEISHU_BITABLE_TABLE_ID",
+            "feishu_timeout_seconds": "JIANLI_FEISHU_TIMEOUT_SECONDS",
             "llm_base_url": "JIANLI_LLM_BASE_URL",
             "llm_api_key": "JIANLI_LLM_API_KEY",
             "llm_model": "JIANLI_LLM_MODEL",

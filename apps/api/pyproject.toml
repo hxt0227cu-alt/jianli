@@ -8,6 +8,7 @@ dependencies = [
     "bcrypt==5.0.0",
     "cryptography==46.0.7",
     "fastapi==0.141.1",
+    "httpx==0.28.1",  # TASK-FEISHU-001: Feishu HTTP client (was dev-only; runtime channel needs it)
     "psycopg==3.2.10",
     "python-multipart==0.0.20",  # M6 round 3: multipart uploads (uploadKnowledgeDocuments)
     "pypdf==6.15.0",  # TASK-KB-PDF-001: PDF text extraction for resume uploads
@@ -22,7 +23,6 @@ dev = [
     "psycopg-binary==3.2.10",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",
-    "httpx==0.28.1",
     "ruff==0.16.2",
     "mypy==2.3.0",
 ]

@@ -102,6 +102,50 @@ def render(event_type: str, appt: Appointment, owner_email: str) -> tuple[str, s
     return subject, body
 
 
+def render_candidate_notification(event_type: str, appt: Appointment) -> tuple[str, str]:
+    """Candidate-facing (owner_admin) message text for R13 dual-channel reminders.
+
+    The candidate is the site owner; these templates differ from the interviewer
+    confirmation in audience and wording (candidate sees the whole schedule).
+    """
+
+    company = appt.company_name
+    window = f"{_fmt(appt.start_at)} – {_fmt(appt.end_at)}"
+    if event_type == "appointment_created":
+        subject = f"【候选人】新预约 · {company}"
+        body = (
+            f"新增面试预约：\n\n公司：{company}\n时段：{window}\n"
+            f"会议平台：{appt.meeting_platform}\n会议号：{appt.meeting_number}\n"
+            f"联系人：{appt.contact_last_name}{appt.contact_salutation}（{appt.contact_phone}）\n"
+        )
+    elif event_type == "appointment_rescheduled":
+        subject = f"【候选人】预约改期 · {company}"
+        body = f"面试预约已改期：\n\n公司：{company}\n新时段：{window}\n"
+    elif event_type == "appointment_cancelled":
+        subject = f"【候选人】预约取消 · {company}"
+        body = f"面试预约已取消：\n\n公司：{company}\n原时段：{window}\n"
+    elif event_type == "reminder_due":
+        subject = f"【候选人】面试提醒 · {company}"
+        body = f"面试即将开始：\n\n公司：{company}\n时段：{window}\n"
+    else:
+        subject = f"【候选人】预约通知 · {company}"
+        body = f"公司：{company}\n时段：{window}\n"
+    return subject, body
+
+
+def render_sync_fail_email(appt: Appointment | None, error: str) -> tuple[str, str]:
+    """FEISHU_SYNC_FAIL alert: candidate-facing email when the Feishu mirror failed."""
+
+    subject = "【告警】飞书预约同步失败"
+    company = appt.company_name if appt else "（未知预约）"
+    body = (
+        f"飞书多维表格同步失败，需要处理。\n\n"
+        f"预约：{company}\n错误：{error}\n"
+        "请登录后台查看并手动重试飞书同步。\n"
+    )
+    return subject, body
+
+
 def render_verification_email(email: str, link: str) -> tuple[str, str]:
     """Return (subject, plain_text) for a new-account email verification link (M4)."""
 

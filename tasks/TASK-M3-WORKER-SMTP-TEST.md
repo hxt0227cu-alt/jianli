@@ -85,7 +85,7 @@
 - 超出 `change_budget`（max_files=2 / 测试行数 > 130）→ 拆任务。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：<待提交后回填>
+- commit / PR：`e77f3e9`（实现：test_worker.py + 任务单）+ `91b1ef3`（verified_commit 回填）+ 本关闭提交（收口结论 + PROJECT_STATE 同步）
 - 修改文件清单：`apps/api/tests/test_worker.py`（追加真 E2E 用例 `test_worker_real_smtp_e2e` + `_seed_user_with_email`/`_smtp_settings` 两个 helper + `threading`/`time` 两个 import，+119 行）；`tasks/TASK-M3-WORKER-SMTP-TEST.md`（本任务单）。与「允许修改路径」一致。
 - 测试命令及结果：
   - 桩测试（用户 WSL 2026-08-18）：`pytest tests/test_worker.py -v` → **2 passed + 1 skipped**（真 E2E 无授权码时 skip，预期正确）。
@@ -95,16 +95,15 @@
   - **真 E2E 终跑（用户 WSL 2026-08-18）**：`pytest tests/test_worker.py::test_worker_real_smtp_e2e -v` → **PASSED（1 passed in 5.73s）**——真连 `smtp.163.com:465` SSL，事件达 `processed`，确认函实发到 `[邮箱已脱敏]`（用户本人邮箱）。
 - lint / typecheck：`ruff check tests/test_worker.py` → All checks passed ✅；`python -m py_compile tests/test_worker.py` → OK ✅；`mypy` → Success, no issues found in 45 source files ✅（tests 不在 mypy 范围，属项目既有配置）
 - DB 迁移验证：无
-- 验收证据：真 E2E 事件达 `processed` ✅（用户 WSL 2026-08-18，`1 passed in 5.73s`）；用户邮箱 `[邮箱已脱敏]` 收信核对待用户确认后回填。
+- 验收证据：真 E2E 事件达 `processed` ✅（用户 WSL 2026-08-18，`1 passed in 5.73s`）；用户邮箱 `[邮箱已脱敏]` **收信核对通过 ✅**（用户 2026-08-18 确认收到确认函，主题含「面试预约确认」+「Example, Inc.」，正文含会议号 123-456-789）。
 - 变更预算实际值：max_files=2（实际 2）/ 生产行数 0（实际 0）/ 测试行数 +119（预算 ≤130，未超）
 - 未解决风险：
-  - **安全提醒（高优先）**：用户 2026-08-18 已**两次**在 WSL 终端把 163 SMTP 授权码明文贴进对话（`export JIANLI_SMTP_PASSWORD=...`）。授权码已两次出现在对话记录，**建议作废并重新生成**（163 邮箱设置→POP3/SMTP/IMAP→关闭再开启或重置授权码），新授权码只在本机 WSL `export`，**绝不贴入对话/文件/记忆**。
-  - 真 SMTP 发送成功已验证（事件达 processed），但收件邮箱人工核对（邮件内容/主题正确性）待用户确认。
+  - **安全提醒（高优先，非关闭阻塞）**：用户 2026-08-18 已**两次**在 WSL 终端把 163 SMTP 授权码明文贴进对话（`export JIANLI_SMTP_PASSWORD=...`）。授权码已两次出现在对话记录，**建议作废并重新生成**（163 邮箱设置→POP3/SMTP/IMAP→关闭再开启或重置授权码），新授权码只在本机 WSL `export`，**绝不贴入对话/文件/记忆**。此提醒已随任务单留痕，作废与否由用户操作，不阻塞本任务关闭。
 - 是否偏离 TASK：否（发现桩测试已于 `1c44372` 存在后，如实收敛为「只补真 E2E」，未复制桩测试；已撤销冗余的 `tests/appointments/test_worker.py`；`SecretStr` 包装修复属于本任务真 E2E 用例自身缺陷，不越界）
 - 规范影响结论：none
 - spec_sync：clean（本任务不改任何规范工件）
 - verified_commit：`e77f3e9`（实现+任务单提交，2026-08-18）
-- **关闭门禁（四条件）**：① 测试通过 ✅（真 E2E 用户 WSL 2026-08-18 `1 passed in 5.73s`）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit=`e77f3e9` ✅。任务可关闭；等待用户邮箱核对收信 + 显式授权关闭。
+- **关闭门禁（四条件）**：① 测试通过 ✅（真 E2E 用户 WSL 2026-08-18 `1 passed in 5.73s`）；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit=`e77f3e9` ✅。**已关闭（Closed，2026-08-18 用户邮箱核对通过 + 显式授权关闭）**。M3 遗留风险「Worker SMTP 发送路径 runtime-unverified」闭合。
 
 ## 关联
 - Change Request：无

@@ -99,6 +99,7 @@
 - **TASK-PAGE2-WORDING-011**：**已关闭（Closed，2026-08-18 诚实校正，verified_commit=48c3b6c）**——页面二措辞落地 + 诚实校正（移除无依据"26/26=100%"，results.json 全 503 未实测）。详见 `tasks/TASK-PAGE2-WORDING-011.md`。
 - **TASK-PAGE2-JIANLI-STEPS-LANDING**：**已关闭（Closed，2026-08-18 用户 WSL build 验证，verified_commit=48c3b6c）**——页面二 01-04 jianli 内容落地前端 main.tsx（校正"11→15 张表"、加隐私护栏层、诚实事实一致率表述）；纯文案无逻辑变更。详见 `tasks/TASK-PAGE2-JIANLI-STEPS-LANDING.md`。
 - **TASK-AIQA-FACTCOVERAGE-013**：**已关闭（Closed，2026-08-18 用户 WSL 复测 26/26 全绿，verified_commit=28bcb4f）**——简历域事实覆盖补齐（路径 A）：把仅存 resume_sections 的 4 处事实（预约与协作类系统 / 插槽快照·实时刷新·幂等写入 / 内容问答与检索 / 人格层问答）下沉为可检索 chunk——content.py resume_chunks 新增 R6 工作经历 + R3 技术栈补「人格层问答」+ facts card 同步；fact-bank.md FQ-03/04/09 溯源改指 R6、FQ-08 改指 R3；main.tsx 04「事实一致率」由"实测待跑"回填"实测 26/26=100%（严格口径，2026-08-18 实跑，脚本可复跑），误拒 0 题、零编造，SLO ≥94% 达成"。**用户 WSL 复测 measure_fact_consistency.py 26/26 OK**（FQ-03/04/08/09 由 OFFTOPIC/⚠️ 转 ✅），严格/宽松一致率 26/26=100%，🚫误拒 0，SLO ≥94% 达成。曾拟改 CORPUS/新增 seed_kb.py 重传 KB，经诊断确认非必需（这 4 题在旧 KB 中本就检索不到，静态兜底即足够），已撤销。详见 `tasks/TASK-AIQA-FACTCOVERAGE-013.md`。
+- **TASK-M3-WORKER-SMTP-TEST**：**已关闭（Closed，2026-08-18 用户邮箱核对通过 + 显式授权关闭，verified_commit=e77f3e9）**——补 M3 通知 Worker 真 SMTP E2E：`apps/api/tests/test_worker.py` 追加 `test_worker_real_smtp_e2e`（真连 smtp.163.com:465 SSL 把 appointment_created 确认函实发到预约 owner 注册邮箱 [邮箱已脱敏]，事件达 processed 为成功判据，JIANLI_SMTP_PASSWORD 缺失 skip）+ `_seed_user_with_email`/`_smtp_settings` helper（SecretStr 显式包装授权码，修复 model_copy 不做类型转换导致的 get_secret_value AttributeError）。**M3 遗留风险「Worker SMTP 发送路径 runtime-unverified」闭合**：用户 WSL `1 passed in 5.73s` + 用户邮箱实收确认函核对通过。生产代码零改动、无新依赖（复用 smtplib）、max_files=2 未超。⚠️ 安全提醒留痕：163 SMTP 授权码两次明文出现在对话记录，建议作废重生成，新码仅运行时 env。详见 `tasks/TASK-M3-WORKER-SMTP-TEST.md`。
 
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
@@ -167,7 +168,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **最新验证锚点（M1/M2 预约+SSE 本机验证批处理）**：`69d4ceedf47e222e5a7e8eb69edae9d7f37d5ef9`（`69d4cee`）——M1 `test_management.py` 9 passed + M2 `test_sse.py` 2 passed（WSL 真实 PostgreSQL/Redis，2026-08-12）；测试修正提交（is_disconnected async 桩 + 本周一种子 + DUP_COMPANY 测试种子 + tests/__init__.py），生产代码未改；TASK-M1/M2 关闭。
 
-- **M3 通知 Worker 验证锚点（部分验证）**：`8391208` ——M3 实现提交；Worker SMTP 发送路径 runtime-unverified（无 SMTP，test_worker.py 未建），待补测。
+- **M3 通知 Worker 验证锚点（部分验证）**：`8391208` ——M3 实现提交；Worker SMTP 发送路径 runtime-unverified（无 SMTP，test_worker.py 未建），待补测。**（2026-08-18 已由 TASK-M3-WORKER-SMTP-TEST 闭合：真 E2E 用户 WSL `1 passed in 5.73s` + 收件人邮箱实收核对通过，verified_commit=`e77f3e9`；历史锚点保留作审计回溯）**
 
 - **最新验证锚点（M4 账户自助）**：`7c91a83` ——M4 注册/邮箱验证/密码找回实现（`b77931e`）+ 测试令牌长度修正（`7c91a83`）；真实 PG/Redis `test_account_lifecycle.py` 4 passed；ruff/mypy repo 级全绿；TASK-M4 Closed。
 
@@ -179,5 +180,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **当前 master HEAD 校正（2026-08-18）**：实际 master HEAD = `5724d87`（非本文件前述 stale 的 `62620df`；`62620df` 为其祖先）。PROJECT_STATE 曾滞后若干轮收口未记入，本回合一并补记：介于 `62620df`→`5724d87` 之间已提交闭合的任务——`TASK-HARNESS-PIT-001`(verified_commit=cf77b84)、`TASK-CONTENT-RESUME-001`(verified_commit=11bb036)、`TASK-MAINT-GITIGNORE-001`(verified_commit=43a76a1)、`TASK-AIQA-GROUNDING-001`(verified_commit=eba0103)；以及本轮 `TASK-AIQA-ANCHOR-ISO-008`(5724d87)、`TASK-AIQA-FALSE-REJECT-009`(53133e2)、`TASK-AIQA-PRIVACY-GUARD-012`(53133e2)、`TASK-FE-STREAM-CTRL-010`(5724d87)、`TASK-PAGE2-WORDING-011`(48c3b6c)、`TASK-PAGE2-JIANLI-STEPS-LANDING`(48c3b6c)。最新有效 verified commit 以各 TASK 单为准。
 - **最新 master HEAD（2026-08-18 事实一致率收口）**：`28bcb4f` —— TASK-AIQA-FACTCOVERAGE-013 关闭（content.py R6/R3 + fact-bank 溯源 + main.tsx 事实一致率回填 + 26 题实测转录证据）；用户 WSL 复测 26/26 OK，严格一致率 26/26=100%，SLO ≥94% 达成，🚫误拒 0。verified_commit=28bcb4f。
+- **最新验证锚点（M3 真 SMTP E2E 闭合）**：`e77f3e9` —— TASK-M3-WORKER-SMTP-TEST 实现提交（test_worker.py 追加真 E2E `test_worker_real_smtp_e2e` + 任务单）；用户 WSL 真连 smtp.163.com:465 `1 passed in 5.73s` + 收件人邮箱实收核对通过（2026-08-18）；`91b1ef3` 为 verified_commit 回填。verified_commit=e77f3e9。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

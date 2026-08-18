@@ -52,10 +52,12 @@
 - reason：AGENTS §9.4——改变用户可观察行为，必须先更新并批准规范，再实现
 
 ## 交付证据（本 CR 关闭前必须填写）
-- commit：<规范更新提交 sha>
-- 修改文件清单：<openapi/prd/ui_wireframe/srs 逐一列>
-- 用户批准记录：<批准消息/时间>
-- 下游实现 TASK：<批准后创建 TASK-AUTH-VERIFY-CODE-001（后端 code 生成/校验/限频 + 前端输码页 + 测试）>
+- 状态：**Closed（2026-08-18 CR 规范更新交付完成）**
+- commit：`1d194db`（规范更新提交）
+- 修改文件清单：`docs/api/openapi.yaml`（v0.3→v0.4：VerifyCodeRequest + InvalidVerifyCode + 429，TokenRequest 删除）、`docs/requirements/PRD.md`（v2.3.4 §8.6 模板）、`docs/requirements/SRS.md`（v1.4 §3.3/§8）、`docs/baseline.yml`（srs 1.4 / openapi 0.4 版本推进）。**ui_wireframe 无需变更**（U5/U6 早已是验证码形态，实现对齐即可）
+- 用户批准记录：2026-08-18 用户批准 TASK-CR-VERIFY-CODE-001 并选范围 B（注册验证 + 找回密码都改数字码）
+- 校验：OpenAPI YAML 解析 + VerifyCodeRequest/422/429/TokenRequest 移除断言全过；pattern `^\d{6}$` 经正则实测
+- 下游实现 TASK：**TASK-AUTH-VERIFY-CODE-001（draft，待用户批准）**——后端 code 生成/校验/限频（10 分钟 TTL/错误≤5/60s 发码限频）+ 前端输码页 + 找回页 + 测试
 - 未解决风险：无（实现细节留实现 TASK）
 
 ## 关联

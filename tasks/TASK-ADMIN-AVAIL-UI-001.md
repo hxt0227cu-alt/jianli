@@ -73,15 +73,16 @@
 - 公告编辑被混入本任务 → 停止（另行列）
 
 ## 交付证据（任务关闭前必须填写）
-- commit / PR：<待回填>
-- 修改文件清单：<与「允许修改路径」逐一对照>
-- 测试命令及结果：<pnpm typecheck / build 结果>
-- 验收证据：<admin 时段设置操作截图或接口响应>
-- 变更预算实际值：<max_files / 行数>
-- 是否偏离 TASK：<否 / 偏离项>
-- 规范影响结论：none（行为未变）
+- 状态：**implemented（2026-08-18 用户批准后实现完成；待用户浏览器验收后关闭）**
+- commit / PR：`165c6b2`
+- 修改文件清单：`apps/web/main.tsx`（1 文件，符合「允许修改路径」；css/dist-check 未改动）
+- 测试命令及结果：`pnpm typecheck` ✅（tsc --noEmit 无错误）/ `pnpm build` ✅（WSL，28.4s）
+- 验收证据：<待用户浏览器验收：admin 登录 → 时段设置 tab → 新增 force_unavailable → 预约日历对应格变红；编辑/删除生效>
+- 变更预算实际值：max_files=1（≤4）；prod 增量 80 行（≤300）；test 0
+- 是否偏离 TASK：否
+- 规范影响结论：none（行为未变；复用 OpenAPI v0.3 已批准 availability-overrides 契约）
 - spec_sync：clean
-- verified_commit：<待回填>
+- verified_commit：`165c6b2`
 
 ## 关联
 - 后端依据：TASK-DEPLOY-001 之后已存在的 availability-overrides 实现（admin router/service，契约 OpenAPI v0.3）

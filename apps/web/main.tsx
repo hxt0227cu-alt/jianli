@@ -10,7 +10,7 @@ import './appointment.css';
 import { MyAppointmentsView } from './my-appointments';
 
 type Page = 'dashboard' | 'resume' | 'projects' | 'interview' | 'mine' | 'admin';
-type ProjectId = 'jianli' | 'sleep';
+type ProjectId = 'jianli' | 'sleep' | 'litchi';
 type PageKey = 'resume' | 'projects';
 type KnowledgeDoc = { id: string; name: string; type: string; size: number; status: 'indexing' | 'indexed' | 'failed'; parse_mode: string | null; failure_reason: string | null; created_at: string };
 type Conversation = { id: string; created_at: string; updated_at: string };
@@ -191,11 +191,101 @@ const projects: Record<ProjectId, ProjectInfo> = {
   sleep: {
     label: '项目 02', name: 'Sleep AIoT Agent', accent: 'blue',
     headline: '把睡眠健康场景做成受治理、可评估的 Agent 系统。',
-    story: '素材整理中，后续补充。',
+    story: '从 IoT 原型升级为 AI Native 平台：无真机、不稳定环境里，用确定性验证把可复现的证据链建起来。',
     steps: [
-      { title: '系统全景', body: 'React/Taro、NestJS、Python Agent、RAG、MQTT 与边缘设备形成纵向链路。', mark: '01' },
-      { title: 'Agent 工作流', body: 'route → policy → finalize，工具按风险分级，高影响动作进入人工审批。', mark: '02' },
-      { title: '可验证边界', body: '回归、RAG 评测和 Prompt Injection 防护都有独立证据，不把本地验证写成线上结果。', mark: '03' },
+      {
+        title: '背景与问题', mark: '01',
+        summary: '传统睡眠监测依赖可穿戴设备，舒适性差、长期依从度低；改用非接触毫米波雷达做无感监测 + 智能照明 + 健康辅助。',
+        points: [
+          '立项背景：可穿戴睡眠监测佩戴感强、依从度低 → 非接触毫米波雷达无感监测 + 智能照明 + 健康辅助的 AI 睡眠健康 Agent 平台（Sleep AIoT）',
+          '初期「只有架子」：三端（后端控制面 / 小程序 / 嵌入式固件）无统一契约、无自动化验证、无真机无法板级联调',
+          '升级 AI Native 后的核心风险：Agent 设备写操作越权、多租户数据隔离、评测不可复现（provider 环境变量污染）',
+          '约束：全程无真机板级验证（ADR-005 明示"无硬件不阻塞软件完成"，但验证边界必须写清、不拿模拟结果冒充生产结论）',
+        ],
+      },
+      {
+        title: '架构与选型', mark: '02',
+        summary: '5 微服务 + 9 层 AI 能力矩阵；LangGraph 编排 + local/Temporal 双协调器；流式数据平台与四端形态全打通。',
+        points: [
+          '主导整体架构：5 个微服务 + 9 层 AI 能力矩阵；NestJS 控制面 115 个 REST 接口 / 35 张表 / 2.3 万行 TypeScript',
+          'Agent 运行时：LangGraph 状态图（route→policy→finalize），编排层做 local/Temporal 双协调器（AGENT_COORDINATOR + AGENT_STATE_BACKEND 双开关切换）',
+          '自研 RAG：pgvector 余弦距离算子（<=>）检索，引用防篡改、无证据拒答、多租户知识隔离（图关系走关系表、向量用 pgvector，不用图数据库/Milvus）',
+          '流式数据平台：EMQX → Kafka → Flink → ClickHouse → dbt，端到端去重 / 落库 / 特征；四层去重（Kafka 分区 + 幂等键 → Worker 缓存 + 查重 → rebalance 强校验 → 数仓精确去重）',
+          '四端形态：Taro 小程序 16 页（rpx + TARO_ENV + 统一 API 封装）/ Web / Android Capacitor 壳（零原生代码）/ ESP32-S3 固件 13,223 行 C++（雷达/语音/OTA/配网/GSM）',
+        ],
+      },
+      {
+        title: 'Agent 与 RAG', mark: '03',
+        summary: '5 类业务 Agent + 工具白名单 + HITL 审批 + 四维预算熔断；语音端 WakeNet/MultiNet 离线唤醒词。',
+        points: [
+          '落地 5 类业务 Agent：睡眠报告 / 21 天改善计划 / 语音陪伴（含危机分级）/ 知识问答 / 算法优化',
+          'AI 安全护栏：工具白名单 + HITL 审批门禁 + 输出审查 + 四维预算熔断（工具调用数 / Token / 步数 / 超时）',
+          'RAG 知识问答基于 pgvector 余弦检索：引用防篡改、无证据拒答、多租户知识隔离（租户隔离 2/2 真实 pgvector 验证）',
+          '端侧语音：ESP32-S3 WakeNet → MultiNet 双状态机 + 15 条命令词表（esp_mn_commands_add 拼音映射开灯），模型用乐鑫预训练不自训',
+          '诚实边界：Temporal 持久化路径目前只有单元/静态层证据，本地确定性评测跑 local 协调器——生产切 Temporal 是设计目标，持久化路径未在本地确定性证据里跑通',
+        ],
+      },
+      {
+        title: '工程化与证据', mark: '04',
+        summary: '84 例确定性评测 + 故障注入 + 数仓去重，全部可复现；失败记录刻意保留当漂移证据。',
+        points: [
+          '84 例评测 100%：按 type 分 7 类（sleep_analysis 20 / knowledge_answer 20 / device_control 20 / algorithm_optimization 9 / sleep_report 5 / sleep_improvement 5 / voice_companion 5）',
+          '安全：审批绕过率 0%（5 例未授权设备控制全停 waiting_approval + 10 例注入无写工具）；10 例 Prompt 注入 0 越权写；4 例隐私测试 0 泄露（原始雷达样本在调用任何工具前直接拒）',
+          '可靠性：18720 事件 = 3 轮故障注入 × 每轮 6,240，12 分区 lag 全 0、恢复 median 12.6s、300 次显式重放全抑制；dbt 数仓 56,289 → 56,218 精确去重（17 项测试）',
+          '评测不可复现的修复：曾继承 AGENT_MODEL_PROVIDER 环境变量只过 67/84 → 评测入口钉死 deterministic provider 恢复 84/84，17 条失败记录刻意保留当配置漂移证据',
+          '质量门禁：Backend Jest 144 通过、Agent 单测 54/54、lint 棘轮 1085/1109；所有未验证项显式登记，不拿模拟结果冒充生产结论',
+        ],
+      },
+    ],
+  },
+  litchi: {
+    label: '项目 03', name: 'Litchi 荔枝问答平台', accent: 'purple',
+    headline: '一人独立完成的 90.4 分优秀毕设：受控 Agent 的荔枝 RAG 问答平台。',
+    story: '无 GPU 笔记本可演示的硬约束下，把工程重心转向可控性与可验证性。',
+    steps: [
+      {
+        title: '背景与问题', mark: '01',
+        summary: '荔枝病虫害防治知识分散，农户难以获取专业方案；通用大模型在垂直领域会幻觉。',
+        points: [
+          '选题动机：通用大模型存在幻觉、垂直知识缺失——荔枝病虫害防治需要可溯源的专业问答（毕设说明明确以此为主线痛点）',
+          '硬约束：毕设须在无 GPU 笔记本本地演示 → 本地小模型 qwen2.5:0.5b（Ollama）+ 哈希向量（零依赖 SimpleEmbeddingService，CPU 可跑）',
+          '语义天花板受限 → 工程重点转向可控性与可验证性：四段受控 Agent、60 条评测集、benchmarks 模块',
+          '2026 届优秀毕业设计，得分 90.4：《基于大模型 RAG 的荔枝智能问答平台设计与实现》',
+        ],
+      },
+      {
+        title: '架构与选型', mark: '02',
+        summary: '一人独立 8 模块；Spring Boot 3.2 后端 + Vue3 前端 + YOLOv8 诊断 + Milvus/Neo4j 双路检索。',
+        points: [
+          '8 模块：backend（Spring Boot 3.2 / Java 17，100 文件 / 12,622 行）+ frontend（Vue3 + TS，34 文件 / 11,076 行，21 个页面视图按农户/门店/技术员三角色）+ diagnosis-service（Python YOLOv8，592 行）+ data-platform / observability / deploy-helm / benchmarks / datasets',
+          '存储：MySQL 14 张表（platform_* 系列按业务域统一命名）+ Controller 49 个接口；查询型二级索引（idx_platform_*）',
+          '检索：Milvus（collection litchi_knowledge，1024 维哈希向量，COSINE）+ Neo4j 图谱（品种/病害/虫害/药剂/栽培技术实体及关系）双路融合；ChatService 向量召回 top4 + 图谱查询合并进 prompt',
+          '语料：农业农村部/省厅/地标/高校 19 篇权威资料 + 30 个 raw 文件清洗后 29 篇 md；图谱 9 实体 / 8 关系；评测集 60 条（30 RAG + 20 Agent + 10 安全）',
+          '可观测：observability 模块 prometheus.yml 3 个抓取 job + grafana agent-overview.json（Agent 运行 / 工具 / 风险指标看板）',
+        ],
+      },
+      {
+        title: 'Agent 与 RAG', mark: '03',
+        summary: 'Planner / Guard / Executor / Synthesizer 四段受控 Agent 全部在 AgentService.java 实现。',
+        points: [
+          'Planner：LLM 生成 JSON 计划（硬上限 4 步），解析失败走确定性 fallbackPlan',
+          'Guard（职责内嵌，无独立类）：availableTools.containsKey 拦未知/重复工具 + maxSteps 预算截断 + AgentTool.supports() RBAC 角色过滤 + requiresApproval() → waiting_approval → confirm(approve/reject) 后落库（HITL）',
+          'Executor：按计划顺序执行白名单工具，记录状态/耗时/checkpoint',
+          'Synthesizer：只依据工具证据作答，模型不可用返回降级文案（去掉它就没有收口结论与降级提示）',
+          'Agent 侧拆 knowledge_search / knowledge_graph 两个独立工具取证据，Synthesizer 统一综合；SSE 事件流 + Checkpoint 检查点 + Prometheus 指标实现过程追踪',
+        ],
+      },
+      {
+        title: '工程化与证据', mark: '04',
+        summary: '90.4 分背后的工程闭环与诚实局限：评测门禁 + 降级链 + 压测未达标如实保留。',
+        points: [
+          '评测：60 条任务集（RAG / Agent / 安全三类）由 evaluate_agent.py 校验并接入 CI 做回归门禁；k6 压测脚本阈值 p95<12s、成功率>99.5%',
+          'YOLOv8 诊断三级降级链：yolo → dataset-vision → demo-rule，权重缺失/推理失败时逐级兜底不中断（训练自 380 张小数据集，top1 43.75% → 93.75%）',
+          '诚实局限：并发压测 200 并发仅 19% 成功、P95 15.18s——修复旧接口路径/PowerShell 5 兼容/外部依赖重复探测/对象级同步（CopyOnWriteArrayList）后仍不达标，按时间边界停止调优、原始报告如实保留',
+          '诚实局限：Agent 运行用单表 JSON 快照 + 内存回退（未拆 step/审批独立表、无法跨实例恢复）；混合检索 BM25+RRF 与模型 rerank 为未完成项；数据平台（Kafka CDC/ClickHouse/Helm）为可部署模板未生产验证',
+          '对比叙事：与泰益智（云资源 pgvector + BGE-M3 + DeepSeek）对照——展示的是"不同约束下做不同取舍"，不是只会一种方案',
+        ],
+      },
     ],
   },
 };
@@ -226,7 +316,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [followups, setFollowups] = useState<string[]>([]);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
-  const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : 'Sleep AIoT Agent'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
+  const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : projectKey === 'sleep' ? 'Sleep AIoT Agent' : 'Litchi 荔枝问答平台'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
 
   // TASK-FE-STREAM-CTRL-010: cancel any in-flight stream on unmount / page unload
   // so a navigating-away user doesn't leave a dangling request mutating stale state.
@@ -375,7 +465,7 @@ function ProjectView({ selected, onSelect, onInterview }: { selected: ProjectId;
   const project = projects[selected];
   const currentStep = project.steps[step];
   useEffect(() => { setStep(0); }, [selected]);
-  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>问题 → 踩坑 → 演进。</h1><p>{project.story}</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label} · {project.name}</span><span>{currentStep.mark} / {project.steps.length}</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2>{currentStep.summary ? <p>{currentStep.summary}</p> : <p>{currentStep.body}</p>}{currentStep.points ? <ul className="stage-points">{currentStep.points.map((point) => <li key={point}>{point}</li>)}</ul> : null}</div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一步</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>每个章节都可以直接在右侧追问细节——所有量化数字来自真实评测与测试，可复现。</p></div></main>;
+  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT STORY / 02</span><h1>问题 → 踩坑 → 演进。</h1><p>{project.story}</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button><button className={selected === 'litchi' ? 'active' : ''} onClick={() => onSelect('litchi')}>项目 03 · litchi</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className={`project-stage ${project.accent}`}><div className="stage-screen"><div className="stage-top"><span>{project.label} · {project.name}</span><span>{currentStep.mark} / {project.steps.length}</span></div><div className="stage-copy"><span className="stage-number">{currentStep.mark}</span><h2>{currentStep.title}</h2>{currentStep.summary ? <p>{currentStep.summary}</p> : <p>{currentStep.body}</p>}{currentStep.points ? <ul className="stage-points">{currentStep.points.map((point) => <li key={point}>{point}</li>)}</ul> : null}</div><div className="stage-progress">{project.steps.map((item, index) => <button key={item.mark} className={index === step ? 'active' : ''} onClick={() => setStep(index)}><span>{item.mark}</span>{item.title}</button>)}</div></div><div className="stage-controls"><button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={step === 0} aria-label="上一步"><ArrowLeft size={16} /></button><button className="play-button" onClick={() => setStep((value) => (value + 1) % project.steps.length)}><Play size={15} /> 播放下一步</button><button onClick={() => setStep((value) => Math.min(project.steps.length - 1, value + 1))} disabled={step === project.steps.length - 1} aria-label="下一步"><ArrowRight size={16} /></button></div></div><div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>每个章节都可以直接在右侧追问细节——所有量化数字来自真实评测与测试，可复现。</p></div></main>;
 }
 
 function InterviewView() {

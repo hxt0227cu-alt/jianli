@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.2.0
+  version: 0.3.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
     Approved contract based on SRS 1.3, domain-model 1.1.5, architecture 0.2
@@ -642,6 +642,29 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '201': { description: One-time exception created }
         default: { $ref: '#/components/responses/Error' }
+  /admin/owner-contact-config:
+    put:
+      tags: [Admin]
+      summary: Configure the candidate feishu open_id for R13 dual-channel delivery
+      operationId: updateOwnerContactConfig
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OwnerContactConfigInput' }
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '200':
+          description: Candidate feishu open_id configured (AES-encrypted at rest)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerContactConfigView' }
+        default: { $ref: '#/components/responses/Error' }
 components:
   securitySchemes:
     cookieSession:
@@ -952,3 +975,13 @@ components:
         company_name: { type: string, minLength: 1, maxLength: 200 }
         reason: { type: string, minLength: 1, maxLength: 1000 }
         expires_at: { type: string, format: date-time }
+    OwnerContactConfigInput:
+      type: object
+      required: [candidate_feishu_open_id]
+      properties:
+        candidate_feishu_open_id: { type: string, minLength: 5, maxLength: 100 }
+    OwnerContactConfigView:
+      type: object
+      required: [configured]
+      properties:
+        configured: { type: boolean }

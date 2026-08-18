@@ -98,6 +98,7 @@
 - **TASK-FE-STREAM-CTRL-010**：**已关闭（Closed，2026-08-18 用户 WSL `npm run build` 验证，verified_commit=5724d87）**——前端流式控制（streamAnswer AbortController+25s 超时+连接失败单次重连；ChatPanel 卸载/beforeunload abort）；用户 WSL build 2026-08-18 通过（✓ 21.70s）。详见 `tasks/TASK-FE-STREAM-CTRL-010.md`。
 - **TASK-PAGE2-WORDING-011**：**已关闭（Closed，2026-08-18 诚实校正，verified_commit=48c3b6c）**——页面二措辞落地 + 诚实校正（移除无依据"26/26=100%"，results.json 全 503 未实测）。详见 `tasks/TASK-PAGE2-WORDING-011.md`。
 - **TASK-PAGE2-JIANLI-STEPS-LANDING**：**已关闭（Closed，2026-08-18 用户 WSL build 验证，verified_commit=48c3b6c）**——页面二 01-04 jianli 内容落地前端 main.tsx（校正"11→15 张表"、加隐私护栏层、诚实事实一致率表述）；纯文案无逻辑变更。详见 `tasks/TASK-PAGE2-JIANLI-STEPS-LANDING.md`。
+- **TASK-AIQA-FACTCOVERAGE-013**：**已关闭（Closed，2026-08-18 用户 WSL 复测 26/26 全绿，verified_commit=28bcb4f）**——简历域事实覆盖补齐（路径 A）：把仅存 resume_sections 的 4 处事实（预约与协作类系统 / 插槽快照·实时刷新·幂等写入 / 内容问答与检索 / 人格层问答）下沉为可检索 chunk——content.py resume_chunks 新增 R6 工作经历 + R3 技术栈补「人格层问答」+ facts card 同步；fact-bank.md FQ-03/04/09 溯源改指 R6、FQ-08 改指 R3；main.tsx 04「事实一致率」由"实测待跑"回填"实测 26/26=100%（严格口径，2026-08-18 实跑，脚本可复跑），误拒 0 题、零编造，SLO ≥94% 达成"。**用户 WSL 复测 measure_fact_consistency.py 26/26 OK**（FQ-03/04/08/09 由 OFFTOPIC/⚠️ 转 ✅），严格/宽松一致率 26/26=100%，🚫误拒 0，SLO ≥94% 达成。曾拟改 CORPUS/新增 seed_kb.py 重传 KB，经诊断确认非必需（这 4 题在旧 KB 中本就检索不到，静态兜底即足够），已撤销。详见 `tasks/TASK-AIQA-FACTCOVERAGE-013.md`。
 
 - 具体版本与评审状态见 `docs/baseline.yml`。
 
@@ -177,5 +178,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **最新验证锚点（GOV-SYNC-002 文档同步）**：`<commit>` — PROJECT_STATE 对齐 master HEAD `62620df`；如实补记 `beafbcf`→`62620df` 之间三个无独立 TASK 提交（`4da0778` dev-env.sh / `536d41e` M4 前端 / `62620df` admin 驾驶舱）；harness 工程化 TASK-HARNESS-001 登记。纯文档同步，本环境未对这些提交单独重跑全量验证，不宣称新功能 verified 快照。
 
 - **当前 master HEAD 校正（2026-08-18）**：实际 master HEAD = `5724d87`（非本文件前述 stale 的 `62620df`；`62620df` 为其祖先）。PROJECT_STATE 曾滞后若干轮收口未记入，本回合一并补记：介于 `62620df`→`5724d87` 之间已提交闭合的任务——`TASK-HARNESS-PIT-001`(verified_commit=cf77b84)、`TASK-CONTENT-RESUME-001`(verified_commit=11bb036)、`TASK-MAINT-GITIGNORE-001`(verified_commit=43a76a1)、`TASK-AIQA-GROUNDING-001`(verified_commit=eba0103)；以及本轮 `TASK-AIQA-ANCHOR-ISO-008`(5724d87)、`TASK-AIQA-FALSE-REJECT-009`(53133e2)、`TASK-AIQA-PRIVACY-GUARD-012`(53133e2)、`TASK-FE-STREAM-CTRL-010`(5724d87)、`TASK-PAGE2-WORDING-011`(48c3b6c)、`TASK-PAGE2-JIANLI-STEPS-LANDING`(48c3b6c)。最新有效 verified commit 以各 TASK 单为准。
+- **最新 master HEAD（2026-08-18 事实一致率收口）**：`28bcb4f` —— TASK-AIQA-FACTCOVERAGE-013 关闭（content.py R6/R3 + fact-bank 溯源 + main.tsx 事实一致率回填 + 26 题实测转录证据）；用户 WSL 复测 26/26 OK，严格一致率 26/26=100%，SLO ≥94% 达成，🚫误拒 0。verified_commit=28bcb4f。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

@@ -75,8 +75,9 @@
 - 若重测后 FQ-03/04/08/09 仍非 ✅，或 RAG 评测回归失败 → 停止并复盘检索路径
 
 ## 交付证据
-- commit / PR：（待用户确认后提交，回填 commit hash）
-- 修改文件清单：apps/api/app/aiqa/content.py、docs/fact-consistency/fact-bank.md、apps/web/main.tsx
+- commit / PR：28bcb4f（实现 + 证据），本收口提交另记
+- 修改文件清单：apps/api/app/aiqa/content.py、docs/fact-consistency/fact-bank.md、apps/web/main.tsx（+ 证据 docs/fact-consistency/scored-2026-08-18.md、scripts/fact_consistency_results.json、本 TASK）
+- verified_commit：28bcb4f
 - 测试命令及结果：**PASS — 用户 WSL 复验 2026-08-18 02:27，measure_fact_consistency.py 26/26 OK**（FQ-03/04/08/09 由 OFFTOPIC/⚠️ 转 ✅；严格一致率 26/26=100%，SLO ≥94% 达成，🚫误拒 0）
 
 ## 治理备注

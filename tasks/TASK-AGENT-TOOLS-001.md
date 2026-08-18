@@ -1,6 +1,6 @@
 # TASK-AGENT-TOOLS-001 Agent 工具化：search_knowledge 只读工具 + 决策链 SSE 可见
 
-> **状态**：Open（2026-08-15 建；用户确认"要做 Agent 工具化"）。**阶段 1 交付已完成并 WSL 验证**；**模型自主决策两阶段（阶段 2）未在本任务接通，由 TASK-AGENT-TOOLS-002 承接**——本任务验收 ②/③ 中"模型自主决策"语义在 002 完成后才全部成立。
+> **状态**：**Closed（2026-08-18 用户显式授权关闭 001+002）**——阶段 1 交付已完成并 WSL 验证（绿色 tool-chain 条可见）；**阶段 2（模型自主决策两阶段）由 TASK-AGENT-TOOLS-002 承接并完成**（LITERAL 8/8 + REJECT 10/10 真模型自主决策全绿），两任务一并关闭。
 > **依赖**：RAG 全部收官（混合检索/评测/阈值 closed）；DeepSeek V4 Flash 支持 OpenAI 兼容 tools（function calling）
 
 ## 1. 背景（面试工程：从 RAG 问答 → 受控 Agent）
@@ -41,10 +41,10 @@
 - [x] WSL 浏览器：回答上方出现绿色 tool-chain 条「🤖 已检索知识库（query=…）→ 命中 N 个片段」
 - [x] 交付证据回填（本文件；commit 见 TASK-AGENT-TOOLS-002 收口一并提交）
 
-**阶段 2（TASK-AGENT-TOOLS-002，待接通后与本任务一并关闭）**
-- [ ] ruff / mypy / DB-free（沙箱）
-- [ ] WSL（DeepSeek + BGE-M3）：评测 REJECT/LITERAL 在**真模型自主决策**下重验保持 8/8、10/10；浏览器新会话提问 → 绿色 tool-chain 条内 `query` 为模型生成的检索词（不再固定等于原问题）
-- [ ] 用户显式授权关闭 001 + 002
+**阶段 2（TASK-AGENT-TOOLS-002，2026-08-18 完成并一并关闭）**
+- [x] ruff ✅ / mypy ✅ / DB-free ✅（沙箱：test_aiqa 13 + test_agent_tools 5 = 18 passed）
+- [x] WSL（DeepSeek + BGE-M3）：评测 REJECT/LITERAL 在**真模型自主决策**下重验保持 8/8、10/10（`ca81e7b` 后 LITERAL 8/8 + REJECT 10/10 + 5 passed）；浏览器新会话提问 → 绿色 tool-chain 条内 `query` 为模型生成的检索词（用户 2026-08-18 授权关闭时确认）
+- [x] 用户显式授权关闭 001 + 002（2026-08-18）
 
 ## 6. 面试价值
 "把 RAG 问答升级为**受控 Agent**：`search_knowledge` 注册为白名单只读工具，

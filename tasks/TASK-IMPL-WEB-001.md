@@ -110,7 +110,7 @@
 - 修改文件：`apps/web/index.html`、`apps/web/main.tsx`、`apps/web/styles.css`、`package.json`、`pnpm-lock.yaml`、`vite.config.ts`、`tsconfig.json`、`playwright.config.ts`、`tests/web-shell/shell.test.ts`、`tests/web-shell/shell.spec.ts`。
 - 预算实际值：10 个文件；生产代码约 220 行；测试代码约 28 行；未超预算。数据库迁移：无。
 - 是否偏离 TASK：否。未解决风险仅为后续真实 API、鉴权、预约、通知与部署实现。
-- 状态：Open
+- **状态：Closed（2026-08-18 用户确认收口）**——前端展示壳与页面一/二交付于 `9473369`，独立审查 TASK-REVIEW-WEB-001 已 Closed（无 P0/P1）；后续 M1–M6、AIQA、飞书等全部前端功能均在展示壳之上迭代完成，本任务历史遗留 Open 状态由用户 2026-08-18 确认正式收口。
 
 ## 关联
 - 独立审查：TASK-REVIEW-WEB-001

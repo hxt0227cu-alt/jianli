@@ -70,18 +70,20 @@
 
 ## 交付证据（任务完成时回填）
 
+- **关闭结论（2026-08-18 用户显式授权关闭）**：**Closed（Closed，2026-08-18）**——harness 验证全绿（`bash scripts/verify.sh --quick` 退出码 0）+ 两项存量债务已由 **TASK-QA-CLEANUP-001（`df65179`）清零**（前端 main.tsx TS1005 + pytest 12 例存量失败，PYTEST_BASELINE 现为空）+ 坑已提炼为 Skill（`jianli-wsl-verify-pitfalls`，见下）。
+- **坑提炼为 Skill（用户 2026-08-18 拍板）**：`docs/devlog/pitfalls/pitfalls.md` 中 6 项带「Skill 候选：是」的坑已提炼为项目级 Skill `jianli-wsl-verify-pitfalls`（`C:\Users\hxt02\Desktop\jianli\.workbuddy\skills\jianli-wsl-verify-pitfalls\SKILL.md`）：① venv 平台错位→评测全走 WSL；② Git Bash rm 被 safe-delete 拦截→wsl rm；③ .env.local CRLF→source 前 sed 去回车；④ 建测试库幂等（先查再建）；⑤ bash 门禁 `$?` 捕获时机+禁 `|| true`；⑥ 新 pip 依赖显式安装+import 冒烟；⑦ ruff 跨目录 `--config`；⑧ 接手红套件→PYTEST_BASELINE 登记而非静默 skip。Skill 为 `.workbuddy/` 本机资产，**不入库**（治理纪律 12）。
 - **修改文件清单**（实际 13 个，预算 max_files=14 未超）：
   - 新增：`scripts/verify.sh`、`scripts/git-hooks/pre-commit`、`scripts/git-hooks/pre-push`、`scripts/install-hooks.sh`、`scripts/devlog.sh`、`scripts/record_pit.py`、`docs/HARNESS.md`
   - 修改：`apps/api/tests/conftest.py`、`apps/api/scripts/harness_setup_db.py`、`apps/api/pyproject.toml`（mypy pypdf override）、`docs/devlog/pitfalls/pitfalls.md`、`docs/devlog/pitfalls/pitfalls.jsonl`、`tasks/TASK-HARNESS-001.md`、`PROJECT_STATE.md`（滞后锚点同步 + 登记 harness 主线）
 - **验证命令与结果**（`bash scripts/verify.sh --quick`，WSL）：
-  - pytest：48 passed / 69 skipped / **12 已知存量失败（3 failed + 9 errors）命中 PYTEST_BASELINE → 非回归、不阻断**；退出码 0，门禁判 `ok: pytest`
+  - pytest：48 passed / 69 skipped / **12 已知存量失败（3 failed + 9 errors）命中 PYTEST_BASELINE → 非回归、不阻断**；退出码 0，门禁判 `ok: pytest`（**注：12 例存量已由 TASK-QA-CLEANUP-001 修复清零**）
   - ruff check：All checks passed! → ok
   - ruff format --check（harness 3 文件）：3 files already formatted → ok
   - mypy：Success: no issues found in 45 source files → ok
-  - 前端（--quick 跳过；全量 run 中 `pnpm test` 为硬门禁、`pnpm typecheck`/`pnpm build` 为已知存量 report-only）
+  - 前端（--quick 跳过；全量 run 中 `pnpm test` 为硬门禁、`pnpm typecheck`/`pnpm build` 为已知存量 report-only；**TS1005 已由 TASK-QA-CLEANUP-001 修复**）
   - **退出码：0（硬门禁全过）**
 - **钩子安装**：`bash scripts/install-hooks.sh` → 将 pre-commit / pre-push 软链至 `.git/hooks/`（非 WSL 自动跳过）；安装结果见下方收尾。
 - **数据库迁移结果**：测试库 `jianli_test` 经 `harness_setup_db.py` 幂等建库 + alembic upgrade head 通过（up 验证）；与开发库 `jianli_dev` 物理隔离。
-- **未解决风险**：① 前端 `apps/web/main.tsx` 预存 TS1005 语法错误（历史债务，非 harness 缺陷，report-only，待单独 TASK 清理）；② 12 例 pytest 存量失败属历史债务，本任务禁改 `tests/**` 行为，已基线化、需单独 TASK 清理。
+- **未解决风险**：① 前端 `apps/web/main.tsx` 预存 TS1005 语法错误（历史债务，非 harness 缺陷，report-only，待单独 TASK 清理）——**已由 TASK-QA-CLEANUP-001（`df65179`）修复**；② 12 例 pytest 存量失败属历史债务，本任务禁改 `tests/**` 行为，已基线化、需单独 TASK 清理——**已由 TASK-QA-CLEANUP-001 清零（PYTEST_BASELINE 现为空）**。
 - **是否偏离 TASK**：否（未改业务代码、未新增 DB/API/依赖、未碰禁止路径）。
-- **建议审查重点**：① 确认 PYTEST_BASELINE 的 12 例确为历史债务而非本次引入（verify 已用 comm 比对，新增失败必判红）；② hooks 在用户 WSL 提交时真实触发；③ 前端 build 存量问题与 harness 解耦，避免被误判为 harness 退步。
+- **建议审查重点**：① 确认 PYTEST_BASELINE 的 12 例确为历史债务而非本次引入（verify 已用 comm 比对，新增失败必判红）；② hooks 在用户 WSL 提交时真实触发；③ 前端 build 存量问题与 harness 解耦，避免被误判为 harness 退步。**（①②均已获 TASK-QA-CLEANUP-001 后续验证支持，本任务关闭）**

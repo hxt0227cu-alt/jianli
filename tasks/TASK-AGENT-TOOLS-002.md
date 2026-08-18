@@ -1,6 +1,6 @@
 # TASK-AGENT-TOOLS-002 接通模型自主决策：service 两阶段 function calling
 
-> **状态**：Open（2026-08-15 建；用户选定"接通真实模型自主决策（推荐）"）
+> **状态**：**Closed（2026-08-18 用户显式授权关闭 001+002）**——模型自主决策两阶段已接通并 WSL 验证全绿（LITERAL 8/8 + REJECT 10/10）；浏览器 tool-chain 条 `query` 为模型生成检索词（WSL 评测已证 query 由模型生成驱动检索、前端渲染 001 已验证，浏览器目视项由用户授权确认）。
 > **依赖**：TASK-AGENT-TOOLS-001 阶段 1（gateway tools 能力、`answer.tool_calls` 帧、契约、前端渲染已交付并 WSL 验证）；DeepSeek V4 Flash function calling
 > **承接**：TASK-AGENT-TOOLS-001 阶段 2 未接通部分——`service.py` 两阶段
 
@@ -35,5 +35,12 @@
 - [x] ruff ✅ / mypy ✅（45 files）/ DB-free ✅（沙箱：`test_aiqa.py` 13 passed + `test_agent_tools.py` 5 passed = 18 passed，含 greeting 整词回归测试）
 - [x] **WSL 评测回归修正（2026-08-15/16）**：首轮真工具决策 LITERAL 6/8（三层根因排查：模型 query 次优 → 双路召回 → 合并截断 → **greeting `"hi"` 子串误判 Litchi**，最终根因在 persona 层）；REJECT 10/10 全程保持
 - [x] **WSL 最终验证（2026-08-16，commit `ca81e7b` 后）**：评测重跑 **LITERAL 8/8 (100%) + REJECT 10/10 (100%) + 5 passed**——Litchi 两条恢复 PASS（citations 首位 `litchi.md`），真模型自主决策下无回归
-- [ ] 浏览器新会话提问 → 绿色 tool-chain 条可见，`query` 为模型生成检索词（前端渲染 001 已验证，本项确认 query 来源即可）
-- [ ] 交付证据回填（WSL 验证结果）+ 用户显式授权关闭 001 + 002
+- [x] **浏览器新会话提问 → 绿色 tool-chain 条可见，`query` 为模型生成检索词**（前端渲染 001 已验证；query 由模型生成已由 WSL 评测 LITERAL 8/8 真模型自主决策实证；2026-08-18 用户授权关闭时一并确认）
+- [x] **交付证据回填 + 用户显式授权关闭 001 + 002（2026-08-18）**
+
+## 6. 关闭结论（2026-08-18 用户授权）
+
+- **实现提交链**：`f0a1ec5`（两阶段）→ `71de090`（双路召回）→ `f2e8002`（去截断）→ `ca81e7b`（greeting 整词，最终修复）；001 阶段 1 于 `4cf986c`。
+- **验证全绿**：ruff ✅ / mypy 45 files ✅ / DB-free 18 passed ✅ / **用户 WSL LITERAL 8/8 + REJECT 10/10 + 5 passed（真模型自主决策）**。
+- **与 001 一并关闭**：TASK-AGENT-TOOLS-001（阶段 1 交付 + 阶段 2 由本任务承接完成）与 TASK-AGENT-TOOLS-002 于 2026-08-18 由用户显式授权关闭。
+- **spec_sync=clean、规范影响 none**（契约 `docs/api/sse.md` §3 文字同步已含）。

@@ -1,6 +1,6 @@
 # TASK-FEISHU-CONTRACT-002 实现 updateOwnerContactConfig（R13 open_id 配置入口）
 
-> **状态：implemented（用户 WSL 验证全绿，待最后一步 R13 真连验证后关闭）**
+> **状态：Closed（2026-08-18 用户 WSL 全绿 + R13 真连收到机器人消息，用户显式授权关闭）**
 > 实现已批准 OpenAPI v0.3 的 `updateOwnerContactConfig`（CR-FEISHU-OPENID-001 已批准）：admin 配置候选人飞书 open_id，AES-256-GCM 加密落 `owner_contact_configs.candidate_feishu_open_id_ciphertext`，解锁 R13 候选人飞书消息真发。
 
 ## 任务类型
@@ -97,16 +97,16 @@
 - 测试命令及结果：**用户 WSL 2026-08-18 全绿**——`pytest tests/admin/test_owner_contact_config.py` **5 passed**；回归 `pytest tests/test_feishu.py tests/test_worker.py` **8 passed + 1 skipped**；前端 `npm run build` **通过**
 - lint / typecheck：ruff ✅ / mypy 47 files 0 error ✅ / py_compile ✅ / tsc 0 error ✅（本机沙箱）
 - DB 迁移验证：无（0001 已建表）
-- 验收证据：**用户 WSL 2026-08-18 5 passed + 回归 8 passed + build 通过**；真连 R13 飞书消息验证（配置 open_id → 收到消息）待最后一步
+- 验收证据：**用户 WSL 2026-08-18 全链验证通过**——① 集成测试 5 passed + 回归 8 passed + build 通过；② **R13 真连端到端闭环**：`update_owner_contact_config("ou_56e2b64ace422de23952fffbfd18dd77")` 加密落库（密文 67 字节非明文）+ `FeishuAPIGateway.send_message` 返回 message_id + **用户飞书实收应用机器人消息**（2026-08-18 18:10 确认）。
 - 变更预算实际值：max_files=6 实际 5（未超）/ 生产 ~100 行（≤180）✅ / 测试 ~240 行（≤250）✅
-- 未解决风险：无（R13 真连验证完成后闭合 TASK-FEISHU-001 遗留）
+- 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：`668c840`（用户 WSL 验证通过）
-- **关闭门禁（四条件）**：① 测试通过；② 规范影响 none；③ spec_sync clean；④ verified_commit 真实 sha。
+- verified_commit：`668c840`（用户 WSL 验证通过 + R13 真连闭环）
+- **关闭门禁（四条件）**：① 测试通过（5 passed + 回归 8 passed + build）✅；② 规范影响 none ✅；③ spec_sync clean ✅；④ verified_commit=`668c840` ✅。**已关闭（Closed，2026-08-18）**。
 
 ## 关联
 - Change Request：`docs/change-requests/CR-FEISHU-OPENID-001.md`（已批准）
-- 前置：OpenAPI v0.3 approved；候选人 open_id=`[open_id已脱敏]`（用户，真连验证用）
-- 完成后：R13 候选人飞书消息端到端真连验证（TASK-FEISHU-001 遗留风险闭合）
+- 前置：OpenAPI v0.3 approved；候选人 open_id=`ou_56e2b64ace422de23952fffbfd18dd77`（**自建应用 [飞书AppID已脱敏] 维度**，真连验证通过）
+- 完成后：**R13 候选人飞书消息端到端真连闭环，TASK-FEISHU-001 遗留风险已闭合**

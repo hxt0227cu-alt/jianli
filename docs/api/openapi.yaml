@@ -658,7 +658,6 @@ paths:
       responses:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/Problem' }
         '200':
           description: Candidate feishu open_id configured (AES-encrypted at rest)
           content:

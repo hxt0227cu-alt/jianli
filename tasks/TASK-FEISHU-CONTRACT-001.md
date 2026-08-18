@@ -30,8 +30,8 @@
 | operationId | `updateOwnerContactConfig` |
 | 权限 | owner_admin + `CsrfToken`（写操作，同现有 admin 写端点） |
 | 请求体 | `OwnerContactConfigInput`：`{ "candidate_feishu_open_id": string }`（明文入参，服务端 AES 加密落库） |
-| 响应 | `200` `OwnerContactConfigView`：`{ "configured": true }`；401/403/404 Problem 错误 |
-| 行为语义 | 对唯一活跃 owner_admin 的 `owner_contact_configs` 行 upsert：无行则建、有行则更新 `candidate_feishu_open_id_ciphertext`（AES-256-GCM，AAD=owner_contact_configs 表/列/config 行 id）；无活跃 owner_admin → 404 + 告警（领域模型 §6.1 不变量） |
+| 响应 | `200` `OwnerContactConfigView`：`{ "configured": true }`；401/403 Problem 错误；无活跃 owner_admin 场景走 `default Error` 兜底（契约无显式 404 先例，风格统一） |
+| 行为语义 | 对唯一活跃 owner_admin 的 `owner_contact_configs` 行 upsert：无行则建、有行则更新 `candidate_feishu_open_id_ciphertext`（AES-256-GCM，AAD=owner_contact_configs 表/列/config 行 id）；无活跃 owner_admin → default Error + 运维告警（领域模型 §6.1 不变量） |
 
 ## 非目标（明确排除）
 - 不实现代码/前端/测试（本任务仅契约；实现走后续独立 TASK）
@@ -64,7 +64,7 @@
 
 ## 功能验收（契约层）
 - Redocly 校验 0 error / 0 warning（与既有契约一致）
-- 新端点出现在 `/admin/owner-contact-config`，operationId=`updateOwnerContactConfig`，含 CsrfToken 参数与 200/401/403/404 响应
+- 新端点出现在 `/admin/owner-contact-config`，operationId=`updateOwnerContactConfig`，含 CsrfToken 参数与 200/401/403/default 响应
 
 ## 安全与隐私验收（契约层）
 - 请求体声明明文 open_id；落库语义在实现 TASK 中 AES 加密（本契约仅声明行为）

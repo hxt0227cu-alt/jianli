@@ -24,7 +24,7 @@ R13 候选人飞书消息的收件人解析依赖 `owner_contact_configs.candida
 | operationId | `updateOwnerContactConfig` |
 | 权限 | owner_admin（`cookieSession` security）+ `CsrfToken` 参数（与 `forceCancelAppointment` 等现有写端点一致） |
 | 请求体 | `OwnerContactConfigInput`：`{ "candidate_feishu_open_id": string, minLength: 5, maxLength: 100 }`（明文入参） |
-| 响应 | `200` `OwnerContactConfigView`：`{ "configured": true }`；`401` Unauthorized / `403` Forbidden / `404` Problem（无活跃 owner_admin） |
+| 响应 | `200` `OwnerContactConfigView`：`{ "configured": true }`；`401` Unauthorized / `403` Forbidden / `default` Error（无活跃 owner_admin 场景由 default 兜底，与全契约风格一致——现有端点均无显式 404） |
 | 行为语义 | 对唯一活跃 owner_admin（`uq_active_owner_admin`）的 `owner_contact_configs` 行 upsert：无行则 INSERT、有行则 UPDATE `candidate_feishu_open_id_ciphertext`（AES-256-GCM 加密，AAD=owner_contact_configs 表/列/config 行 id）；无活跃 owner_admin → 404 + 运维告警（领域模型 §6.1 不变量：不得任选顶替） |
 | 契约新增 schema | `OwnerContactConfigInput`、`OwnerContactConfigView` |
 

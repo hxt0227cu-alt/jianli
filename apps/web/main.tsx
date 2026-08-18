@@ -594,13 +594,16 @@ function AdminView() {
   const [files, setFiles] = useState<FileList | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'qa' | 'kb' | 'feishu'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'appointments' | 'qa' | 'kb' | 'feishu' | 'availability'>('overview');
   const [stats, setStats] = useState<any>(null);
   const [allAppts, setAllAppts] = useState<any[]>([]);
   const [qaConvs, setQaConvs] = useState<any[]>([]);
   const [openConvId, setOpenConvId] = useState<string | null>(null);
   const [openConvMessages, setOpenConvMessages] = useState<any[]>([]);
   const [feishuOpenId, setFeishuOpenId] = useState('');
+  type AvailabilityOverride = { id: string; start_at: string; end_at: string; action: 'force_unavailable' | 'force_available'; reason: string | null; created_at: string };
+  const [overrides, setOverrides] = useState<AvailabilityOverride[]>([]);
+  const [ovForm, setOvForm] = useState<{ id: string | null; start_at: string; end_at: string; action: AvailabilityOverride['action']; reason: string }>({ id: null, start_at: '', end_at: '', action: 'force_unavailable', reason: '' });
 
   const saveFeishuOpenId = async () => {
     if (!feishuOpenId.trim()) return; setBusy(true); setError('');
@@ -618,6 +621,7 @@ function AdminView() {
     try { const data = await api<any>('/admin/aiqa-stats'); setStats(data); } catch { /* ignore */ }
     try { const data = await api<{ items: any[] }>('/admin/appointments'); setAllAppts(data.items); } catch { /* ignore */ }
     try { const data = await api<{ items: any[] }>('/admin/conversations'); setQaConvs(data.items); } catch { /* ignore */ }
+    await loadOverrides();
   };
   useEffect(() => {
     api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadDocs(); await loadAdminData(); }).catch(() => undefined);
@@ -653,6 +657,39 @@ function AdminView() {
 
   const sizeLabel = (size: number) => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
   const shortTime = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(iso));
+
+  // —— 可用时段设置（A4 / UC-13 / MVP 硬规则⑧）——
+  const loadOverrides = async () => {
+    try { const data = await api<{ items: AvailabilityOverride[] }>('/admin/availability-overrides'); setOverrides(data.items); } catch { /* ignore */ }
+  };
+  // ISO → datetime-local 输入值（按 Asia/Shanghai 展示，避免 UTC 错位 8 小时）
+  const isoToLocalInput = (iso: string) => {
+    const parts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, hourCycle: 'h23', timeZone: 'Asia/Shanghai' }).formatToParts(new Date(iso));
+    const get = (type: string) => parts.find((p) => p.type === type)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+  };
+  const submitOverride = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setBusy(true); setError('');
+    const startIso = `${ovForm.start_at}:00+08:00`;
+    const endIso = `${ovForm.end_at}:00+08:00`;
+    if (!ovForm.start_at || !ovForm.end_at || startIso >= endIso) { setError('请选择合法的起止时间（开始需早于结束）'); setBusy(false); return; }
+    try {
+      const body = JSON.stringify({ start_at: startIso, end_at: endIso, action: ovForm.action, reason: ovForm.reason.trim() || null });
+      if (ovForm.id) {
+        await api(`/admin/availability-overrides/${ovForm.id}`, { method: 'PATCH', headers: { 'X-CSRF-Token': csrf }, body });
+      } else {
+        await api('/admin/availability-overrides', { method: 'POST', headers: { 'X-CSRF-Token': csrf }, body });
+      }
+      setOvForm({ id: null, start_at: '', end_at: '', action: 'force_unavailable', reason: '' });
+      await loadOverrides();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败'); } finally { setBusy(false); }
+  };
+  const removeOverride = async (id: string) => {
+    if (!window.confirm('删除该时段设置？已约时段不受影响。')) return;
+    setBusy(true); setError('');
+    try { await api(`/admin/availability-overrides/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': csrf } }); await loadOverrides(); } catch (reason) { setError(reason instanceof Error ? reason.message : '删除失败'); } finally { setBusy(false); }
+  };
+  const fmtOv = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(iso));
   const openConv = async (id: string) => {
     setOpenConvId(id); setOpenConvMessages([]);
     try { const data = await api<{ items: any[] }>(`/admin/conversations/${id}/messages`); setOpenConvMessages(data.items); } catch { /* ignore */ }
@@ -660,7 +697,7 @@ function AdminView() {
   return <main className="workspace admin-view"><div className="workspace-heading"><div><span className="eyebrow">OPERATIONS COCKPIT / ADMIN</span><h1>运营驾驶舱。</h1><p>预约全貌、AI 问答效果、所有 interviewer 的对话历史，以及知识库管理——只有 owner_admin 可访问。</p></div><span className="placeholder-badge">owner_admin</span></div>
     {error && <div className="booking-error">{error}</div>}
     {!user && <section className="login-panel"><div><span className="eyebrow">OWNER SIGN IN</span><h2>管理员登录</h2><p>使用 owner_admin 账号进入运营驾驶舱。</p></div><form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><button disabled={busy}>{busy ? '正在登录…' : '登录并管理'}</button></form></section>}
-    {user && <nav className="admin-tabs"><button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>效果大屏</button><button className={activeTab === 'appointments' ? 'active' : ''} onClick={() => setActiveTab('appointments')}>预约全貌 <small>({allAppts.length})</small></button><button className={activeTab === 'qa' ? 'active' : ''} onClick={() => setActiveTab('qa')}>问答历史 <small>({qaConvs.length})</small></button><button className={activeTab === 'kb' ? 'active' : ''} onClick={() => setActiveTab('kb')}>知识库 <small>({docs.length})</small></button><button className={activeTab === 'feishu' ? 'active' : ''} onClick={() => setActiveTab('feishu')}>飞书配置</button></nav>}
+    {user && <nav className="admin-tabs"><button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>效果大屏</button><button className={activeTab === 'appointments' ? 'active' : ''} onClick={() => setActiveTab('appointments')}>预约全貌 <small>({allAppts.length})</small></button><button className={activeTab === 'qa' ? 'active' : ''} onClick={() => setActiveTab('qa')}>问答历史 <small>({qaConvs.length})</small></button><button className={activeTab === 'kb' ? 'active' : ''} onClick={() => setActiveTab('kb')}>知识库 <small>({docs.length})</small></button><button className={activeTab === 'feishu' ? 'active' : ''} onClick={() => setActiveTab('feishu')}>飞书配置</button><button className={activeTab === 'availability' ? 'active' : ''} onClick={() => setActiveTab('availability')}>时段设置 <small>({overrides.length})</small></button></nav>}
     {user && activeTab === 'overview' && <section className="admin-overview">{!stats ? <p className="kb-empty">暂无统计数据。</p> : <>{<div className="dash-stats">{[
       { label: '总对话数', value: stats.totals.total_conversations, tone: 'green' },
       { label: '总消息数', value: stats.totals.total_messages, tone: 'blue' },
@@ -732,6 +769,47 @@ function AdminView() {
     )}
     {user && activeTab === 'kb' && <>{<section className="kb-upload"><label className="kb-file-picker"><UploadCloud size={18} /><span>{files && files.length > 0 ? `${files.length} 个文件已选择` : '选择 PDF / md / txt 文件'}</span><input type="file" accept=".pdf,.md,.txt" multiple onChange={(event) => setFiles(event.currentTarget.files)} /></label><button className="primary-command" disabled={busy || !files || files.length === 0} onClick={upload}>{busy ? '处理中…' : '上传并索引'}</button><small>支持 md/txt（文本）与 PDF（简历）· 单文件 ≤ 10MB · 同名内容自动去重</small></section>}<section className="kb-list"><div className="kb-list-head"><span className="eyebrow">DOCUMENTS</span><small>{docs.length} 份</small></div>{docs.length === 0 ? <p className="kb-empty">暂无文档，上传第一份简历或项目资料。</p> : <div className="kb-table">{docs.map((doc) => <div className="kb-row" key={doc.id}><span className={`kb-status ${doc.status}`}>{doc.status}</span><b>{doc.name}</b><small>{doc.type.toUpperCase()} · {sizeLabel(doc.size)} · {doc.parse_mode || '-'}{doc.failure_reason ? ` · ${doc.failure_reason}` : ''}</small><button aria-label={`删除 ${doc.name}`} onClick={() => remove(doc.id)} disabled={busy}><Trash2 size={15} /></button></div>)}</div>}</section></>}
     {user && activeTab === 'feishu' && <section className="kb-upload" style={{ alignItems: 'flex-start' }}><div><span className="eyebrow">R13 CANDIDATE FEISHU</span><h2 style={{ margin: '6px 0 10px' }}>候选人飞书 open_id 配置</h2><p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 14 }}>用于 R13 双通道提醒的飞书消息投递（候选人 = owner_admin 本人）。保存后 AES 加密落库，不会明文回显。</p></div><div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 560 }}><input value={feishuOpenId} onChange={(event) => setFeishuOpenId(event.currentTarget.value)} placeholder="如 ou_xxxxxxxx" style={{ flex: 1, padding: '9px 12px', border: '1px solid #dde6de', borderRadius: 6 }} /><button className="primary-command" disabled={busy || !feishuOpenId.trim()} onClick={saveFeishuOpenId}>{busy ? '保存中…' : '保存配置'}</button></div></section>}
+    {user && activeTab === 'availability' && (
+      <section className="admin-panel">
+        <div className="kb-upload" style={{ alignItems: 'flex-start', marginBottom: 18 }}>
+          <div>
+            <span className="eyebrow">AVAILABILITY OVERRIDES / A4</span>
+            <h3 style={{ margin: '6px 0 8px' }}>{ovForm.id ? '编辑时段设置' : '新建时段设置'}</h3>
+            <p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 12 }}>「强制不可约」把该时段在预约日历中标红不可选；「恢复可约」把默认不可用的时段重新开放。保存后预约日历立即生效。</p>
+          </div>
+          <form onSubmit={submitOverride} style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 640 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 4, fontSize: 12 }}>开始 <small style={{ color: '#5e6f65' }}>UTC+8</small><input type="datetime-local" required value={ovForm.start_at} onChange={(event) => setOvForm({ ...ovForm, start_at: event.currentTarget.value })} /></label>
+              <label style={{ display: 'grid', gap: 4, fontSize: 12 }}>结束 <small style={{ color: '#5e6f65' }}>UTC+8</small><input type="datetime-local" required value={ovForm.end_at} onChange={(event) => setOvForm({ ...ovForm, end_at: event.currentTarget.value })} /></label>
+              <label style={{ display: 'grid', gap: 4, fontSize: 12 }}>动作<select value={ovForm.action} onChange={(event) => setOvForm({ ...ovForm, action: event.currentTarget.value as AvailabilityOverride['action'] })}><option value="force_unavailable">强制不可约</option><option value="force_available">恢复可约</option></select></label>
+            </div>
+            <label style={{ display: 'grid', gap: 4, fontSize: 12 }}>备注（可选）<input value={ovForm.reason} maxLength={500} placeholder="如：周三下午外出 / 临时开放晚间" onChange={(event) => setOvForm({ ...ovForm, reason: event.currentTarget.value })} /></label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="primary-command" disabled={busy}>{busy ? '保存中…' : ovForm.id ? '保存修改' : '添加时段设置'}</button>
+              {ovForm.id && <button type="button" className="text-command" onClick={() => { setOvForm({ id: null, start_at: '', end_at: '', action: 'force_unavailable', reason: '' }); setError(''); }}>取消编辑</button>}
+            </div>
+          </form>
+        </div>
+        {overrides.length === 0 ? (
+          <p className="kb-empty">暂无时段设置——默认预约日历全部可约（已约/锁定格除外）。</p>
+        ) : (
+          <div className="admin-table">
+            <div className="admin-row head"><span>时间范围</span><span>动作</span><span>备注</span><span></span></div>
+            {overrides.map((ov) => (
+              <div className="admin-row" key={ov.id}>
+                <span>{fmtOv(ov.start_at)} → {fmtOv(ov.end_at)}</span>
+                <b style={{ color: ov.action === 'force_unavailable' ? '#b42318' : '#2e7d32' }}>{ov.action === 'force_unavailable' ? '强制不可约' : '恢复可约'}</b>
+                <small>{ov.reason || '—'}</small>
+                <span style={{ display: 'flex', gap: 6 }}>
+                  <button className="text-command" onClick={() => { setOvForm({ id: ov.id, start_at: isoToLocalInput(ov.start_at), end_at: isoToLocalInput(ov.end_at), action: ov.action, reason: ov.reason || '' }); setError(''); }}>编辑</button>
+                  <button className="text-command" aria-label={`删除时段设置`} onClick={() => removeOverride(ov.id)} disabled={busy}><Trash2 size={14} /></button>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    )}
   </main>;
 }
 

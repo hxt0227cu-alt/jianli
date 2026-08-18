@@ -1,6 +1,6 @@
 # TASK-DEPLOY-001 阿里云生产部署：Docker compose + Nginx/HTTPS + Worker 守护
 
-> **状态：draft（草案，待用户评审后批准）**
+> **状态：implemented（2026-08-18 用户批准 + 部署栈 5ab96c5；补充备份/owner 初始化见文末「补充改动」小节）**
 > 目标环境：阿里云轻量应用服务器（Ubuntu 22.04 LTS）+ 用户自有域名（需 ICP 备案）+ HTTPS。将本地开发栈（FastAPI API + 预约 Worker + PostgreSQL + Redis + 前端 dist）容器化部署，Worker 以独立容器常驻（架构 §6 Outbox 消费者独立进程要求）。
 
 ## 任务类型
@@ -43,6 +43,8 @@
 - `deploy/nginx.conf`（新）
 - `deploy/certbot-init.sh`（新，可选）
 - `scripts/deploy.sh`（新）
+- `scripts/backup.sh`（新，补充改动登记）
+- `scripts/create_owner.py` + `scripts/create-owner.sh`（新，补充改动登记）
 - `apps/api/.env.prod.example`（新）
 - `docs/deploy/阿里云部署指南.md`（新）
 - `tasks/TASK-DEPLOY-001.md`（本任务单）
@@ -101,6 +103,16 @@
 - 需要新增项目 Python/npm 依赖 → 停止
 - 超出 change_budget → 拆任务
 - 备案未完成前禁止真实域名上线（部署文档中列为前置门禁）
+
+## 补充改动（2026-08-18 用户批准 TASK 后追加，同属部署栈交付）
+
+> 用户询问「数据存哪/备份」时确认补自动备份；同时发现 owner_admin 初始化缺口（seed 密码为占位符 `seed-kb-not-used`，不可登录），一并补齐。
+
+- `scripts/backup.sh`：生产自动备份——PG 逻辑备份（pg_dump -F c，经 compose exec + cp）+ 知识库卷（jianli_knowledge）tar + 保留策略（KEEP_DAYS 默认 14）+ 可选 OSS 异地上传（ossutil + OSS_BUCKET）；cron 安装示例已写入部署指南第 7 节
+- `scripts/create_owner.py`：创建/重置 owner_admin 账号（BCrypt 哈希、幂等 upsert、密码只走环境变量不落盘、防违反部分唯一索引 `uq_active_owner_admin` 的前置检查）
+- `scripts/create-owner.sh`：服务器包装（读 .env 拼 DB URL、探测 api 镜像与网络、docker run 复用 api 镜像不经宿主机 Python）
+- `docs/deploy/阿里云部署指南.md`：新增 §4.5（owner 账号初始化，必须步骤）+ 验证清单加 admin 登录/备份冒烟项 + 第 7 节备份/管理员命令 + 第 9 节风险更新（异地备份为待办）
+- 校验：`bash -n` backup.sh / create-owner.sh ✅；`py_compile` + import 链（WSL python3，sqlalchemy + PasswordHasher）✅；`users.role` 为 PG enum `user_role`，字符串字面量隐式 cast 可行（seed_kb 同款已跑通）
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
 - commit / PR：<待提交后回填>

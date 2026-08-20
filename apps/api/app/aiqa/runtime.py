@@ -23,9 +23,16 @@ from .storage import KnowledgeStorage
 
 
 def build_aiqa_runtime(
-    settings: Settings, engine: Engine | None = None
+    settings: Settings,
+    engine: Engine | None = None,
+    booking_service: "BookingService | None" = None,
 ) -> AnswerService:
-    """Construct the Answer service; pass ``engine`` to enable DB-backed features."""
+    """Construct the Answer service; pass ``engine`` to enable DB-backed features.
+
+    ``booking_service`` (the appointments domain's BookingService) is injected so the
+    agent can autonomously book interviews in-process (TASK-AIQA-BOOKING-001). It is
+    optional: when None the booking tool yields a graceful "unavailable" outcome.
+    """
 
     gateway = build_gateway(
         base_url=settings.llm_base_url,
@@ -60,4 +67,5 @@ def build_aiqa_runtime(
         knowledge_repository,
         storage,
         min_score=settings.kb_min_score or 0.0,
+        booking_service=booking_service,
     )

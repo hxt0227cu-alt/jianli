@@ -26,11 +26,14 @@ import logging
 import re
 import time
 from collections.abc import AsyncIterator, Sequence
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
 
+from app.appointments.models import AppointmentDraft, Slot
+from app.appointments.service import LOCAL_TIME, BookingService
 from app.auth.errors import AuthError
 from app.auth.models import Principal
 
@@ -53,6 +56,7 @@ from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository, default_now
 from .retrieval import Candidate, retrieve
 from .sse import (
+    booking_frame,
     citations_frame,
     completed_frame,
     delta_frame,
@@ -186,6 +190,58 @@ _SEARCH_TOOLS: list[dict[str, object]] = [
     }
 ]
 
+# Autonomous interview booking (TASK-AIQA-BOOKING-001): a write tool the model may call
+# when the interviewer explicitly wants to book a slot. The service executes it in-process
+# with the caller's principal (RBAC enforced inside `_run_booking_tool`, because
+# `BookingService` itself does not re-check role). Only `target_date` + `start_time` are
+# required; business fields the natural language cannot carry are optional and trigger a
+# `needs_info` follow-up rather than silent defaults (keeps AppointmentDraft validation
+# and the appointments domain untouched). Duration is fixed at 90 min (3 × 30-min slots);
+# the model supplies only the start time.
+_BOOKING_TOOL: dict[str, object] = {
+    "type": "function",
+    "function": {
+        "name": "request_interview_booking",
+        "description": (
+            "当面试官/访客明确想预约面试时间时调用（例如「我想预约下周三下午两点的面试」）。"
+            "请解析出本地日期(target_date, YYYY-MM-DD)与开始时间(start_time, HH:MM, 24小时制)："
+            "「下周三」要相对今天按 Asia/Shanghai 推算具体日期，「下午两点」即 14:00。"
+            "每次面试固定 90 分钟（3 个连续时段），只需给起点。若用户未提供公司名、面试平台、"
+            "会议号或联系人信息，这些字段可省略（系统会随后追问），不要用猜测值填充。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target_date": {
+                    "type": "string",
+                    "description": "本地日期 YYYY-MM-DD（「下周三」相对今天按 Asia/Shanghai 推算）",
+                },
+                "start_time": {
+                    "type": "string",
+                    "description": "本地开始时间 HH:MM，24小时制，如「14:00」",
+                },
+                "company_name": {"type": "string", "description": "公司/团队名称，用户提供才填"},
+                "meeting_platform": {
+                    "type": "string",
+                    "description": "面试平台，如 腾讯会议/飞书/Zoom，用户提供才填",
+                },
+                "meeting_number": {"type": "string", "description": "会议号，用户提供才填"},
+                "contact_last_name": {"type": "string", "description": "联系人姓，用户提供才填"},
+                "contact_salutation": {
+                    "type": "string",
+                    "description": "称谓，如 先生/女士/同学，用户提供才填",
+                },
+                "contact_phone": {"type": "string", "description": "联系电话，用户提供才填"},
+            },
+            "required": ["target_date", "start_time"],
+        },
+    },
+}
+
+# Both tools are offered with tool_choice=auto; the model picks search_knowledge for
+# factual Q&A and request_interview_booking for an explicit booking intent.
+_AGENT_TOOLS: list[dict[str, object]] = [*_SEARCH_TOOLS, _BOOKING_TOOL]
+
 
 def _extract_pdf_text(raw: bytes) -> str:
     """Extract text from a PDF via pypdf (TASK-KB-PDF-001)."""
@@ -240,6 +296,7 @@ class AnswerService:
         knowledge_repository: KnowledgeRepository | None = None,
         storage: KnowledgeStorage | None = None,
         min_score: float = 0.0,
+        booking_service: BookingService | None = None,
     ) -> None:
         self._gateway = gateway
         self._rate_limiter = rate_limiter
@@ -248,6 +305,10 @@ class AnswerService:
         self._knowledge_repository = knowledge_repository
         self._storage = storage
         self._min_score = min_score
+        # Autonomous booking (TASK-AIQA-BOOKING-001): injected from the appointments
+        # runtime so the agent can call BookingService.preview/create in-process. None
+        # when booking is not configured -> booking tool yields a graceful "unavailable".
+        self._booking_service = booking_service
 
     # -- synchronous helpers used by the router before streaming -------------------------
 
@@ -406,6 +467,160 @@ class AnswerService:
 
     # -- streaming pipeline ---------------------------------------------------------------
 
+    # -- autonomous booking (TASK-AIQA-BOOKING-001) ------------------------------------------
+
+    def _require_booking(self) -> BookingService:
+        if self._booking_service is None:
+            raise AuthError(
+                "BOOKING_UNAVAILABLE", 503, "Booking unavailable", "Retry later"
+            )
+        return self._booking_service
+
+    @staticmethod
+    def _as_str(value: object) -> str:
+        return value if isinstance(value, str) else ""
+
+    @staticmethod
+    def _to_local(value: datetime) -> datetime:
+        """Normalise a slot start_at (UTC-aware or naive UTC from the DB) to Asia/Shanghai."""
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        return value.astimezone(LOCAL_TIME)
+
+    def _resolve_booking_slots(
+        self, booking: BookingService, principal: Principal, start_local: datetime
+    ) -> list[Slot] | None:
+        """Resolve the 3 consecutive available 30-min slots starting at ``start_local``.
+
+        Reuses ``BookingService.slot_snapshot`` (no new appointments-domain method) by
+        locating the week containing ``start_local`` and filtering the three needed local
+        start times. Returns None if any of the three is missing or not ``available``.
+        """
+        today = datetime.now(UTC).astimezone(LOCAL_TIME).date()
+        today_monday = today - timedelta(days=today.weekday())
+        target_monday = start_local.date() - timedelta(days=start_local.weekday())
+        week_offset = (target_monday - today_monday).days // 7
+        snapshot = booking.slot_snapshot(principal, week_offset)
+        needed = [
+            self._to_local(start_local + timedelta(minutes=30 * i)) for i in range(3)
+        ]
+        by_local_start = {self._to_local(slot.start_at): slot for slot in snapshot.items}
+        resolved: list[Slot] = []
+        for when in needed:
+            slot = by_local_start.get(when)
+            if slot is None or slot.status != "available":
+                return None
+            resolved.append(slot)
+        return resolved
+
+    async def _run_booking_tool(
+        self, arguments: dict[str, object], principal: Principal | None
+    ) -> dict[str, object]:
+        """Execute the ``request_interview_booking`` tool in-process.
+
+        Returns a structured outcome dict consumed by ``stream_answer`` -> ``booking_frame``.
+        The appointments domain's strong invariants (3x30min consecutive, same local day,
+        token two-phase, row lock, company fingerprint dedupe) are all reused via
+        ``BookingService.preview/create`` — this method only adds RBAC, natural-language
+        slot resolution and business-field completeness checks.
+        """
+        # RBAC: the in-process call bypasses the router's require_role, and BookingService
+        # does not re-check role, so we must enforce it here.
+        if principal is None or getattr(principal, "role", None) != "interviewer":
+            return {
+                "outcome": "forbidden",
+                "payload": {"reason": "请先以面试官账号登录后再预约面试。"},
+            }
+
+        target_date = self._as_str(arguments.get("target_date"))
+        start_time = self._as_str(arguments.get("start_time"))
+        try:
+            day = datetime.strptime(target_date, "%Y-%m-%d").date()
+            hh, mm = (int(part) for part in start_time.split(":"))
+            start_local = datetime(day.year, day.month, day.day, hh, mm, tzinfo=LOCAL_TIME)
+        except (ValueError, TypeError, AttributeError):
+            return {
+                "outcome": "needs_info",
+                "payload": {
+                    "missing": ["target_date", "start_time"],
+                    "reason": "请明确预约的日期与开始时间，例如「下周三下午两点」。",
+                },
+            }
+
+        booking = self._require_booking()
+        slots = await asyncio.to_thread(
+            self._resolve_booking_slots, booking, principal, start_local
+        )
+        if slots is None:
+            return {
+                "outcome": "failed",
+                "payload": {
+                    "reason": "该时段未开放或已被预约；可在「预约」页查看可约时间。",
+                },
+            }
+
+        company = self._as_str(arguments.get("company_name"))
+        platform = self._as_str(arguments.get("meeting_platform"))
+        number = self._as_str(arguments.get("meeting_number"))
+        last = self._as_str(arguments.get("contact_last_name"))
+        salutation = self._as_str(arguments.get("contact_salutation"))
+        phone = self._as_str(arguments.get("contact_phone"))
+        missing = [
+            name
+            for name, value in (
+                ("company_name", company),
+                ("meeting_platform", platform),
+                ("meeting_number", number),
+                ("contact_last_name", last),
+                ("contact_salutation", salutation),
+                ("contact_phone", phone),
+            )
+            if not value
+        ]
+        if missing:
+            return {"outcome": "needs_info", "payload": {"missing": missing}}
+
+        draft = AppointmentDraft(
+            slot_ids=[slot.id for slot in slots],
+            company_name=company,
+            meeting_platform=platform,
+            meeting_number=number,
+            contact_last_name=last,
+            contact_salutation=salutation,
+            contact_phone=phone,
+        )
+        try:
+            preview_result = await asyncio.to_thread(booking.preview, principal, draft)
+            appointment = await asyncio.to_thread(
+                booking.create, principal, draft, preview_result.confirmation_token
+            )
+        except AuthError as error:
+            detail = error.detail
+            reason = detail if isinstance(detail, str) else "预约失败，请稍后重试。"
+            return {"outcome": "failed", "payload": {"reason": reason}}
+        except IntegrityError:
+            return {
+                "outcome": "failed",
+                "payload": {
+                    "reason": "预约冲突或服务繁忙，请稍后再试或在「预约」页手动预约。",
+                },
+            }
+
+        return {
+            "outcome": "confirmed",
+            "payload": {
+                "appointment_id": str(appointment.id),
+                "start_at": appointment.start_at.isoformat(),
+                "end_at": appointment.end_at.isoformat(),
+                "company_name": appointment.company_name,
+                "meeting_platform": appointment.meeting_platform,
+                "contact": (
+                    f"{appointment.contact_salutation}{appointment.contact_last_name} "
+                    f"{appointment.contact_phone}"
+                ),
+            },
+        }
+
     async def stream_answer(
         self,
         *,
@@ -563,7 +778,7 @@ class AnswerService:
         tool_request: dict[str, object] | None = None
         usage_acc = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         try:
-            async for kind, payload in self._gateway.answer(messages1, tools=_SEARCH_TOOLS):
+            async for kind, payload in self._gateway.answer(messages1, tools=_AGENT_TOOLS):
                 if kind == "usage" and isinstance(payload, dict):
                     _add_usage(usage_acc, payload)
                     continue
@@ -573,6 +788,63 @@ class AnswerService:
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
+            return
+
+        # Agent autonomous booking (TASK-AIQA-BOOKING-001): if the model decided to book,
+        # run the write tool in-process with the caller's principal. RBAC is enforced
+        # inside `_run_booking_tool` because `BookingService.preview/create` trust the
+        # principal and do NOT re-check role (the router normally enforces it via
+        # require_role). Emit a booking frame, then let Phase 2 phrase the result.
+        if tool_request is not None and tool_request.get("name") == "request_interview_booking":
+            try:
+                arguments = json.loads(str(tool_request.get("arguments") or "{}"))
+            except json.JSONDecodeError:
+                arguments = {}
+            result = await self._run_booking_tool(arguments, principal)
+            yield booking_frame(seq := seq + 1, result["outcome"], result["payload"], trace_id)
+            messages2 = [
+                {"role": "system", "content": build_system_prompt()},
+                *history,
+                {
+                    "role": "user",
+                    "content": (
+                        f"用户问题：{question}\n\n【预约工具执行结果】\n"
+                        f"{json.dumps(result, ensure_ascii=False)}\n\n"
+                        "请用自然、口语化的中文把结果告诉用户：成功则简要确认时间与公司；"
+                        "信息不全则一次性追问缺的项；失败则道歉并给出建议；未登录则引导先登录。"
+                        "不要编造工具未返回的信息。"
+                    ),
+                },
+            ]
+            try:
+                async for kind, payload in self._gateway.answer(messages2):
+                    if kind == "usage" and isinstance(payload, dict):
+                        _add_usage(usage_acc, payload)
+                        continue
+                    if kind != "delta" or not isinstance(payload, str):
+                        continue
+                    deltas.append(payload)
+                    yield delta_frame(seq := seq + 1, payload, trace_id)
+            except GatewayError as error:
+                self._log_error(trace_id, conversation_id if persist else None, error)
+                yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
+                return
+            usage_payload = (
+                cast("dict[str, object] | None", usage_acc)
+                if usage_acc["total_tokens"] > 0
+                else None
+            )
+            yield completed_frame(
+                seq := seq + 1,
+                grounded=False,
+                offtopic=False,
+                model=self._gateway.model_name,
+                usage=usage_payload,
+                trace_id=trace_id,
+            )
+            if persist:
+                assert conversation_id is not None
+                await self._persist_assistant(conversation_id, "".join(deltas), False)
             return
 
         candidates: list[Candidate] = []

@@ -32,7 +32,8 @@
   border: 1px solid #d7e2da;
   border-radius: 8px;
   background: #fff;
-  margin-bottom: 20px;
+  max-width: 880px;
+  margin: 0 auto 20px;
 }
 
 .booking-step {
@@ -52,7 +53,7 @@
 .booking-step b { font-size: 13px; margin: 2px 0; }
 .booking-step p { font-size: 10px; margin: 0; line-height: 1.5; }
 
-.booking-board { display: grid; grid-template-columns: 1fr 260px; gap: 18px; }
+.booking-board { display: grid; grid-template-columns: 1fr 260px; gap: 18px; max-width: 880px; margin: 0 auto; }
 .booking-calendar,
 .booking-summary { background: #fff; border: 1px solid #d7e2da; border-radius: 8px; }
 .calendar-head { height: 52px; border-bottom: 1px solid #e2e9e3; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; font-size: 12px; }
@@ -73,7 +74,7 @@
 .booking-note p { font-size: 10px; line-height: 1.6; margin: 0; }
 
 .booking-error { border-left: 3px solid #b84b45; background: #fff1ef; color: #8f302b; padding: 10px 13px; margin-bottom: 14px; font-size: 12px; }
-.login-panel { max-width: 720px; margin: 30px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 55px; align-items: center; background: #fff; border: 1px solid #d7e2da; padding: 36px; }
+.login-panel { max-width: 880px; margin: 30px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 55px; align-items: center; background: #fff; border: 1px solid #d7e2da; padding: 36px; }
 .login-panel h2, .details-panel h2, .confirm-panel h2, .success-panel h2 { font-size: 23px; margin: 8px 0; }
 .login-panel p { color: #718078; font-size: 12px; }
 .login-panel form, .details-panel form { display: grid; gap: 13px; }
@@ -93,19 +94,19 @@
 .slot-day button.selected { background: #f3d873; border-color: #bda63f; color: #503f00; }
 .booking-summary .primary-command { width: 100%; margin-top: 22px; }
 .details-panel, .confirm-panel, .success-panel { background: #fff; border: 1px solid #d7e2da; padding: 26px; }
-.details-panel { display: grid; gap: 18px; }
+.details-panel { display: grid; gap: 18px; max-width: 880px; margin: 0 auto; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
 .form-grid .wide { grid-column: 1 / -1; }
 .form-grid textarea { min-height: 70px; resize: vertical; }
 .text-command { border: 0; background: transparent; color: #315f43; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; padding: 0; }
-.confirm-panel { max-width: 680px; margin: 20px auto; }
+.confirm-panel { max-width: 880px; margin: 20px auto; }
 .confirm-panel > p { color: #718078; font-size: 12px; }
 .confirm-panel dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0; }
 .confirm-panel dl div { border: 1px solid #e0e7e2; padding: 12px; }
 .confirm-panel dt { color: #85938b; font-size: 10px; }
 .confirm-panel dd { margin: 4px 0 0; font-size: 12px; }
 .confirm-actions { display: flex; justify-content: space-between; align-items: center; }
-.success-panel { max-width: 540px; margin: 35px auto; text-align: center; }
+.success-panel { max-width: 880px; margin: 35px auto; text-align: center; }
 .success-panel svg { color: #315f43; }
 .success-panel p { color: #718078; font-size: 12px; }
 
@@ -140,3 +141,13 @@
 .code-row { display: flex; gap: 8px; align-items: center; }
 .code-row input { flex: 1; min-width: 0; }
 .code-row button { white-space: nowrap; }
+
+/* 对话内预约确认卡片（TASK-AIQA-BOOKING-001） */
+.booking-card { border: 1px solid #cfe7c8; background: #f3faf2; border-radius: 10px; padding: 14px 16px; margin-top: 10px; }
+.booking-card.confirmed { border-color: #bfe3c4; }
+.booking-card-head { font-weight: 700; color: #315f43; margin-bottom: 10px; font-size: 14px; }
+.booking-card-row { display: flex; gap: 10px; font-size: 13px; padding: 3px 0; }
+.booking-card-row span { color: #7c8a7e; min-width: 52px; }
+.booking-card-row b { color: #2c382f; font-weight: 600; }
+.booking-card-link { display: inline-block; margin-top: 12px; color: #315f43; font-weight: 600; font-size: 13px; text-decoration: none; }
+.booking-card-link:hover { text-decoration: underline; }

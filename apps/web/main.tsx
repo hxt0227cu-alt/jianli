@@ -15,6 +15,19 @@ type PageKey = 'resume' | 'projects';
 type KnowledgeDoc = { id: string; name: string; type: string; size: number; status: 'indexing' | 'indexed' | 'failed'; parse_mode: string | null; failure_reason: string | null; created_at: string };
 type Conversation = { id: string; created_at: string; updated_at: string };
 type ApptSummary = { id: string; status: 'active' | 'cancelled' | 'completed'; start_at: string; end_at: string; company_name: string; meeting_platform: string; meeting_number: string; contact_salutation: string };
+type BookingCard = {
+  outcome: 'confirmed' | 'needs_info' | 'failed' | 'forbidden';
+  payload: {
+    appointment_id?: string;
+    start_at?: string;
+    end_at?: string;
+    company_name?: string;
+    meeting_platform?: string;
+    contact?: string;
+    reason?: string;
+    missing?: string[];
+  };
+};
 type ChatMessage = {
   role: 'assistant' | 'user';
   text: string;
@@ -24,6 +37,7 @@ type ChatMessage = {
   offtopic?: boolean;
   error?: boolean;
   toolCalls?: string;
+  booking?: BookingCard;
 };
 
 // 豆包式追问池：每次回答完成后从池中随机抽 3 条显示为气泡（点击直接发）。
@@ -296,7 +310,7 @@ function HistoryRail({ page, onPage, user, conversations, onSelectConversation, 
     <div className="rail-brand"><span className="brand-mark">晓</span><span>Jianli 工作台</span></div>
     <button className="new-session" onClick={onNewConversation}><Plus size={16} /> 新建对话</button>
     <div className="rail-label">工作区</div>
-    <button className={page === 'dashboard' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('dashboard')}><LayoutDashboard size={16} /> 工作台</button>
+    {user?.role === 'owner_admin' && <button className={page === 'dashboard' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('dashboard')}><LayoutDashboard size={16} /> 工作台</button>}
     <button className={page === 'resume' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('resume')}><FileText size={16} /> 简历问答</button>
     <button className={page === 'projects' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('projects')}><FolderOpen size={16} /> 项目说明</button>
     <button className={page === 'interview' ? 'rail-link active' : 'rail-link'} onClick={() => onPage('interview')}><CalendarDays size={16} /> 预约面试</button>
@@ -308,7 +322,7 @@ function HistoryRail({ page, onPage, user, conversations, onSelectConversation, 
   </aside>;
 }
 
-function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onConversationCreated }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId; conversationId?: string | null; canPersist: boolean; onConversationCreated?: (id: string) => void }) {
+function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onConversationCreated, onNavigate }: { live: boolean; pageKey: PageKey; projectKey?: ProjectId; conversationId?: string | null; canPersist: boolean; onConversationCreated?: (id: string) => void; onNavigate?: (page: Page) => void }) {
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -392,6 +406,14 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
           if (summary) {
             setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, toolCalls: summary }; return next; });
           }
+        } else if (event === 'answer.booking') {
+          // 自主预约（TASK-AIQA-BOOKING-001）：记录结构化结果，渲染确认卡片
+          const booking = data as { outcome?: BookingCard['outcome']; payload?: BookingCard['payload'] } | undefined;
+          if (booking?.outcome && booking?.payload) {
+            const outcome = booking.outcome;
+            const payload = booking.payload;
+            setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, booking: { outcome, payload } }; return next; });
+          }
         } else if (event === 'answer.citations') {
           const citations = (data.citations as { doc: string; fragment: number }[] | undefined) ?? [];
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, citations }; return next; });
@@ -439,6 +461,24 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
           {!message.pending && message.citations && message.citations.length > 0 && <div className="citations"><span>引用</span>{message.citations.map((cite, citeIndex) => <code key={citeIndex}>{cite.doc} · {cite.fragment + 1}</code>)}</div>}
           {!message.pending && message.grounded && <small className="answer-state grounded">已基于资料回答</small>}
           {!message.pending && message.offtopic && <small className="answer-state offtopic">越界问题已拒绝</small>}
+          {message.booking?.outcome === 'confirmed' && message.booking.payload && (() => {
+            const p = message.booking!.payload;
+            const when = p.start_at ? new Date(p.start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+            const till = p.end_at ? new Date(p.end_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit' }) : '';
+            return (
+              <div className="booking-card confirmed">
+                <div className="booking-card-head">✅ 已为你预约面试</div>
+                <div className="booking-card-row"><span>时间</span><b>{when}{till ? ` – ${till}` : ''}（北京时间）</b></div>
+                <div className="booking-card-row"><span>公司</span><b>{p.company_name}</b></div>
+                <div className="booking-card-row"><span>平台</span><b>{p.meeting_platform}</b></div>
+                <div className="booking-card-row"><span>联系人</span><b>{p.contact}</b></div>
+                <a className="booking-card-link" href="/?page=mine" onClick={(event) => { event.preventDefault(); onNavigate?.('mine'); }}>查看我的预约 →</a>
+              </div>
+            );
+          })()}
+          {message.booking?.outcome === 'needs_info' && <small className="answer-state info">预约信息不全，请补充后重试</small>}
+          {message.booking?.outcome === 'failed' && <small className="answer-state error">预约未成功：{message.booking.payload?.reason ?? '请稍后重试'}</small>}
+          {message.booking?.outcome === 'forbidden' && <small className="answer-state error">请先以面试官账号登录后再预约</small>}
           {message.error && <small className="answer-state error">回答失败</small>}
         </div></div>;
       })}
@@ -451,9 +491,10 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   </section>;
 }
 
-function TopBar({ page, onPage }: { page: Page; onPage: (page: Page) => void }) {
+function TopBar({ page, onPage, user }: { page: Page; onPage: (page: Page) => void; user: User | null }) {
+  const isOwner = user?.role === 'owner_admin';
   const title = page === 'dashboard' ? '工作台' : page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'admin' ? '知识库管理' : '预约面试';
-  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav><button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button><button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button><button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button></nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
+  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav>{isOwner && <button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button>}<button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button>{isOwner && <button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button>}</nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
@@ -483,6 +524,7 @@ function InterviewView() {
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const pendingCreds = useRef<{ email: string; password: string } | null>(null);
 
   const loadSlots = async () => {
     const snapshots = await Promise.all([0, 1].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)));
@@ -513,14 +555,17 @@ function InterviewView() {
     return () => source.close();
   }, [setSlots]);
 
+  const performLogin = async (email: string, password: string, rememberMe = false) => {
+    const response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email, password, remember_me: rememberMe }) });
+    if (!response.ok) throw new Error((await response.json()).detail || '登录失败');
+    setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
+    const me = await api<User>('/auth/me'); setUser(me); await loadSlots(); setStep('slots');
+  };
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setBusy(true); setError('');
     const data = new FormData(event.currentTarget);
     try {
-      const response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email: data.get('email'), password: data.get('password'), remember_me: Boolean(data.get('remember')) }) });
-      if (!response.ok) throw new Error((await response.json()).detail || '登录失败');
-      setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
-      const me = await api<User>('/auth/me'); setUser(me); await loadSlots(); setStep('slots');
+      await performLogin(String(data.get('email')), String(data.get('password')), Boolean(data.get('remember')));
     } catch (reason) { setError(reason instanceof Error ? reason.message : '登录失败'); } finally { setBusy(false); }
   };
 
@@ -531,6 +576,7 @@ function InterviewView() {
     try {
       const response = await fetch('/auth/register', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email, password: data.get('password') }) });
       if (!response.ok) throw new Error((await response.json()).detail || '注册失败');
+      pendingCreds.current = { email, password: String(data.get('password')) };
       setVerifyEmail(email); setVerifyCode('');
       setNotice('注册成功：6 位验证码已发送到你的邮箱（10 分钟内有效）。');
       setAuthMode('verify');
@@ -544,8 +590,19 @@ function InterviewView() {
     try {
       const response = await fetch('/auth/verify-email', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ code: verifyCode }) });
       if (!response.ok) throw new Error((await response.json()).detail || '验证失败');
-      setNotice('邮箱验证成功，请登录预约面试。');
-      setAuthMode('login');
+      const creds = pendingCreds.current;
+      if (creds) {
+        try {
+          await performLogin(creds.email, creds.password);
+          setNotice('邮箱验证成功，已自动登录，可直接预约面试。');
+        } catch {
+          setNotice('邮箱验证成功，但自动登录失败，请手动登录。');
+          setAuthMode('login');
+        }
+      } else {
+        setNotice('邮箱验证成功，请登录预约面试。');
+        setAuthMode('login');
+      }
     } catch (reason) { setError(reason instanceof Error ? reason.message : '验证失败'); } finally { setBusy(false); }
   };
 
@@ -881,7 +938,7 @@ function DashboardView({ user, appts, onNavigate }: { user: User | null; appts: 
 }
 
 function App() {
-  const [page, setPage] = useState<Page>('dashboard');
+  const [page, setPage] = useState<Page>('resume');
   const [project, setProject] = useState<ProjectId>('jianli');
   const [user, setUser] = useState<User | null>(null);
   const [appts, setAppts] = useState<ApptSummary[]>([]);
@@ -889,7 +946,7 @@ function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
-    api<User>('/auth/me').then(async (me) => { setUser(me); const data = await api<{ items: Conversation[] }>('/conversations'); setConversations(data.items); }).catch(() => undefined);
+    api<User>('/auth/me').then(async (me) => { setUser(me); if (me.role === 'owner_admin') setPage('dashboard'); const data = await api<{ items: Conversation[] }>('/conversations'); setConversations(data.items); }).catch(() => undefined);
     api<{ items: ApptSummary[] }>('/appointments').then((data) => setAppts(data.items)).catch(() => undefined);
   }, []);
 
@@ -901,7 +958,7 @@ function App() {
   };
   const content = page === 'dashboard' ? <DashboardView user={user} appts={appts} onNavigate={setPage} /> : page === 'resume' ? <ResumeView onInterview={() => setPage('interview')} /> : page === 'projects' ? <ProjectView selected={project} onSelect={setProject} onInterview={() => setPage('interview')} /> : page === 'mine' ? <MyAppointmentsView onInterview={() => setPage('interview')} /> : page === 'admin' ? <AdminView /> : <InterviewView />;
   const live = page === 'resume' || page === 'projects';
-  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} canPersist={user !== null} onConversationCreated={onConversationCreated} /></div></div>;
+  return <div className="app-shell"><div className="desktop-gate"><LockKeyhole size={24} /><h2>请使用桌面端访问</h2><p>为保证简历与项目演示的三栏布局完整，1024px 以下暂不开放。</p></div><div className="desktop-app"><HistoryRail page={page} onPage={setPage} user={user} conversations={conversations} onSelectConversation={selectConversation} onNewConversation={newConversation} /><div className="main-column"><TopBar page={page} onPage={setPage} user={user} />{content}</div><ChatPanel live={live} pageKey={page === 'projects' ? 'projects' : 'resume'} projectKey={page === 'projects' ? project : undefined} conversationId={conversationId} canPersist={user !== null} onConversationCreated={onConversationCreated} onNavigate={setPage} /></div></div>;
 }
 
 export default App;

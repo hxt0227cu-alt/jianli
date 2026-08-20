@@ -104,7 +104,11 @@ def create_app(
     # answers never require a session; a present-but-invalid cookie still resolves to a
     # 401 via the (optional) auth runtime. When auth is configured its engine is shared so
     # round-2 conversation persistence works; otherwise the service stays memory-only.
-    aiqa_service = build_aiqa_runtime(config, runtime.engine if runtime is not None else None)
+    aiqa_service = build_aiqa_runtime(
+        config,
+        runtime.engine if runtime is not None else None,
+        booking_service=appointments,
+    )
     app.include_router(create_aiqa_router(runtime, aiqa_service))
 
     @app.exception_handler(AuthError)

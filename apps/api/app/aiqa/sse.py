@@ -86,3 +86,33 @@ def completed_frame(
 
 def error_frame(seq: int, problem: dict[str, object], trace_id: str) -> str:
     return _sse_frame(seq, "answer.error", {**problem, "trace_id": trace_id})
+
+
+# Agent autonomous booking (TASK-AIQA-BOOKING-001): surface the booking tool's
+# structured outcome to the frontend so it can render a confirmation card. Four
+# outcomes, each with a stable `type` URN for the client to switch on:
+#   confirmed  -> 预约成功（卡片展示时间/公司/平台/联系人）
+#   needs_info -> 信息不全，模型随后用自然语言追问
+#   failed     -> 时段未开放/冲突/系统错误，模型道歉并建议
+#   forbidden  -> 未登录或非面试官，模型引导登录
+_BOOKING_OUTCOME_TYPES: dict[str, str] = {
+    "confirmed": "urn:jianli:booking:confirmed",
+    "needs_info": "urn:jianli:booking:needs_info",
+    "failed": "urn:jianli:booking:failed",
+    "forbidden": "urn:jianli:booking:forbidden",
+}
+
+
+def booking_frame(
+    seq: int, outcome: str, payload: dict[str, object], trace_id: str
+) -> str:
+    return _sse_frame(
+        seq,
+        "answer.booking",
+        {
+            "outcome": outcome,
+            "type": _BOOKING_OUTCOME_TYPES.get(outcome, outcome),
+            "payload": payload,
+            "trace_id": trace_id,
+        },
+    )

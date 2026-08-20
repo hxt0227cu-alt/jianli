@@ -25,6 +25,18 @@ artifacts:
   test_plan:        { version: "0.2",   status: approved }  # 用户于 2026-08-11 批准同步；approval_commit=71d7861；69 个 TC 总数不变，仅收紧 TC-AUTH-002/004 错误契约断言
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
+# ── AIQA agent 工具注册（TASK-AIQA-BOOKING-001；2026-08-20 经 TASK-CR-AIQA-BOOKING-001 批准推翻 PRD 决策#14 对该功能的禁止）──
+agent_tools:
+  search_knowledge:
+    type: read
+    status: enabled
+    decided_by: TASK-AGENT-TOOLS-002
+  request_interview_booking:
+    type: write
+    status: enabled
+    guard: "RBAC: principal.role == interviewer 方可触发；复用预约域 preview/create 强约束（3×30min 连续/同本地日/令牌/幂等），不改写其校验"
+    decided_by: TASK-AIQA-BOOKING-001
+
 # ── 规范优先级（冲突裁决，高者胜）──
 # 说明：设计阶段产物一旦 accepted/approved，其对实现的约束力高于分析阶段产物。
 # 注：只有 status=approved 的工件参与 precedence 裁决；pending / review 工件不覆盖已批准工件。
@@ -43,13 +55,12 @@ deferred:
   - wechat_assistant        # 微信 WorkBuddy 助理
   - hunyuan_fallback        # 混元 Fallback（冗余）
   - l2_lora                  # L2 微调（仅语料收集计划，语料当前均为 0）
-  - agent_auto_booking      # 对话内 Agent 自动预约（PRD 决策#14 明文禁止）
   - realtime_question_gen   # 实时动态生成推荐问题（先用异步缓存+固定兜底）
   - complex_agent_infra     # LangGraph/MCP/Mem0/微服务（非规范性参考，见 docs/references/）
 
 # ── MVP 硬规则（AI 不得违反，违反即停止并报告）──
 mvp_hard_rules:
-  - "大模型只负责问答，不自动写预约；预约只经确定性 UI + 后端接口"
+  - "大模型默认只负责问答、不自动写预约；例外：经 RBAC 守卫的面试官专用写工具 request_interview_booking（TASK-AIQA-BOOKING-001）可自主建预约，复用预约域强约束（3×30min 连续/同本地日/令牌/幂等）且不改写其校验；其余预约仍只经确定性 UI + 后端接口"
   - "密码登录；验证码仅用于注册验证与密码找回（不用于登录）"
   - "敏感字段逐列 AES-256 加密；公司名 HMAC 指纹去重"
   - "并发抢占经 Slot 行锁 + 部分唯一索引，不预占"

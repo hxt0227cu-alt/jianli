@@ -24,6 +24,9 @@ build/
 # WorkBuddy 工作目录（本地记忆/运行态，非项目治理证据，绝不入库）
 .workbuddy/
 
+# 运行时上传产物（知识文件等，非交付，绝不入库）
+apps/api/var/
+
 # 外来 skill 工件（非本项目交付）
 .career-os/
 

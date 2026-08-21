@@ -330,6 +330,9 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [followups, setFollowups] = useState<string[]>([]);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Prevent the conversationId-change effect from wiping the in-flight assistant placeholder
+  // while send() is creating a new conversation and streaming the first answer.
+  const skipHistoryLoadRef = useRef(false);
   const context = projectKey ? `当前项目：${projectKey === 'jianli' ? 'AI 面试协作站' : projectKey === 'sleep' ? 'Sleep AIoT Agent' : 'Litchi 荔枝问答平台'}` : pageKey === 'resume' ? '简历与全部项目' : '当前项目说明';
 
   // TASK-FE-STREAM-CTRL-010: cancel any in-flight stream on unmount / page unload
@@ -344,6 +347,9 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   }, []);
 
   useEffect(() => {
+    // While send() is creating a new conversation and streaming its first answer,
+    // do not wipe the local assistant placeholder nor reload from the server.
+    if (skipHistoryLoadRef.current) return;
     setMessages([]);
     setFollowups([]);
     setRecommendations([]);
@@ -382,6 +388,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     let activeConversationId = conversationId ?? null;
     if (canPersist && !activeConversationId) {
       try {
+        skipHistoryLoadRef.current = true;
         const created = await api<{ id: string }>('/conversations', { method: 'POST', headers: { 'X-CSRF-Token': csrfCookie() } });
         activeConversationId = created.id;
         onConversationCreated?.(created.id);
@@ -427,7 +434,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
       }, controller.signal);
     } catch (reason) {
       setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: reason instanceof Error ? reason.message : '回答失败，请稍后重试' }; return next; });
-    } finally { setBusy(false); }
+    } finally { skipHistoryLoadRef.current = false; setBusy(false); }
   };
 
   if (!live) {

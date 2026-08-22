@@ -4,7 +4,7 @@
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.4 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.4 由 TASK-CR-VERIFY-CODE-001 修订：注册邮箱验证与密码找回由链接 token 统一为 6 位数字验证码（对齐 PRD §5/§8.6 与 UI 线框 U5/U6 既有规格），并新增 `INVALID_VERIFY_CODE` 错误语义，现为行为唯一源。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
-> **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）与「禁止 LLM 自动写预约」硬规则（PRD §8.4#14）为 SRS 边界，正文仅可引用、不可扩展。
+> **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）为 SRS 边界，正文仅可引用、不可扩展。（注：「禁止 LLM 自动写预约」原 PRD §8.4#14 已据 `TASK-CR-AIQA-BOOKING-001` 经用户显式批准推翻，现以 `baseline.yml` `agent_tools` 白名单（RBAC 守卫的 `request_interview_booking` 等）为唯一边界，见 §2.4。）
 
 ---
 

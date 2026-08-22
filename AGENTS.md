@@ -76,11 +76,11 @@
 - 创建模块前先搜索同类实现（repo grep）。
 - 同一逻辑未出现 **3 次**前，不创建通用抽象。
 - 禁止为单一接口创建 `BaseManager` / `AbstractFactory` 等抽象。
-- 禁止未经 ADR 新增框架、中间件、外部服务（含 LangGraph / MCP / Mem0 / 微服务 / Agent 自动预约）。
+- 禁止未经 ADR 新增框架、中间件、外部服务（含 LangGraph / MCP / Mem0 / 微服务）。（注：对话内 Agent 预约写工具 `request_interview_booking` 等已据 `TASK-CR-AIQA-BOOKING-001` 经用户显式批准登记 `agent_tools`，不在此禁止项内。）
 - 禁止复制后微调，应提取已有公共函数。
 - 禁止保留未被使用的"未来扩展"代码 / 空壳类 / 预留字段。
 - **延后功能不得创建空壳类、数据库字段或接口**（见 `docs/baseline.yml` `deferred` 列表）。
-- 大模型**只负责问答**（RAG + 人格层 L1），**不得自动调用预约写入工具**（PRD 决策#14）。
+- 大模型默认**只负责问答**（RAG + 人格层 L1），**不得调用白名单外工具**；经 `TASK-CR-AIQA-BOOKING-001` 推翻 PRD#14 禁令后已登记 `agent_tools` 白名单：面试官/owner 登录态下可经内部工具调用预约写操作（`request_interview_booking` 创建 + `list_my_appointments`/`cancel_appointment`/`reschedule_appointment` 增删改，见 `TASK-AIQA-BOOKING-001` / `TASK-AIQA-AGENT-CRUD-001`），复用同一套 `BookingService` 与 RBAC（面试官仅本人、owner_admin 可经 `admin_*` 旁路管理他人），无白名单外工具、无越权路径。
 
 ---
 
@@ -197,7 +197,7 @@ lint / typecheck：<结果>
 | `embeddings.py` | **三轮新增**：`EmbeddingGateway` Protocol + `LocalEmbeddingGateway`（哈希 768 维，零依赖）+ `OpenAIEmbeddingGateway`（httpx 惰性，维度不符显式报错） | 加专用 embedding 配置/模型 |
 | `storage.py` | **三轮新增**：本地磁盘对象存储（`knowledge/{doc_id}.txt`） | 换 S3/COS 后端 |
 | `sse.py` | answer.started/delta/citations/completed/error 帧 | 已支持 conversation_id 回显 |
-| `service.py` | 编排：知识库优先→静态兜底→边界→流式→帧；会话持久化；知识库三件套（202 语义状态机） | 分块检索（后续迁移） |
+| `service.py` | 编排：知识库优先→静态兜底→边界→流式→帧；会话持久化；知识库三件套（202 语义状态机）；**多轮工具循环（MAX_STEPS=4）分发白名单预约工具**（`search_knowledge` + `request_interview_booking`/`list_my_appointments`/`cancel_appointment`/`reschedule_appointment`，`_run_agent_tool` 复用 `BookingService` + RBAC） | 分块检索（后续迁移） |
 | `router.py` | **9 operation**：3 公开 + 3 会话 + 3 知识库（admin，写强制 CSRF） | — |
 | `repository.py` | 会话/消息仓库 + **知识文档仓库（pgvector 余弦检索带 score）** | 分块表（后续） |
 | `rate_limit.py` | 内存固定窗口限频（公开问答 429） | 多实例换 Redis |
@@ -213,7 +213,7 @@ lint / typecheck：<结果>
 - 有效会话：强制同源 Origin/Referer + `X-CSRF-Token`（复用 `app/auth/router.py` 的 `_require_csrf`）。
 - 持久化规则：仅**有效会话 + `conversation_id`** 才落库（user 消息流前、assistant 消息流后含 `is_offtopic` 标记）；会话归属 owner-only（他人 403、未知 404）。
 - 知识库端点 **owner_admin**（写强制 CSRF）；上传 202 语义（逐文件状态机：indexed/failed）、活跃 checksum 去重、10MB 上限、删除即禁检索（`retrieval_disabled_at`）。
-- 越界/无依据 → `answer.completed` `offtopic=true` 拒答，不编造；模型不得执行预约/工具调用。
+- 越界/无依据 → `answer.completed` `offtopic=true` 拒答，不编造；模型**仅可调用白名单内预约工具**（`request_interview_booking`/`list_my_appointments`/`cancel_appointment`/`reschedule_appointment`，RBAC 守卫：面试官仅本人、owner_admin 可经 `admin_*` 旁路管理他人），**白名单外任何工具/调用一律禁止**，无越权路径。
 - 公开问答限频 429（`AnswerRateLimiter`，默认 20 次/60s/IP）。
 
 ### 10.4 配置
@@ -224,7 +224,8 @@ lint / typecheck：<结果>
 - DB-free：`cd apps/api && PYTHONPATH=. pytest tests/aiqa tests/test_app.py -q`（14 用例；无 Docker）
 - 真实集成（WSL，需真实 PG/Redis + **pgvector/pg16 镜像**）：`JIANLI_AIQA_TEST_DATABASE_URL`（`jianli_tc_aiqa_001_db`）+ `JIANLI_AIQA_TEST_REDIS_URL` + CSRF/RATE_LIMIT key（raw ≥32）→ `PYTHONPATH=. pytest tests/aiqa/test_conversations.py tests/aiqa/test_knowledge.py -v`（会话 5 + 知识库 4）
 - 迁移测试：`JIANLI_TEST_DATABASE_URL=... PYTHONPATH=. pytest tests/migrations/test_aiqa_schema.py -v`（0001–0005，含 embedding 列断言）
-- 门禁：`ruff check . && mypy app`（43 source files）
+- agent 预约 CRUD 真栈（WSL，需 PG/Redis + 独立密钥）：`JIANLI_BOOKING_TEST_DATABASE_URL`/`JIANLI_BOOKING_TEST_REDIS_URL` + 三独立 HMAC 密钥（AES/company-HMAC/confirmation-HMAC 互异）→ `PYTHONPATH=. pytest tests/aiqa/test_agent_crud.py tests/aiqa/test_agent_booking.py -v`（含 4 个 real-stack 用例）。
+- 门禁：`ruff check . && mypy app`（source files 随轮次增长，以 `mypy app` 0 error 为准）。
 
 ### 10.6 M6 剩余
 - **M6 全部轮次完成并验证（2026-08-13）**：二轮 `c9c5721`（WSL 5 passed）、三轮 `851742a`（WSL 全套 14 passed：迁移 5 + 会话 5 + 知识库 4），`verified_commit=851742a`；9 个 operation 全部落地。**待用户授权关闭 M6（含 TASK-M6-DB）**；生产迁移执行（dev 库 upgrade head）另行批准。

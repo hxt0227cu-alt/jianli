@@ -1,12 +1,12 @@
-# 安全设计与 ADR（review 草案 v0.1）
+# 安全设计与 ADR（v0.1 / approved）
 
-> 状态：`review`。依据 PRD 2.3.3 / SRS 1.2 / domain-model 1.1.5 / architecture 0.2（均 approved）。本轮仅完成 SRS v1.2 文字级 impact review；待批准锚点提交后约束实现。
+> 状态：`approved`（TASK-SEC-001 已关闭，approval_commit=`c2f08f2`）。依据 PRD 2.3.4 / SRS 1.4 / domain-model 1.1.5 / architecture 0.2（均 approved）；SRS v1.4 §2.4 已据 `TASK-CR-AIQA-BOOKING-001` 登记 agent 预约工具白名单（推翻 PRD#14），本文 §9 已同步。
 
 ## 1. 安全目标与信任边界
 
 保护对象：账号与会话、预约 PII、候选人联系方式、SMTP/飞书/LLM 凭证、知识库原文与向量、通知回执、审计日志。公网输入包括浏览器请求、SSE 连接、知识库上传内容、LLM 输入输出及退信邮件。任何外部输入均不可信。
 
-核心原则：默认拒绝、最小权限、服务端重新校验、密钥不入 Git/前端/日志、敏感字段按用途解密、外部通知与 LLM 不进入预约数据库事务、大模型不得调用预约写工具。
+核心原则：默认拒绝、最小权限、服务端重新校验、密钥不入 Git/前端/日志、敏感字段按用途解密、外部通知与 LLM 不进入预约数据库事务；**大模型仅可调用 `agent_tools` 白名单内预约工具（RBAC 守卫：面试官仅本人、owner_admin 可经 `admin_*` 旁路管理他人），白名单外任何工具/调用一律禁止**。
 
 ## 2. ADR-SEC-001 密码哈希
 

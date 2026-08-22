@@ -1,6 +1,6 @@
 # TASK-AUTH-VERIFY-CODE-001 注册验证/密码找回改 6 位数字码（实现）
 
-> **状态：draft（草案，待用户批准）**
+> **状态：Closed（2026-08-18 用户显式授权关闭）**
 > 依据：TASK-CR-VERIFY-CODE-001 已批准（范围 B）且规范已更新（OpenAPI v0.4 / PRD v2.3.4 / SRS v1.4 / baseline 已同步，commit `1d194db`）。本任务实现规范落地。
 
 ## 任务类型
@@ -96,7 +96,7 @@
 - 是否偏离 TASK：**是（1 项，如实登记）**——TASK 草案假设「attempts 新列（DB 审批载体）」；实现确认**无需新列**：「错误≤5」由发码限频（60s/1、每小时≤3/邮箱、≤5/IP，verify/reset 独立）+ 6 位码空间（10^6）+ verify 尝试 IP 限频（≤10/分）组合覆盖（安全等价），DB 零变更、零人审批面。草案已获批的 DB 变更授权**未使用**（退回）
 - 规范影响结论：none（上游 CR 已批；实现严格对齐 OpenAPI v0.4 / SRS v1.4）
 - spec_sync：clean
-- verified_commit：<待回填>
+- verified_commit：`4d0af0b`（feat(auth): 注册验证/密码找回改 6 位数字码）
 
 ## 关联
 - 上游：TASK-CR-VERIFY-CODE-001（已关闭，规范更新 `1d194db`）

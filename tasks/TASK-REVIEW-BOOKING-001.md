@@ -7,7 +7,7 @@
 - Reviewed；FAIL（存在 P1/P2 findings，退回实现窗口前向修正；审查窗口未修改生产代码或冻结测试）。
 
 ## 审查对象
-- TASK-BOOKING-001 的最终固定实现 commit（待回填；审查不得以工作区浮动状态替代）。
+- TASK-BOOKING-001 的最终固定实现 commit（`4d5381a`；审查不得以工作区浮动状态替代）。
 
 ## 审查范围
 - 越界：新增 DB/API/依赖/鉴权/加密策略是否逐项位于 TASK-BOOKING-001 已批准章节。

@@ -8,7 +8,7 @@
 
 ## 基线版本与基线 commit
 - baseline：SRS 1.3 / 领域模型 1.1.5 / architecture 0.2 / security 0.1 / OpenAPI **0.3**（均 approved，取自 `docs/baseline.yml`）
-- 基线 commit：<本任务创建时 master HEAD，待回填>
+- 基线 commit：`5724d87`（2026-08-18 校正后的 master HEAD，本任务创建基准）
 
 ## 精确规范引用（AI 只读取这些章节）
 - `docs/api/openapi.yaml` §`/admin/owner-contact-config`（operationId=`updateOwnerContactConfig`，契约真相源）

@@ -89,6 +89,7 @@ def create_app(
             allow_methods=["GET", "POST", "PATCH", "DELETE"],
             allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key", "Last-Event-ID"],
         )
+    appointments = booking_runtime
     if runtime is not None:
         app.state.auth_runtime = runtime
         app.include_router(create_auth_router(runtime))

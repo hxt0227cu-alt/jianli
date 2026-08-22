@@ -32,7 +32,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
 
-from app.appointments.models import AppointmentDraft, Slot
+from app.appointments.models import AppointmentDraft, AppointmentUpdate, Slot
 from app.appointments.service import LOCAL_TIME, BookingService
 from app.auth.errors import AuthError
 from app.auth.models import Principal
@@ -238,9 +238,83 @@ _BOOKING_TOOL: dict[str, object] = {
     },
 }
 
-# Both tools are offered with tool_choice=auto; the model picks search_knowledge for
-# factual Q&A and request_interview_booking for an explicit booking intent.
-_AGENT_TOOLS: list[dict[str, object]] = [*_SEARCH_TOOLS, _BOOKING_TOOL]
+# Interview self-service tools (TASK-AIQA-AGENT-CRUD-001): let the model list/cancel/
+# reschedule appointments through a multi-step loop. interviewers act on their own rows
+# only; owner_admin sees/manages every appointment.
+_LIST_TOOL: dict[str, object] = {
+    "type": "function",
+    "function": {
+        "name": "list_my_appointments",
+        "description": (
+            "列出当前登录账号名下的面试预约（时间、公司、状态等）。"
+            "在想取消或改期某条预约前，先调用本工具拿到要操作的 appointment_id。"
+            "若当前账号是站长(owner)，则返回系统中全部预约（含他人）。"
+        ),
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
+}
+
+_CANCEL_TOOL: dict[str, object] = {
+    "type": "function",
+    "function": {
+        "name": "cancel_appointment",
+        "description": (
+            "取消一条面试预约（需先经 list_my_appointments 拿到 appointment_id）。"
+            "面试官只能取消自己名下的预约；站长可取消任意预约。取消后该时段释放。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "appointment_id": {
+                    "type": "string",
+                    "description": "要取消的预约 id（来自 list_my_appointments 的 appointment_id）",
+                },
+            },
+            "required": ["appointment_id"],
+        },
+    },
+}
+
+_RESCHEDULE_TOOL: dict[str, object] = {
+    "type": "function",
+    "function": {
+        "name": "reschedule_appointment",
+        "description": (
+            "改期一条面试预约到新的开始时间（需先经 list_my_appointments 拿到 appointment_id）。"
+            "面试官只能改自己名下的预约；站长可改任意预约。每次面试固定 90 分钟（3 个连续时段）。"
+            "「下周三」要相对今天按 Asia/Shanghai 推算具体日期。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "appointment_id": {
+                    "type": "string",
+                    "description": "要改期的预约 id（来自 list_my_appointments 的 appointment_id）",
+                },
+                "target_date": {
+                    "type": "string",
+                    "description": "新日期 YYYY-MM-DD（「下周三」按 Asia/Shanghai 推算）",
+                },
+                "start_time": {
+                    "type": "string",
+                    "description": "新的本地开始时间 HH:MM，24小时制，如「10:00」",
+                },
+            },
+            "required": ["appointment_id", "target_date", "start_time"],
+        },
+    },
+}
+
+# All tools are offered with tool_choice=auto; the model picks search_knowledge for
+# factual Q&A, request_interview_booking for an explicit booking intent, and the
+# self-service tools (list/cancel/reschedule) to manage existing appointments.
+_AGENT_TOOLS: list[dict[str, object]] = [
+    *_SEARCH_TOOLS,
+    _BOOKING_TOOL,
+    _LIST_TOOL,
+    _CANCEL_TOOL,
+    _RESCHEDULE_TOOL,
+]
 
 
 def _extract_pdf_text(raw: bytes) -> str:
@@ -621,6 +695,180 @@ class AnswerService:
             },
         }
 
+    async def _run_agent_tool(
+        self, name: str, arguments: dict[str, object], principal: Principal | None
+    ) -> dict[str, object]:
+        """Dispatch a whitelisted agent tool (TASK-AIQA-AGENT-CRUD-001).
+
+        Central RBAC: every tool except ``search_knowledge`` requires an authenticated
+        principal. ``BookingService`` trusts the principal and does NOT re-check role, so
+        the per-tool role enforcement here is the single authority for agent-invoked
+        writes. ``search_knowledge`` returns a signal dict consumed by the loop, not a
+        booking-style outcome.
+        """
+
+        if name == "search_knowledge":
+            return {"outcome": "search", "payload": {"query": str(arguments.get("query") or "")}}
+
+        # All remaining tools require an authenticated caller.
+        if principal is None:
+            return {
+                "outcome": "forbidden",
+                "payload": {"reason": "请先以面试官账号登录后再操作预约。"},
+            }
+
+        if name == "request_interview_booking":
+            return await self._run_booking_tool(arguments, principal)
+        if name == "list_my_appointments":
+            return self._run_list_tool(principal)
+        if name == "cancel_appointment":
+            return await self._run_cancel_tool(arguments, principal)
+        if name == "reschedule_appointment":
+            return await self._run_reschedule_tool(arguments, principal)
+        return {"outcome": "failed", "payload": {"reason": "未支持的工具调用。"}}
+
+    def _run_list_tool(self, principal: Principal) -> dict[str, object]:
+        """List appointments for the caller (TASK-AIQA-AGENT-CRUD-001).
+
+        owner_admin gets every appointment (incl. others) via ``admin_list_appointments``;
+        everyone else gets only their own active rows via ``list_my``.
+        """
+
+        booking = self._require_booking()
+        is_owner = getattr(principal, "role", None) == "owner_admin"
+        try:
+            rows = (
+                booking.admin_list_appointments()
+                if is_owner
+                else booking.list_my(principal)
+            )
+        except AuthError as error:
+            detail = error.detail
+            reason = detail if isinstance(detail, str) else "查询失败，请稍后重试。"
+            return {"outcome": "failed", "payload": {"reason": reason}}
+        items = [
+            {
+                "appointment_id": str(row.id),
+                "start_at_local": self._to_local(row.start_at).isoformat(),
+                "end_at_local": self._to_local(row.end_at).isoformat(),
+                "company_name": row.company_name,
+                "status": row.status,
+                "version": row.version,
+            }
+            for row in rows
+        ]
+        return {
+            "outcome": "listed",
+            "payload": {"items": items, "scope": "all" if is_owner else "mine"},
+        }
+
+    async def _run_cancel_tool(
+        self, arguments: dict[str, object], principal: Principal
+    ) -> dict[str, object]:
+        """Cancel an appointment (TASK-AIQA-AGENT-CRUD-001).
+
+        owner_admin uses the ownership-bypassing ``force_cancel``; others use ``cancel``
+        which enforces ownership via ``_load_owned_for_write`` (non-owner → PERM_DENIED).
+        """
+
+        booking = self._require_booking()
+        aid_raw = self._as_str(arguments.get("appointment_id"))
+        try:
+            aid = UUID(aid_raw)
+        except (ValueError, AttributeError):
+            return {"outcome": "failed", "payload": {"reason": "预约 id 格式不正确。"}}
+        is_owner = getattr(principal, "role", None) == "owner_admin"
+        try:
+            if is_owner:
+                await asyncio.to_thread(booking.force_cancel, principal, aid)
+            else:
+                await asyncio.to_thread(booking.cancel, principal, aid)
+        except AuthError as error:
+            return self._map_write_error(error, "取消")
+        return {"outcome": "cancelled", "payload": {"appointment_id": str(aid)}}
+
+    async def _run_reschedule_tool(
+        self, arguments: dict[str, object], principal: Principal
+    ) -> dict[str, object]:
+        """Reschedule an appointment to a natural-language time (TASK-AIQA-AGENT-CRUD-001).
+
+        Reuses ``_resolve_booking_slots`` for 3 consecutive available slots. owner_admin
+        bypasses ownership via ``admin_reschedule``; others read their own version then
+        call ``update`` (which re-checks ownership and the optimistic-lock version).
+        """
+
+        booking = self._require_booking()
+        aid_raw = self._as_str(arguments.get("appointment_id"))
+        target_date = self._as_str(arguments.get("target_date"))
+        start_time = self._as_str(arguments.get("start_time"))
+        try:
+            aid = UUID(aid_raw)
+            day = datetime.strptime(target_date, "%Y-%m-%d").date()
+            hh, mm = (int(part) for part in start_time.split(":"))
+            start_local = datetime(day.year, day.month, day.day, hh, mm, tzinfo=LOCAL_TIME)
+        except (ValueError, TypeError, AttributeError):
+            return {
+                "outcome": "needs_info",
+                "payload": {
+                    "missing": ["target_date", "start_time"],
+                    "reason": "请明确新的日期与开始时间，例如「8月25日上午10点」。",
+                },
+            }
+        slots = await asyncio.to_thread(
+            self._resolve_booking_slots, booking, principal, start_local
+        )
+        if slots is None:
+            return {
+                "outcome": "failed",
+                "payload": {"reason": "该时段未开放或已被预约；可在「预约」页查看可约时间。"},
+            }
+        slot_ids = [slot.id for slot in slots]
+        is_owner = getattr(principal, "role", None) == "owner_admin"
+        try:
+            if is_owner:
+                await asyncio.to_thread(booking.admin_reschedule, principal, aid, slot_ids)
+            else:
+                own = await asyncio.to_thread(booking.read_own, principal, aid)
+                await asyncio.to_thread(
+                    booking.update,
+                    principal,
+                    aid,
+                    AppointmentUpdate(version=own.version, new_slot_ids=slot_ids),
+                )
+        except AuthError as error:
+            return self._map_write_error(error, "改期")
+        return {
+            "outcome": "rescheduled",
+            "payload": {
+                "appointment_id": str(aid),
+                "start_at_local": self._to_local(slots[0].start_at).isoformat(),
+                "end_at_local": self._to_local(slots[-1].end_at).isoformat(),
+            },
+        }
+
+    @staticmethod
+    def _map_write_error(error: AuthError, verb: str) -> dict[str, object]:
+        """Map a BookingService AuthError to a graceful agent outcome (CRUD-001)."""
+
+        detail = error.detail
+        reason = detail if isinstance(detail, str) else f"{verb}失败，请稍后重试。"
+        code = error.code
+        if code == "PERM_DENIED":
+            return {
+                "outcome": "forbidden",
+                "payload": {"reason": f"这不是你名下的预约，无法{verb}。"},
+            }
+        if code == "NOT_FOUND":
+            return {"outcome": "not_found", "payload": {"reason": "未找到该预约，可能已被取消。"}}
+        if code == "TERMINAL_STATE":
+            return {"outcome": "terminal", "payload": {"reason": f"该预约已结束，无法{verb}。"}}
+        if code == "VERSION_CONFLICT":
+            return {
+                "outcome": "conflict",
+                "payload": {"reason": "预约信息已变化，请重新查询后再改期。"},
+            }
+        return {"outcome": "failed", "payload": {"reason": reason}}
+
     async def stream_answer(
         self,
         *,
@@ -770,49 +1018,117 @@ class AnswerService:
             "code": "MODEL_UNAVAILABLE",
             "detail": "The answer service is temporarily unavailable",
         }
-        messages1 = [
+        # ===== multi-step agent tool loop (TASK-AIQA-AGENT-CRUD-001) =====
+        # The model may chain tools across turns (e.g. list_my_appointments →
+        # cancel_appointment). Each step appends the tool result as an assistant message
+        # (synthetic feedback; no dependency on the gateway's native tool-message protocol),
+        # so the next model call sees prior outcomes. ``search_knowledge`` breaks the loop
+        # into the RAG branch; a direct answer (no tool) breaks into the RAG fallback on
+        # the original question. Bounded by MAX_STEPS to keep latency/P95 stable.
+        agent_messages = [
             {"role": "system", "content": build_system_prompt()},
             *history,
             {"role": "user", "content": f"用户问题：{question}"},
         ]
-        tool_request: dict[str, object] | None = None
+        tool_trace: list[dict[str, object]] = []
+        search_query: str | None = None
         usage_acc = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        MAX_STEPS = 4
         try:
-            async for kind, payload in self._gateway.answer(messages1, tools=_AGENT_TOOLS):
-                if kind == "usage" and isinstance(payload, dict):
-                    _add_usage(usage_acc, payload)
-                    continue
-                if kind == "tool_call" and isinstance(payload, dict) and tool_request is None:
-                    tool_request = payload
-                    continue
+            for _ in range(MAX_STEPS):
+                tool_request = None
+                async for kind, payload in self._gateway.answer(agent_messages, tools=_AGENT_TOOLS):
+                    if kind == "usage" and isinstance(payload, dict):
+                        _add_usage(usage_acc, payload)
+                        continue
+                    if kind == "tool_call" and isinstance(payload, dict) and tool_request is None:
+                        tool_request = payload
+                        continue
+                if tool_request is None:
+                    break  # model answered directly (no tool)
+                name = str(tool_request.get("name") or "")
+                try:
+                    args = json.loads(str(tool_request.get("arguments") or "{}"))
+                except json.JSONDecodeError:
+                    args = {}
+                if name == "search_knowledge":
+                    search_query = str(args.get("query") or question).strip() or question
+                    break  # → RAG branch
+                result = await self._run_agent_tool(name, args, principal)
+                tool_trace.append({"name": name, "result": result})
+                agent_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": (
+                            f"已调用工具 {name}，结果："
+                            f"{json.dumps(result, ensure_ascii=False)}"
+                        ),
+                    }
+                )
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
 
-        # Agent autonomous booking (TASK-AIQA-BOOKING-001): if the model decided to book,
-        # run the write tool in-process with the caller's principal. RBAC is enforced
-        # inside `_run_booking_tool` because `BookingService.preview/create` trust the
-        # principal and do NOT re-check role (the router normally enforces it via
-        # require_role). Emit a booking frame, then let Phase 2 phrase the result.
-        if tool_request is not None and tool_request.get("name") == "request_interview_booking":
-            try:
-                arguments = json.loads(str(tool_request.get("arguments") or "{}"))
-            except json.JSONDecodeError:
-                arguments = {}
-            result = await self._run_booking_tool(arguments, principal)
-            yield booking_frame(seq := seq + 1, result["outcome"], result["payload"], trace_id)
+        # ===== post-loop dispatch =====
+        if search_query is not None or not tool_trace:
+            # RAG branch (existing behavior preserved): search + grounded answer, or
+            # off-topic refusal when there are no hits.
+            candidates = await self._search_candidates(
+                search_query or question, question, page_key, project_key
+            )
+            if not candidates:
+                self._log_offtopic(trace_id, conversation_id if persist else None, start)
+                yield tool_calls_frame(
+                    seq := seq + 1,
+                    [
+                        {
+                            "name": "search_knowledge",
+                            "query": search_query or question,
+                            "hits": [],
+                        }
+                    ],
+                    trace_id,
+                )
+                yield delta_frame(seq := seq + 1, OFFTOPIC_REPLY, trace_id)
+                yield citations_frame(seq := seq + 1, [], trace_id)
+                yield completed_frame(
+                    seq := seq + 1,
+                    grounded=False,
+                    offtopic=True,
+                    model=_OFFTOPIC_CODE,
+                    usage=None,
+                    trace_id=trace_id,
+                )
+                if persist:
+                    assert conversation_id is not None
+                    await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
+                return
+
+            yield tool_calls_frame(
+                seq := seq + 1,
+                [
+                    {
+                        "name": "search_knowledge",
+                        "query": search_query or question,
+                        "hits": [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+                    }
+                ],
+                trace_id,
+            )
             messages2 = [
-                {"role": "system", "content": build_system_prompt()},
+                {
+                    "role": "system",
+                    "content": build_system_prompt(
+                        build_resume_facts_card() if page_key == "resume" else None
+                    ),
+                },
                 *history,
                 {
                     "role": "user",
                     "content": (
-                        f"用户问题：{question}\n\n【预约工具执行结果】\n"
-                        f"{json.dumps(result, ensure_ascii=False)}\n\n"
-                        "请用自然、口语化的中文把结果告诉用户：成功则简要确认时间与公司；"
-                        "信息不全则一次性追问缺的项；失败则道歉并给出建议；未登录则引导先登录。"
-                        "不要编造工具未返回的信息。"
+                        f"用户问题：{question}\n\n【已知资料】\n"
+                        f"{_format_context(candidates)}"
                     ),
                 },
             ]
@@ -829,14 +1145,33 @@ class AnswerService:
                 self._log_error(trace_id, conversation_id if persist else None, error)
                 yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
                 return
+            yield citations_frame(
+                seq := seq + 1,
+                [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+                trace_id,
+            )
             usage_payload = (
                 cast("dict[str, object] | None", usage_acc)
                 if usage_acc["total_tokens"] > 0
                 else None
             )
+            latency_ms = int((time.monotonic() - start) * 1000)
+            logger.info(
+                "answer_completed",
+                extra={
+                    "trace_id": trace_id,
+                    "conversation_id": str(conversation_id) if persist else None,
+                    "grounded": True,
+                    "offtopic": False,
+                    "model": self._gateway.model_name,
+                    "latency_ms": latency_ms,
+                    "prompt_tokens": usage_acc["prompt_tokens"],
+                    "completion_tokens": usage_acc["completion_tokens"],
+                },
+            )
             yield completed_frame(
                 seq := seq + 1,
-                grounded=False,
+                grounded=True,
                 offtopic=False,
                 model=self._gateway.model_name,
                 usage=usage_payload,
@@ -847,75 +1182,35 @@ class AnswerService:
                 await self._persist_assistant(conversation_id, "".join(deltas), False)
             return
 
-        candidates: list[Candidate] = []
-        search_query = question
-        if tool_request is not None and tool_request.get("name") == "search_knowledge":
-            # Model decided to search: execute the tool with the model-generated query.
-            try:
-                arguments = json.loads(str(tool_request.get("arguments") or "{}"))
-            except json.JSONDecodeError:
-                arguments = {}
-            search_query = str(arguments.get("query") or question).strip() or question
-            candidates = await self._search_candidates(
-                search_query, question, page_key, project_key
-            )
-        else:
-            # Model decided not to search (or no tool response): system fallback on the
-            # original question keeps grounded semantics stable; no hits -> refusal.
-            candidates = await self._search_candidates(
-                question, question, page_key, project_key
-            )
-
-        if not candidates:
-            self._log_offtopic(trace_id, conversation_id if persist else None, start)
-            yield tool_calls_frame(
-                seq := seq + 1,
-                [
-                    {
-                        "name": "search_knowledge",
-                        "query": search_query,
-                        "hits": [],
-                    }
-                ],
-                trace_id,
-            )
-            yield delta_frame(seq := seq + 1, OFFTOPIC_REPLY, trace_id)
-            yield citations_frame(seq := seq + 1, [], trace_id)
-            yield completed_frame(
-                seq := seq + 1,
-                grounded=False,
-                offtopic=True,
-                model=_OFFTOPIC_CODE,
-                usage=None,
-                trace_id=trace_id,
-            )
-            if persist:
-                assert conversation_id is not None
-                await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
-            return
-
-        yield tool_calls_frame(
-            seq := seq + 1,
-            [
-                {
-                    "name": "search_knowledge",
-                    "query": search_query,
-                    "hits": [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
-                }
-            ],
-            trace_id,
+        # ===== tool branch (booking / list / cancel / reschedule) =====
+        # Emit a booking frame for each write-like outcome so the UI shows the
+        # confirmation/cancel/reschedule card, then phrase the combined result naturally.
+        for t in tool_trace:
+            if t["name"] in (
+                "request_interview_booking",
+                "cancel_appointment",
+                "reschedule_appointment",
+            ):
+                r = t["result"]
+                yield booking_frame(seq := seq + 1, r["outcome"], r["payload"], trace_id)
+        combined = "\n\n".join(
+            f"【工具 {t['name']} 执行结果】\n{json.dumps(t['result'], ensure_ascii=False)}"
+            for t in tool_trace
         )
         messages2 = [
-            {
-                "role": "system",
-                "content": build_system_prompt(
-                    build_resume_facts_card() if page_key == "resume" else None
-                ),
-            },
+            {"role": "system", "content": build_system_prompt()},
             *history,
             {
                 "role": "user",
-                "content": f"用户问题：{question}\n\n【已知资料】\n{_format_context(candidates)}",
+                "content": (
+                    f"用户问题：{question}\n\n{combined}\n\n"
+                    "请用自然、口语化的中文把以上操作结果一并向用户说明："
+                    "若是「列出预约」，请逐条罗列每条的时间（本地时间）、公司、状态，"
+                    "并附上 appointment_id 方便后续操作；"
+                    "若是取消成功，请简要确认已取消；若是改期成功，请确认新时间；"
+                    "若信息不全/未登录/非本人/时段不可用，请按工具给出的原因友好说明。"
+                    "不要编造工具未返回的信息。"
+                ),
             },
         ]
         try:
@@ -931,33 +1226,14 @@ class AnswerService:
             self._log_error(trace_id, conversation_id if persist else None, error)
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
-        yield citations_frame(
-            seq := seq + 1,
-            [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
-            trace_id,
-        )
         usage_payload = (
             cast("dict[str, object] | None", usage_acc)
             if usage_acc["total_tokens"] > 0
             else None
         )
-        latency_ms = int((time.monotonic() - start) * 1000)
-        logger.info(
-            "answer_completed",
-            extra={
-                "trace_id": trace_id,
-                "conversation_id": str(conversation_id) if persist else None,
-                "grounded": True,
-                "offtopic": False,
-                "model": self._gateway.model_name,
-                "latency_ms": latency_ms,
-                "prompt_tokens": usage_acc["prompt_tokens"],
-                "completion_tokens": usage_acc["completion_tokens"],
-            },
-        )
         yield completed_frame(
             seq := seq + 1,
-            grounded=True,
+            grounded=False,
             offtopic=False,
             model=self._gateway.model_name,
             usage=usage_payload,
@@ -966,6 +1242,7 @@ class AnswerService:
         if persist:
             assert conversation_id is not None
             await self._persist_assistant(conversation_id, "".join(deltas), False)
+        return
 
     async def _search_candidates(
         self,

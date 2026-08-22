@@ -100,6 +100,12 @@ _BOOKING_OUTCOME_TYPES: dict[str, str] = {
     "needs_info": "urn:jianli:booking:needs_info",
     "failed": "urn:jianli:booking:failed",
     "forbidden": "urn:jianli:booking:forbidden",
+    # Agent self-service outcomes (TASK-AIQA-AGENT-CRUD-001): cancel / reschedule.
+    "cancelled": "urn:jianli:booking:cancelled",
+    "rescheduled": "urn:jianli:booking:rescheduled",
+    "not_found": "urn:jianli:booking:not_found",
+    "terminal": "urn:jianli:booking:terminal",
+    "conflict": "urn:jianli:booking:conflict",
 }
 
 

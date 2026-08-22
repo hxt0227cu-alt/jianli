@@ -910,6 +910,77 @@ class BookingService:
                 "categories=company,meeting,contact,notes",
             )
 
+    def read_own(self, principal: Principal, appointment_id: UUID) -> Appointment:
+        """Interviewer self-read (TASK-AIQA-AGENT-CRUD-001): load the caller's own
+        appointment for inspection (e.g. to fetch the optimistic-lock ``version`` before a
+        reschedule). Ownership is enforced by ``_load_owned_for_write`` — a non-owner gets
+        PERM_DENIED, never a leak of someone else's row."""
+
+        with self._engine.begin() as connection:
+            row = self._load_owned_for_write(connection, appointment_id, principal.id)
+            return self._decrypt_appointment(
+                row, self._slot_ids_for(connection, appointment_id)
+            )
+
+    def admin_read(self, actor: Principal, appointment_id: UUID) -> Appointment:
+        """Owner-only read bypass (TASK-AIQA-AGENT-CRUD-001): fetch ANY appointment,
+        including another interviewer's, for the owner's management tools. Does NOT enforce
+        ownership — the caller must already be ``owner_admin`` (enforced by the agent
+        dispatcher). Returns NOT_FOUND for unknown ids."""
+
+        with self._engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                    "company_name_fingerprint,meeting_platform_ciphertext,"
+                    "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                    "FROM appointments WHERE id=:id"
+                ),
+                {"id": appointment_id},
+            ).mappings().first()
+            if row is None:
+                raise AuthError("NOT_FOUND", 404, "Not found", "Appointment not found")
+            return self._decrypt_appointment(
+                row, self._slot_ids_for(connection, appointment_id)
+            )
+
+    def admin_reschedule(
+        self, actor: Principal, appointment_id: UUID, new_slot_ids: list[UUID]
+    ) -> Appointment:
+        """Owner-only reschedule bypass (TASK-AIQA-AGENT-CRUD-001): move ANY appointment to
+        new slots without the ownership check (the owner manages others' bookings). Reuses
+        ``_reschedule`` (slot validation, release, event + audit) with ``actor.id`` as the
+        audit actor. Terminal/locked states are still rejected; slot validity is still
+        enforced by ``_validate_slots``."""
+
+        now = datetime.now(UTC)
+        with self._engine.begin() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                    "company_name_fingerprint,meeting_platform_ciphertext,"
+                    "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                    "FROM appointments WHERE id=:id FOR UPDATE"
+                ),
+                {"id": appointment_id},
+            ).mappings().first()
+            if row is None:
+                raise AuthError("NOT_FOUND", 404, "Not found", "Appointment not found")
+            if row["status"] != "active":
+                raise AuthError("TERMINAL_STATE", 409, "Cannot modify", "Appointment is not active")
+            self._reschedule(connection, row, new_slot_ids, actor.id, now)
+            refreshed = connection.execute(
+                text(
+                    "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
+                    "company_name_fingerprint,meeting_platform_ciphertext,"
+                    "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
+                    "FROM appointments WHERE id=:id"
+                ),
+                {"id": appointment_id},
+            ).mappings().one()
+            slot_ids = self._slot_ids_for(connection, appointment_id)
+        return self._decrypt_appointment(refreshed, slot_ids)
+
     def list_overrides(self) -> list[dict[str, Any]]:
         with self._engine.connect() as connection:
             rows = connection.execute(

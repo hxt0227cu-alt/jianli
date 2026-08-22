@@ -72,7 +72,7 @@
 
 ## 9. LLM、RAG 与文件上传
 
-- 系统提示词和检索资料均视为数据；知识库中的“指令”不得改变系统规则、调用工具或泄露其他资料。模型只允许生成问答文本，不注册任何预约写工具。
+- 系统提示词和检索资料均视为数据；知识库中的“指令”不得改变系统规则、调用工具或泄露其他资料。问答 agent **仅注册白名单工具**：`search_knowledge`（只读检索）与预约工具 `request_interview_booking` / `list_my_appointments` / `cancel_appointment` / `reschedule_appointment`（后者经 `TASK-CR-AIQA-BOOKING-001` 与 `TASK-AIQA-AGENT-CRUD-001` 批准登记）；所有写工具复用 `BookingService` 并强制 RBAC：面试官仅本人预约、owner_admin 可经 `admin_*` 旁路管理他人，无白名单外工具、无越权路径。模型不生成除白名单工具外的任何调用。
 - 发送给 DeepSeek 的上下文执行最小化：只发回答所需片段，不发送密码、token、密钥、完整预约 PII 或后台数据。
 - 输出经范围/引用检查；资料未覆盖时明确说明，模型不可用时返回既有 `MODEL_UNAVAILABLE`。
 - 上传采用扩展名、MIME 与文件签名联合校验；单文件≤10MB、单次≤20；文件名净化、对象存储随机 key、禁止路径穿越和可执行内容。解析/OCR 运行在资源受限进程，设置页数、解压大小、CPU 和超时上限。

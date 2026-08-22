@@ -56,12 +56,12 @@
 
 ### 2.4 设计与实现约束
 - **RAG + L1 人格层**：MVP 仅用 DeepSeek 单模型（托管 API），混元 Fallback 为延后项。
-- **硬规则（PRD §8.4#14）**：大模型仅负责 RAG 问答（含人格层 L1），**不得自动调用预约写入/修改/取消工具**；预约创建、改期、取消一律经确定性 UI（页面 3 表单 / 二次确认）与后端接口。
+- **大模型预约工具（PRD §8.4#14 已据 `TASK-CR-AIQA-BOOKING-001` 推翻并登记 `agent_tools`）**：面试官/owner 登录态下，问答 agent 可经**内部白名单工具**调用预约写操作——`request_interview_booking`（创建，TASK-AIQA-BOOKING-001）、`list_my_appointments` / `cancel_appointment` / `reschedule_appointment`（增删改，TASK-AIQA-AGENT-CRUD-001）。工具复用与 UI/后端接口**同一套 `BookingService` 与 RBAC**：面试官仅可操作本人名下预约，owner_admin 可经 `admin_*` 旁路管理他人；模型不注册白名单外任何工具。自然语言歧义由多轮工具循环（上限 4 步）经模型串联消解，不做模糊自动匹配。
 - **问答公开、预约需登录**：问答无需登录；页面 3 的预约/修改/取消需面试官登录（角色认证 + 记住我 14 天）。
 - **账号隔离**：面试官账号体系与候选人 admin 账号体系分离。
 
 ### 2.5 MVP 边界与非目标（引用 `docs/baseline.yml`，不复制维护第二份清单）
-- **MVP 硬规则**（引用 `baseline.yml` `mvp_hard_rules`，不重复罗列全文）：大模型只负责问答不自动写预约；密码登录（验证码仅注册验证/找回）；敏感字段逐列 AES-256、公司名 HMAC 指纹去重；并发抢占经 Slot 行锁 + 部分唯一索引不预占；通知通道独立重试不相互兜底；推荐问题异步生成缓存非实时；owner 取消经锁定已约时段触发原子取消、后台不提供直接删除预约入口。
+- **MVP 硬规则**（引用 `baseline.yml` `mvp_hard_rules`，不重复罗列全文）：大模型默认只负责问答；预约写工具经 `TASK-CR-AIQA-BOOKING-001` 推翻 PRD#14 后白名单开放（见 §2.4）；密码登录（验证码仅注册验证/找回）；敏感字段逐列 AES-256、公司名 HMAC 指纹去重；并发抢占经 Slot 行锁 + 部分唯一索引不预占；通知通道独立重试不相互兜底；推荐问题异步生成缓存非实时；owner 取消经锁定已约时段触发原子取消、后台不提供直接删除预约入口。
 - **延后项**：仅引用 `docs/baseline.yml` `deferred` 为唯一规范源；本 SRS 不复制维护该清单、不维护第二份状态源。
 - **非目标（与 SRS 直接相关）**：不新增产品需求；不扩 MVP 范围；不提前做架构选型 / ADR / OpenAPI·SSE 契约 / 物理 Schema / 编码。
 

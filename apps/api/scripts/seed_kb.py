@@ -68,8 +68,21 @@ def _load_env_local(env_path: Path) -> None:
 
 
 def _seed_owner(engine: Engine) -> UUID:
-    user_id = uuid4()
     with engine.begin() as conn:
+        # uq_active_owner_admin allows at most ONE active owner_admin. On an already
+        # initialized DB the real owner_admin already exists, so reuse it instead of
+        # inserting a second row (which would violate the unique constraint).
+        row = conn.execute(
+            text(
+                "SELECT id FROM users "
+                "WHERE role='owner_admin' AND verified=true AND deleted_at IS NULL "
+                "LIMIT 1"
+            )
+        ).fetchone()
+        if row is not None:
+            return UUID(str(row[0]))
+        # Fresh DB (no owner yet): create the seed owner_admin.
+        user_id = uuid4()
         conn.execute(
             text(
                 "INSERT INTO users (id,email,password_hash,role,verified) "

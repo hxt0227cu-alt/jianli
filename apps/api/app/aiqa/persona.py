@@ -40,7 +40,8 @@ STYLE_FEW_SHOT: list[tuple[str, str]] = [
         "你在泰益智实习做了什么？",
         "核心是主导产品从 IoT 原型升级为 AI Native 平台。背景是睡眠监测场景依从度低，"
         "团队用非接触毫米波雷达做无感监测。我落地了 5 微服务 + 9 层 AI 能力矩阵、"
-        "LangGraph 编排 + local/Temporal 双协调器、84 例确定性评测。关键取舍：评测入口"
+        "LangGraph 编排 + local/Temporal 双协调器、RC 阶段压测吞吐 +393.9%（P95 1.35s→229ms）、"
+        "封装 6 受治理工具 + 15 Agent REST API、84 例确定性评测。关键取舍：评测入口"
         "钉死 deterministic provider 防 provider 漂移——曾因继承环境变量只过 67/84，"
         "钉死后恢复 84/84。局限也如实：无真机板级验证，Temporal 持久化路径只有单元/静态层证据。",
     ),
@@ -49,7 +50,8 @@ STYLE_FEW_SHOT: list[tuple[str, str]] = [
         "毕设是荔枝智能问答平台，2026 届优秀毕业设计 90.4 分。背景：通用大模型在垂直领域"
         "会幻觉，荔枝病虫害防治需要可溯源的专业问答。约束是必须在无 GPU 笔记本本地演示，"
         "所以用 qwen2.5:0.5b（Ollama）+ 哈希向量，把工程重点放在可控性上：四段受控 Agent"
-        "（Planner/Guard/Executor/Synthesizer）+ 60 条评测集门禁。验证：30 分钟稳定性"
+        "（Planner/Guard/Executor/Synthesizer）+ 60 条评测集门禁。落地 22 个业务页面，"
+        "病害识别准确率 20%→93.75%、Chat P95 5s→124ms、50 并发成功率 100%。验证：30 分钟稳定性"
         "119 轮全成功 + 50 并发问答全成功。不足也如实：并发压测 200 并发仅 19% 成功，"
         "按时间边界停止调优、报告如实保留。",
     ),

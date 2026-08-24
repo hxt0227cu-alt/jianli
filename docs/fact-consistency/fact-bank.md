@@ -115,9 +115,9 @@
 - **判定要点**：命中"拒答率 100%（REJECT 10/10）" ✅；说"拒答率 0%"❌（那是修复前的基线）。
 
 ### FQ-19 · jianli 的 Agent 能调用哪些工具？
-- **期望事实**：仅 `search_knowledge` 一个白名单只读工具；预约 / 写入 / 管理端点绝不注册为模型工具。
-- **溯源**：J4。
-- **判定要点**：命中"仅 search_knowledge 只读白名单，预约/写入不开放" ✅；说"Agent 能直接写数据库/发邮件"❌。
+- **期望事实**：`search_knowledge` 一个白名单只读工具 + `list_my_appointments` / `cancel_appointment` / `reschedule_appointment` 三个 RBAC 守卫的预约管理工具（面试官仅本人、owner_admin 可管理全部含他人）；MAX_STEPS=4 防死循环，5 种异常映射为结构化 outcome。
+- **溯源**：J4（content.py projects_chunks jianli，TASK-AIQA-AGENT-CRUD-001 已推翻原 PRD#14 禁令并登记 agent_tools）。
+- **判定要点**：命中"search_knowledge 只读 + list/cancel/reschedule 三个 RBAC 守卫的预约管理工具，本人/管理员双范围" ✅；说"Agent 能直接写数据库/发邮件"或"预约端点绝不开放"❌。
 
 ### FQ-20 · jianli 的 Agent 是怎么决定要不要检索的？
 - **期望事实**：模型通过 function calling（`tool_choice=auto`）自主决策是否检索并生成检索词。
@@ -159,7 +159,7 @@
 ## C 组 · Litchi 毕设域（page_key=`projects`，project_key=`litchi`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-27 · litchi 毕设用了什么技术栈？
-- **期望事实**：Spring Boot 3.2 / Java 17 后端（100 文件 / 12,622 行）+ Vue3 + TS 前端（34 文件 / 11,076 行，21 视图三角色）+ Python YOLOv8 诊断服务 + MySQL 14 张表（platform_*），Controller 49 接口。
+- **期望事实**：Spring Boot 3.2 / Java 17 后端（100 文件 / 12,622 行）+ Vue3 + TS 前端（34 文件 / 11,076 行，22 业务页面三角色）+ Python YOLOv8 诊断服务 + MySQL 14 张表（platform_*），Controller 49 接口。
 - **溯源**：CORPUS `litchi.md`「规模与实现」/ content.py litchi chunk。
 - **判定要点**：命中 Spring Boot + Vue3 + YOLOv8 + MySQL 主体 ✅；说成 FastAPI/React 主栈 ❌（那是 jianli）。
 
@@ -181,7 +181,7 @@
 ## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-31 · 泰益智的 84 例评测怎么分类？
-- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20（10 正常问答 + 10 注入）/ device_control 20（10 审批通过 + 5 未审批 + 5 模拟超时）/ algorithm_optimization 9（5 优化 + 4 隐私拒绝）/ sleep_report 5 / sleep_improvement 5 / voice_companion 5；曾因继承 `AGENT_MODEL_PROVIDER=openai_compatible` 只过 67/84，评测入口钉死 deterministic provider（不读环境变量）后 84/84，17 条失败刻意保留当漂移证据。
+- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20（10 正常问答 + 10 注入）/ device_control 20（10 审批通过 + 5 未审批 + 5 模拟超时）/ algorithm_optimization 9（5 优化 + 4 隐私拒绝）/ sleep_report 5 / sleep_improvement 5 / voice_companion 5；曾因继承 `AGENT_MODEL_PROVIDER=openai_compatible` 只过 67/84，评测入口钉死 deterministic provider（不读环境变量）后 84/84，17 条失败刻意保留当漂移证据；RC 阶段压测吞吐提升 393.9%（近 4 倍）、P95 延迟由 1.35s 压降至 229ms，封装 6 个受治理工具及 15 个 Agent REST API。
 - **溯源**：CORPUS `taiyizhi.md`「评测细分与漂移记录」。
 - **判定要点**：命中 7 类细分或 67/84 漂移与钉死 ✅；说"没有细分/没有漂移"❌。
 

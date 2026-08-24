@@ -184,7 +184,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
           '检索 纯向量 → 混合（向量 top10 + BM25 top10 → RRF 融合 top6）：代价是分块 500/50 + bm25.py + RRF 实现；成果小语料 top-6 全召回、对退化鲁棒',
           '拒答 无阈值 → 双层门槛（kb_min_score=0.47 + CJK 停用词）：代价是校准（边界仅差 0.001，一次失败重写）；成果越界题拦截率 0% → 100%（REJECT 10/10）',
           '隐私护栏（TASK-AIQA-PRIVACY-GUARD-012）：对住址 / 工资 / 身份证 / 私生活 / 生日等 PII 意图，用正则在检索前直接拒答，独立于分数门禁，从源头拦截隐私类提问',
-          'Agent 工具化：search_knowledge 白名单只读工具，模型 function calling 自主生成检索词，决策链 SSE 帧可见；无 SQL 执行路径、预约 / 写入端点绝不注册为工具',
+          'Agent 工具化：search_knowledge 白名单只读工具 + list/cancel/reschedule 三个 RBAC 守卫的预约管理工具（面试官仅本人、owner 可管理全部），模型 function calling 自主决策；MAX_STEPS=4 防死循环，决策链 SSE 帧可见；5 种异常优雅映射为结构化 outcome',
           '诚实踩坑：最早无拒答评测时“拒答率 0%”看似正常；把 REJECT 10/10 加进基线后首次跑 10 题全答——P1 缺陷被量化暴露，加 0.47 门槛后归零。坑是评测抓出的，不是用户',
         ],
       },
@@ -196,7 +196,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
           '误拒率 0/N：范围内正常问法零误拒（新增 FALSE_REJECT 对抗集，与 REJECT 成对构成完整混淆矩阵）',
           '事实一致率：实测 38/38 = 100%（严格口径，2026-08-18 实跑 scripts/measure_fact_consistency.py 可复跑；FQ-01~38 同源评测集：简历 11 + jianli 16 + litchi 4 + sleep 3 + 行为动机竞赛 4），误拒 0 题、零编造，SLO ≥ 94% 达成',
           '选型理由：DeepSeek-V4-Flash（成本实测 ¥0.001–0.002/轮），网关默认 Stub 兜底、真模型惰性接入；embedding 本地哈希→BGE-M3（1024 维，纯向量 avg-rank 1.8→1.3）',
-          'AI 问答域真实 PG/Redis 集成 14 passed（迁移 5 + 会话 5 + 知识库 4）；ruff/mypy 门禁全绿；冻结 69 TC 覆盖 R1–R26 / 33 接口',
+          'AI 问答域真实 PG/Redis 集成 14 passed（迁移 5 + 会话 5 + 知识库 4）；Agent 自主预约管理 28KB 测试覆盖创建/改期/取消/越权/乐观锁全路径；ruff/mypy 门禁全绿；冻结 69 TC 覆盖 R1–R26 / 33 接口',
           '如果重来：会先建对抗评测集再写答案；事实卡每轮重锚比调参更治本',
         ],
       },
@@ -221,7 +221,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
         title: '架构与选型', mark: '02',
         summary: '5 微服务 + 9 层 AI 能力矩阵；LangGraph 编排 + local/Temporal 双协调器；流式数据平台与四端形态全打通。',
         points: [
-          '主导整体架构：5 个微服务 + 9 层 AI 能力矩阵；NestJS 控制面 115 个 REST 接口 / 35 张表 / 2.3 万行 TypeScript',
+          '主导整体架构：5 个微服务 + 9 层 AI 能力矩阵；NestJS 控制面 115 个 REST 接口 / 35 张表 / 2.3 万行 TypeScript；封装 6 个受治理工具及 15 个 Agent REST API（FastAPI + LangGraph + K8s）',
           'Agent 运行时：LangGraph 状态图（route→policy→finalize），编排层做 local/Temporal 双协调器（AGENT_COORDINATOR + AGENT_STATE_BACKEND 双开关切换）',
           '自研 RAG：pgvector 余弦距离算子（<=>）检索，引用防篡改、无证据拒答、多租户知识隔离（图关系走关系表、向量用 pgvector，不用图数据库/Milvus）',
           '流式数据平台：EMQX → Kafka → Flink → ClickHouse → dbt，端到端去重 / 落库 / 特征；四层去重（Kafka 分区 + 幂等键 → Worker 缓存 + 查重 → rebalance 强校验 → 数仓精确去重）',
@@ -241,7 +241,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
       },
       {
         title: '工程化与证据', mark: '04',
-        summary: '84 例确定性评测 + 故障注入 + 数仓去重，全部可复现；失败记录刻意保留当漂移证据。',
+        summary: 'RC 阶段压测吞吐提升 393.9%（近 4 倍）、P95 1.35s→229ms；84 例确定性评测 + 故障注入 + 数仓去重，全部可复现；失败记录刻意保留当漂移证据。',
         points: [
           '84 例评测 100%：按 type 分 7 类（sleep_analysis 20 / knowledge_answer 20 / device_control 20 / algorithm_optimization 9 / sleep_report 5 / sleep_improvement 5 / voice_companion 5）',
           '安全：审批绕过率 0%（5 例未授权设备控制全停 waiting_approval + 10 例注入无写工具）；10 例 Prompt 注入 0 越权写；4 例隐私测试 0 泄露（原始雷达样本在调用任何工具前直接拒）',
@@ -271,7 +271,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
         title: '架构与选型', mark: '02',
         summary: '一人独立 8 模块；Spring Boot 3.2 后端 + Vue3 前端 + YOLOv8 诊断 + Milvus/Neo4j 双路检索。',
         points: [
-          '8 模块：backend（Spring Boot 3.2 / Java 17，100 文件 / 12,622 行）+ frontend（Vue3 + TS，34 文件 / 11,076 行，21 个页面视图按农户/门店/技术员三角色）+ diagnosis-service（Python YOLOv8，592 行）+ data-platform / observability / deploy-helm / benchmarks / datasets',
+          '8 模块：backend（Spring Boot 3.2 / Java 17，100 文件 / 12,622 行）+ frontend（Vue3 + TS，34 文件 / 11,076 行，22 个业务页面按农户/门店/技术员三角色）+ diagnosis-service（Python YOLOv8，592 行）+ data-platform / observability / deploy-helm / benchmarks / datasets',
           '存储：MySQL 14 张表（platform_* 系列按业务域统一命名）+ Controller 49 个接口；查询型二级索引（idx_platform_*）',
           '检索：Milvus（collection litchi_knowledge，1024 维哈希向量，COSINE）+ Neo4j 图谱（品种/病害/虫害/药剂/栽培技术实体及关系）双路融合；ChatService 向量召回 top4 + 图谱查询合并进 prompt',
           '语料：农业农村部/省厅/地标/高校 19 篇权威资料 + 30 个 raw 文件清洗后 29 篇 md；图谱 9 实体 / 8 关系；评测集 60 条（30 RAG + 20 Agent + 10 安全）',
@@ -294,7 +294,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
         summary: '90.4 分背后的工程闭环与诚实局限：评测门禁 + 降级链 + 压测未达标如实保留。',
         points: [
           '评测：60 条任务集（RAG / Agent / 安全三类）由 evaluate_agent.py 校验并接入 CI 做回归门禁；k6 压测脚本阈值 p95<12s、成功率>99.5%',
-          'YOLOv8 诊断三级降级链：yolo → dataset-vision → demo-rule，权重缺失/推理失败时逐级兜底不中断（训练自 380 张小数据集，top1 43.75% → 93.75%）',
+          'YOLOv8 诊断三级降级链：yolo → dataset-vision → demo-rule，权重缺失/推理失败时逐级兜底不中断（病害识别准确率由 20% 提升至 93.75%，top1 43.75% → 微调 93.75%）；Chat P95 由 5s 降至 124ms（约 1/50），50 并发成功率 100%',
           '诚实局限：并发压测 200 并发仅 19% 成功、P95 15.18s——修复旧接口路径/PowerShell 5 兼容/外部依赖重复探测/对象级同步（CopyOnWriteArrayList）后仍不达标，按时间边界停止调优、原始报告如实保留',
           '诚实局限：Agent 运行用单表 JSON 快照 + 内存回退（未拆 step/审批独立表、无法跨实例恢复）；混合检索 BM25+RRF 与模型 rerank 为未完成项；数据平台（Kafka CDC/ClickHouse/Helm）为可部署模板未生产验证',
           '对比叙事：与泰益智（云资源 pgvector + BGE-M3 + DeepSeek）对照——展示的是"不同约束下做不同取舍"，不是只会一种方案',

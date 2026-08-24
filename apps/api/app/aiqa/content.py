@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 # Single, explicit updated_at so the public API is stable and cacheable.
-_UPDATED_AT = datetime(2026, 8, 1, 0, 0, tzinfo=UTC)
+_UPDATED_AT = datetime(2026, 8, 24, 0, 0, tzinfo=UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,19 +55,25 @@ def build_pages() -> dict[str, PageContentData]:
         },
         {
             "heading": "教育背景",
-            "body": "计算机科学与技术本科，主修分布式系统、数据库与软件工程。",
+            "body": (
+                "[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业，2026 届本科，"
+                "中共党员，专业排名 3/153（前 2%）。"
+            ),
         },
         {
             "heading": "工作经历",
             "body": (
-                "曾负责预约与协作类系统的后端架构，落地过插槽快照、实时刷新与幂等写入；"
-                "也做过内容问答与检索相关功能。偏好先设计后编码，重视可观测与可演进。"
+                "在泰益智医疗科技主导睡眠健康 AI Agent 平台（FastAPI + LangGraph + K8s），"
+                "把 Agent 长任务失序、循环失控压到 RC 阶段吞吐 +393.9%、P95 延迟 1.35s→229ms；"
+                "独立开发荔枝农技 AI Agent 协同平台（毕设，90.4 分）与本项目 jianli"
+                "（AI Agent 问答与面试预约系统）。偏好先设计后编码，重视可观测与可演进。"
             ),
         },
         {
             "heading": "技术栈",
             "body": (
-                "Python / FastAPI、PostgreSQL、Redis、TypeScript、React；熟悉 RAG 与人格层问答。"
+                "Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React；"
+                "K8s / ArgoCD / LangGraph；熟悉 RAG 与人格层问答、受约束的 AI Agent 编排。"
             ),
         },
     ]
@@ -75,15 +81,25 @@ def build_pages() -> dict[str, PageContentData]:
         "简历",
         [
             "我叫[姓名已脱敏]，[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业"
-            "（国家一流专业建设点）2026 届本科毕业生，中共党员，专业排名 3/153，GPA 3.38/4.0。",
-            "我在泰益智医疗科技（广州）有限公司实习 7 个月，岗位 AI 全栈开发工程师 / "
-            "技术负责人，主导智能睡眠监测台灯（Sleep AIoT）从 IoT 原型升级为以 LLM "
-            "Agent 为核心的 AI Native 平台；落地 5 微服务 + 9 层 AI 能力矩阵，"
-            "84 例工程评测 100% 通过、审批绕过率 0%。",
+            "2026 届本科毕业生，中共党员，专业排名 3/153（前 2%）。",
+            "我在泰益智医疗科技（广州）有限公司实习（2025.12—2026.06），岗位 AI 全栈开发工程师，"
+            "主导睡眠健康 AI Agent 平台（FastAPI + LangGraph + K8s）：解决 Agent 长任务失序、"
+            "循环失控问题，RC 阶段压测吞吐提升 393.9%（近 4 倍），P95 延迟由 1.35s 压降至 229ms；"
+            "封装 6 个受治理工具及 15 个 Agent REST API，基于 pgvector RAG、ClickHouse 特征服务"
+            "与 Tool Calling 打通「数据检索—模型推理—设备执行—结果回传」业务闭环。",
+            "我建立 L0—L4 风险治理与 Human-in-the-loop 高风险审批机制，落地 Prompt Injection 检测、"
+            "工具白名单、参数边界、租户隔离及设备二次确认；建设覆盖正确性、引用、拒答、工具选择、"
+            "越权、健康合规、延迟和成本的 8 维评测基线（84 条回归用例 + 120 条红队用例），"
+            "设备写操作恶意绕过 0 次。",
             "我的毕业设计是《基于大模型 RAG 的荔枝智能问答平台设计与实现》"
-            "（2026 届优秀毕业设计，得分 90.4）。",
-            "技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React；"
-            "熟悉 RAG 与人格层问答、受约束的 AI Agent 编排，用过 Kafka / Flink / ClickHouse 数据平台。",
+            "（2026 届优秀毕业设计，得分 90.4），独立开发荔枝农技 AI Agent 协同平台"
+            "（Spring Boot 3.2 + Vue3 + TypeScript，22 个业务页面，Docker Compose 编排 9 服务并"
+            " Helm 化 K8s 部署）；基于 Milvus + Neo4j 双路 RAG 与 YOLOv8 三级诊断，"
+            "病害识别准确率由 20% 提升至 93.75%，Chat P95 由 5s 降至 124ms"
+            "（约 1/50），50 并发成功率 100%。",
+            "技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React、K8s / ArgoCD /"
+            "LangGraph；熟悉 RAG 与人格层问答、受约束的 AI Agent 编排（工具白名单 + RBAC + 预算熔断"
+            "+ HITL 审批），用过 Kafka / Flink / ClickHouse 数据平台。",
             "我偏好先设计后编码，重视可观测性、可演进性与契约测试。",
             "我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约。",
             "我曾负责预约与协作类系统的后端架构，落地过插槽快照、实时刷新与幂等写入；"
@@ -97,20 +113,21 @@ def build_pages() -> dict[str, PageContentData]:
             "面向个人求职的作品集站点：公开 RAG 问答（基于本人资料、越界拒答、决策链 "
             "SSE 可见）、第一人称人格层、动态面试表实时刷新、对话式面试预约代理。核心"
             "约束是面试场景真实性优先，绝不编造经历。技术栈 FastAPI + PostgreSQL"
-            "(pgvector) + Redis + React + DeepSeek + BGE-M3。"
+            "(pgvector) + Redis + React 19 + DeepSeek + BGE-M3。"
         ),
     }
     projects_sleep: dict[str, object] = {
         "heading": "睡眠分析（sleep202603_an）",
-        "body": "一个睡眠数据可视化与分析原型，负责数据采集管道与前端看板。",
+        "body": "泰益智睡眠健康 AI Agent 平台：FastAPI + LangGraph + K8s，"
+        "RC 阶段吞吐 +393.9%、P95 1.35s→229ms。",
     }
     projects_litchi: dict[str, object] = {
         "heading": "荔枝问答平台（litchi，毕设）",
         "body": (
             "2026 届优秀毕业设计（90.4 分）：基于大模型 RAG 的荔枝智能问答平台，"
-            "一人独立完成 8 个模块（Spring Boot 3.2 后端 / Vue3 前端 / YOLOv8 诊断 / "
-            "数据平台 / 可观测 / Helm 部署 / 评测 / 语料）；四段受控 Agent + Milvus/Neo4j "
-            "双路检索 + 本地 Ollama 小模型，60 条评测集门禁。"
+            "一人独立完成（Spring Boot 3.2 后端 / Vue3 前端 / YOLOv8 诊断 / 数据平台 / "
+            "可观测 / Helm 部署 / 评测 / 语料）；Milvus + Neo4j 双路检索 + 本地 Ollama 小模型，"
+            "22 个业务页面，50 并发成功率 100%。"
         ),
     }
     projects_sections: list[dict[str, object]] = [projects_jianli, projects_sleep, projects_litchi]
@@ -125,7 +142,7 @@ def build_pages() -> dict[str, PageContentData]:
                 ),
                 (
                     "jianli 技术栈：FastAPI + SQLAlchemy + Alembic（0001-0007 迁移共 15 张表，"
-                    "up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7 + React 19/Vite 8 "
+                    "up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7 + React 19/Vite "
                     "+ TypeScript；LLM 用 DeepSeek V4 Flash（chat），embedding 用硅基流动 "
                     "BGE-M3（1024 维）。"
                 ),
@@ -143,7 +160,10 @@ def build_pages() -> dict[str, PageContentData]:
                     "jianli Agent 工具化：search_knowledge 注册为白名单只读工具，模型通过 "
                     "function calling 自主决策是否检索并生成检索词（tool_choice=auto）；决策"
                     "链经 SSE answer.tool_calls 帧可观测；双路召回（模型 query + 原问题对照）"
-                    "防次优改写丢证据；预约/写入/管理端点绝不注册为模型工具。"
+                    "防次优改写丢证据。预约域开放 list_my_appointments / cancel_appointment / "
+                    "reschedule_appointment 三个 RBAC 守卫的预约管理工具（面试官仅本人、"
+                    "owner_admin 可管理全部含他人），MAX_STEPS=4 防死循环，5 种异常优雅映射"
+                    "为结构化 outcome，28KB 测试覆盖全路径。"
                 ),
                 (
                     "jianli 评测闭环：tests/aiqa/test_rag_eval.py 基于真实语料（10 篇上传→"
@@ -165,10 +185,16 @@ def build_pages() -> dict[str, PageContentData]:
         *_chunk(
             "sleep202603_an",
             [
-                "sleep202603_an（泰益智智能睡眠监测台灯）是我实习主导的 AI 睡眠健康 Agent 平台："
-                "非接触毫米波雷达无感监测 + 智能照明 + 健康辅助，5 微服务 + 9 层 AI 能力矩阵，"
-                "LangGraph Agent + local/Temporal 双协调器，84 例确定性评测 100%，"
-                "四端形态（Taro 小程序 16 页 / Web / Android Capacitor 壳 / ESP32-S3 固件）。",
+                "sleep202603_an（泰益智睡眠健康 AI Agent 平台）是我实习主导的 AI 睡眠健康 "
+                "Agent 平台（FastAPI + LangGraph + K8s）：解决 Agent 长任务失序、循环失控问题，"
+                "RC 阶段压测吞吐提升 393.9%（近 4 倍），P95 延迟由 1.35s 压降至 229ms；"
+                "封装 6 个受治理工具及 15 个 Agent REST API，基于 pgvector RAG、ClickHouse "
+                "特征服务与 Tool Calling 打通「数据检索—模型推理—设备执行—结果回传」业务闭环。",
+                "sleep202603_an 安全与质量：建立 L0—L4 风险治理与 Human-in-the-loop 高风险审批，"
+                "落地 Prompt Injection 检测、工具白名单、参数边界、租户隔离及设备二次确认；"
+                "8 维评测基线（84 条回归用例 + 120 条红队用例），设备写操作恶意绕过 0 次；"
+                "全栈贯通 Taro/React 小程序、React 运营台、NestJS 业务后端、FastAPI Agent 服务"
+                "及 K8s/ArgoCD 部署链路。",
             ],
         ),
         *_chunk(
@@ -176,21 +202,24 @@ def build_pages() -> dict[str, PageContentData]:
             [
                 (
                     "litchi 荔枝问答平台是我的 2026 届优秀毕业设计（90.4 分）：《基于大模型 RAG 的"
-                    "荔枝智能问答平台设计与实现》，一人独立完成 8 个模块（Spring Boot 3.2 后端 / "
-                    "Vue3 前端 / YOLOv8 诊断服务 / 数据平台 / 可观测 / Helm 部署 / 评测 / 语料）。"
+                    "荔枝智能问答平台设计与实现》，一人独立完成（Spring Boot 3.2 后端 / "
+                    "Vue3 前端 / YOLOv8 诊断服务 / 数据平台 / 可观测 / Helm 部署 / 评测 / 语料），"
+                    "22 个业务页面，Docker Compose 编排 9 服务并 Helm 化 K8s 部署。"
                 ),
                 (
-                    "litchi 技术要点：Planner/Guard/Executor/Synthesizer 四段受控 Agent"
-                    "（AgentService.java 实现），Milvus 哈希向量 + Neo4j 图谱双路检索，本地 Ollama "
-                    "qwen2.5:0.5b（无 GPU 笔记本可演示）；诚实局限：并发压测 200 并发仅 19% 达标、"
-                    "混合检索 BM25+RRF 未完成、数据平台为可部署模板未生产验证。"
+                    "litchi 技术要点：受控 Agent（5 类 Tool、7 状态、4 步边界、写操作强审批），"
+                    "Milvus + Neo4j 双路 RAG（6 类文档摄入 / 480 字符分块 / 1024 维向量）与 "
+                    "YOLOv8 三级诊断，病害识别准确率由 20% 提升至 93.75%；Chat P95 由 5s 降至 "
+                    "124ms（约 1/50），50 并发成功率 100%；本地 Ollama qwen2.5:0.5b"
+                    "（无 GPU 笔记本可演示）。"
                 ),
                 (
                     "litchi 论文版（毕设论文真源，90.4 分）：系统为「荔枝智能问答与协同诊断平台」，"
                     "五层架构（Vue3 表现层 / Nginx+Spring Boot 接入层 / Spring Boot 3.2 业务层 / "
                     "AI 服务层 / MySQL+Neo4j+Milvus 数据层，Docker Compose 10 服务）；RAG 链路 = "
                     "查询→向量+图谱并行检索→候选筛选→Qwen2.5:0.5b 生成→证据约束与降级"
-                    "（分块 480/120）；病害识别 = YOLOv8 + 标签映射 + 三级降级（yolo→dataset-vision→"
+                    "（分块 480/120）；病害识别 = YOLOv8 + 标签映射 + 三级降级"
+                    "（yolo→dataset-vision→"
                     "demo-rule）；四大亮点 = 双增强架构 / 三级降级 / 多角色闭环 / 可进化评测；"
                     "验证报告 = 30 分钟稳定性 119 轮全成功 + 50 并发问答全成功。"
                 ),
@@ -206,9 +235,9 @@ def build_pages() -> dict[str, PageContentData]:
             updated_at=_UPDATED_AT,
             chunks=resume_chunks,
             recommendations=[
-                "你最擅长的技术方向是什么？",
-                "你做过哪些高并发相关的系统？",
-                "你为什么强调先设计后编码？",
+                "你的实习做了哪些 AI Agent 平台相关的工作？",
+                "你最骄傲的一个性能优化结果是什么？",
+                "你独立做的毕业设计是什么？",
             ],
         ),
         "projects": PageContentData(
@@ -219,7 +248,7 @@ def build_pages() -> dict[str, PageContentData]:
             chunks=projects_chunks,
             recommendations=[
                 "介绍一下 jianli 这个项目的技术选型。",
-                "sleep202603_an 解决了什么问题？",
+                "sleep202603_an 的吞吐和延迟优化做到了什么程度？",
                 "荔枝问答平台（litchi）这个项目是做什么的？",
                 "你在项目里最得意的一个设计决策是什么？",
             ],
@@ -234,7 +263,7 @@ def build_resume_facts_card() -> str:
     """Hard, always-injected resume facts for the digital-twin voice.
 
     These are verbatim anchors distilled from the ``resume`` page chunks
-    (R0–R4 + the R5 digital-twin chunk added by TASK-AIQA-GROUNDING-001 + the
+    (R0-R6 + the R5 digital-twin chunk added by TASK-AIQA-GROUNDING-001 + the
     R6 工作经历 chunk added by TASK-AIQA-FACTCOVERAGE-013).
     They are injected into the *system* prompt (higher weight than the
     retrieved 【已知资料】 block) and pinned with a "use verbatim" constraint,
@@ -248,21 +277,27 @@ def build_resume_facts_card() -> str:
         "【硬性事实卡·简历】(以下事实优先级最高，回答对应主题时必须逐字使用，"
         "不得自行归纳或替换)\n"
         "- 姓名：[姓名已脱敏]（我叫[姓名已脱敏]）\n"
-        "- 学历：[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业"
-        "（国家一流专业建设点），2026 届本科，中共党员，专业排名 3/153，GPA 3.38/4.0\n"
-        "- 实习：泰益智医疗科技（广州）有限公司，7 个月，AI 全栈开发工程师 / 技术负责人，"
-        "主导智能睡眠监测台灯（Sleep AIoT）从 IoT 原型升级为以 LLM Agent 为核心的 AI Native 平台\n"
+        "- 学历：[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业，"
+        "2026 届本科，中共党员，专业排名 3/153（前 2%）\n"
+        "- 实习：泰益智医疗科技（广州）有限公司（2025.12—2026.06），AI 全栈开发工程师，"
+        "主导睡眠健康 AI Agent 平台（FastAPI + LangGraph + K8s）；RC 阶段压测吞吐提升 "
+        "393.9%（近 4 倍），P95 延迟由 1.35s 压降至 229ms；封装 6 个受治理工具及 "
+        "15 个 Agent REST API\n"
         "- 工作经历：曾负责预约与协作类系统的后端架构，落地插槽快照、实时刷新与幂等写入；"
         "也做过内容问答与检索相关功能\n"
-        "- 最骄傲的项目：AI 睡眠健康 Agent 平台——84 例工程评测 100% 通过、工具选择准确率 100%、"
-        "审批绕过率 0%、10 例 Prompt 注入 0 越权写、4 例隐私测试 0 泄露\n"
-        "- 毕业设计：2026 届优秀毕业设计（得分 90.4）《基于大模型 RAG 的荔枝智能问答平台设计与实现》\n"
+        "- 最骄傲的项目：睡眠健康 AI Agent 平台——建立 L0—L4 风险治理与 Human-in-the-loop "
+        "审批，8 维评测基线（84 条回归 + 120 条红队），设备写操作恶意绕过 0 次\n"
+        "- 毕业设计：2026 届优秀毕业设计（得分 90.4）"
+        "《基于大模型 RAG 的荔枝智能问答平台设计与实现》\n"
         "- 技术方向：后端与平台方向工程师，关注高并发服务、数据建模与开发者体验\n"
         "- 工程方法论：我偏好先设计后编码\n"
         "- 最看重的工程品质：重视可观测性、可演进性与契约测试\n"
-        "- 技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React\n"
+        "- 技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React、"
+        "K8s / ArgoCD / LangGraph\n"
         "- 熟悉的 AI 技术：RAG 与人格层问答、受策略/审批/持久化约束的 AI Agent 编排；"
         "Kafka / Flink / ClickHouse 数据平台\n"
+        "- 荣誉：2025 年国家励志奖学金、2024 年大创国家级立项（第一负责人）、"
+        "2024 挑战杯 A 类赛事路演资格、2022—2026 校级奖学金、2026 年优秀毕业生\n"
         "- 求职意向：AI 全栈开发工程师，意向深圳市南山区\n"
         "- 站点本质：我做的这个站点是我本人的数字分身，用来回答关于我经历的问题，并承接面试预约"
     )

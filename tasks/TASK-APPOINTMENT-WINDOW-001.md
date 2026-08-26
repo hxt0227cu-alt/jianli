@@ -1,6 +1,6 @@
 # TASK-APPOINTMENT-WINDOW-001 过期预约完成与三自然周日历实现
 
-> 状态：In Progress；依据已批准 `TASK-CR-APPOINTMENT-WINDOW-001`。
+> 状态：Closed（2026-08-26，verified_commit=`bf82960`）；依据已批准 `TASK-CR-APPOINTMENT-WINDOW-001` 与 `TASK-CR-APPOINTMENT-COMPLETION-SYNC-001`。
 
 ## 任务类型
 - implementation
@@ -98,18 +98,18 @@
 - 遵循 `AGENTS.md §2`；冻结 TC 失败、超预算或需新增未批准字段/API/依赖立即停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
-- DB 迁移验证：待执行 0010 up/down/up
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
+- commit / PR：`bf82960`
+- 修改文件清单：`apps/api/app/appointments/{lifecycle.py,materialize_slots.py,router.py,service.py}`、`apps/api/app/notifications/worker.py`、`apps/api/migrations/versions/0010_appointment_completed_event.py`、`apps/api/tests/{appointments/test_booking.py,migrations/test_outbox_audit_schema.py,test_feishu.py,test_worker.py}`、`apps/web/{appointment.css,main.tsx,my-appointments.tsx}`、`tests/web-shell/shell.test.ts`、本任务单
+- 测试命令及结果：真实 PG/Redis 预约+物化+飞书+迁移 22 passed；Worker+飞书回归 10 passed；Vitest 1 passed；前端 typecheck/build passed
+- lint / typecheck：`ruff check .` All checks passed；`mypy app` 48 source files / 0 error；`npm run typecheck` passed
+- DB 迁移验证：0010 在独立库 `up → down 0009 → up` 通过；迁移验收含降至 0002 再升 head 通过；开发库已 upgrade head
+- 验收证据：开发库集合式收敛 2 条过期预约；QQ 账号 8 月 24 日预约为 completed 且 completed_at=end_at；2 条完成事件真实飞书多维表格同步均 succeeded、0 failed；完成事件无 email/IM；Chrome 2560px 实测步骤区宽 2268px、标题 15px、说明 12px
+- 变更预算实际值：15 files / 438 insertions / 38 deletions（max_files 18，未超预算）
+- 未解决风险：浏览器当前站点会话未登录，管理员登录后的人工视觉走查留给用户本地验收；后端 RBAC、管理端数据源、15 日网格与精确 override 已由自动化覆盖
 - 是否偏离 TASK：否
 - 规范影响结论：updated（CR 已批准）
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`bf82960`
 
 ## 关联
 - Change Request：`TASK-CR-APPOINTMENT-WINDOW-001`

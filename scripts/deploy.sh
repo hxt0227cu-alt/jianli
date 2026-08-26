@@ -8,21 +8,25 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+mkdir -p deploy/runtime deploy/certbot/conf deploy/certbot/www
+if [ ! -s deploy/runtime/default.conf ]; then
+  cp deploy/nginx.conf deploy/runtime/default.conf
+fi
+
 echo ">> 1/4 Validate compose file"
 docker compose -f docker-compose.prod.yml config > /dev/null
 
 echo ">> 2/4 Build images"
 docker compose -f docker-compose.prod.yml build
 
-echo ">> 3/4 Start stack"
+echo ">> 3/4 Run migrations and start stack"
 docker compose -f docker-compose.prod.yml up -d
 
 echo ">> 4/4 Health check"
-sleep 5
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps --wait --wait-timeout 120
 
 echo ""
 echo "== Done =="
-echo "  HTTP site:   http://<server-ip>  (HTTPS after certbot + domain config)"
+echo "  HTTP site:   http://<server-ip>  (bootstrap mode)"
 echo "  HTTPS certs: ./deploy/certbot-init.sh <your-domain>"
 echo "  Logs:        docker compose -f docker-compose.prod.yml logs -f api worker"

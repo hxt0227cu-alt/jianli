@@ -34,10 +34,21 @@ services:
       timeout: 3s
       retries: 20
 
+  migrate:
+    build: ./apps/api
+    restart: "no"
+    env_file: ${JIANLI_ENV_FILE:-.env}
+    environment:
+      JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build: ./apps/api
     restart: always
-    env_file: .env
+    env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
       JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
       JIANLI_REDIS_URL: redis://redis:6379/0
@@ -47,17 +58,23 @@ services:
       - jianli_knowledge:/srv/jianli/var/knowledge
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     expose:
       - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/pages/resume/recommendations', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   worker:
     build: ./apps/api
     restart: always
-    env_file: .env
+    env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
       JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
       JIANLI_REDIS_URL: redis://redis:6379/0
@@ -66,10 +83,16 @@ services:
       - jianli_knowledge:/srv/jianli/var/knowledge
     command: ["python", "-m", "app.worker"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib,sys; sys.exit(0 if b'app.worker' in pathlib.Path('/proc/1/cmdline').read_bytes() else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 10s
 
   nginx:
     image: nginx:1.27-alpine
@@ -79,11 +102,24 @@ services:
       - "443:443"
     volumes:
       - ./dist:/usr/share/nginx/html:ro
-      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/runtime:/etc/nginx/conf.d:ro
       - ./deploy/certbot/conf:/etc/letsencrypt:ro
       - ./deploy/certbot/www:/var/www/certbot:ro
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/nginx-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  certbot:
+    image: certbot/certbot:v3.2.0
+    profiles: ["tools"]
+    volumes:
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
 
 volumes:
   jianli_pgdata:

@@ -31,6 +31,7 @@
 
 - **TASK-GOV-AIQA-TYPE-AUTH-E2E-001**：**Closed（2026-08-26，verified_commit=`142d680`）**——全量 `mypy app` 已恢复为 46 source files / 0 error；AIQA DB-free 回归 62 passed，认证真栈在隔离 `jianli_auth_001_db` + Redis DB 15 上迁移至 0008 后 17 passed / 0 skipped。纯类型修复最终净差异 5 changed lines，无行为/API/DB/依赖/Prompt/工具权限变化，工作区其他未提交功能改动未纳入提交。
 - **TASK-DEPLOY-HARDEN-002**：**Implemented / Awaiting container smoke（2026-08-26）**——已修复根路径 API 反代、SSE buffering、首次无证书 HTTP 启动、compose Certbot 服务、migration-first 启动依赖及 API/Worker/Nginx 探活；Compose 渲染、Shell 语法和 Nginx 静态覆盖检查通过。本机未缓存 Nginx/Certbot 镜像，遵照用户要求未联网拉取；待本地演示首次拉镜像后补 `nginx -t`/容器 healthy 证据再关闭。
+- **TASK-ADMIN-QA-BUGFIX-001**：**Implemented / Awaiting real-stack rerun（2026-08-26）**——修复既有 admin cockpit 查询误用 `conversation_id`（真实 schema 为 `conv_id`）以及 app factory 未挂载 engine；新增 owner/interviewer RBAC + 对话列表/详情/统计真实栈测试。Ruff 与全量 mypy 通过；当前 WSL localhost 转发异常导致 Redis `127.0.0.1:63790` 超时，按用户网络止损要求停止，待环境恢复后复跑 1 个验收用例。
 - **TASK-AUTH-EMAIL-DELIVERY-001**：**Closed（2026-08-26，verified_commit=`537fbbf`）**——已隔离 local/test console 验证码通道与 production SMTP：生产禁止 console、SMTP 不完整时 Auth runtime fail closed、发送失败日志不含验证码/邮箱/正文/异常文本。任务范围 27 个测试通过（另 6 个缺少专用 PG/Redis 的既有集成测试按门禁跳过），ruff 与任务范围 mypy 通过；真实 163→QQ SMTP 冒烟已在 Chrome 收件箱确认送达。无 API/DB/依赖变化。
 - **TASK-GOV-BASELINE-PRD-001**：**Closed（2026-08-26，verified_commit=`a9526b5`）**——纯治理元数据校正：`docs/baseline.yml` 的 PRD 当前版本由过期的 2.3.3 对齐至已批准 PRD 正文及 SRS v1.4 `based_on` 所引用的 2.3.4；无规范正文、代码、API、DB 或依赖变化。字符串一致性断言与 `git diff --check` 通过，spec_sync=clean；继续 `TASK-AUTH-EMAIL-DELIVERY-001`。
 

@@ -173,7 +173,7 @@ def create_admin_router(
             rows = connection.execute(
                 text(
                     "SELECT c.id, c.user_id, u.email, c.created_at, c.updated_at, "
-                    "(SELECT COUNT(*) FROM conversation_messages WHERE conversation_id = c.id) AS message_count "  # noqa: E501
+                    "(SELECT COUNT(*) FROM conversation_messages WHERE conv_id = c.id) AS message_count "  # noqa: E501
                     "FROM conversations c JOIN users u ON u.id = c.user_id "
                     "ORDER BY c.updated_at DESC LIMIT 100"
                 )
@@ -200,7 +200,7 @@ def create_admin_router(
             rows = connection.execute(
                 text(
                     "SELECT id, role, content, is_offtopic, created_at "
-                    "FROM conversation_messages WHERE conversation_id = :cid ORDER BY created_at"
+                    "FROM conversation_messages WHERE conv_id = :cid ORDER BY created_at"
                 ),
                 {"cid": conversation_id},
             ).mappings().all()

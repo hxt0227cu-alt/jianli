@@ -92,6 +92,7 @@ def create_app(
     appointments = booking_runtime
     if runtime is not None:
         app.state.auth_runtime = runtime
+        app.state.engine = runtime.engine  # admin cockpit dependency
         app.include_router(create_auth_router(runtime))
         appointments = booking_runtime or (
             build_booking_runtime(config, runtime) if config.booking_configured else None

@@ -1,16 +1,18 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.6.0
+  version: 0.7.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
-    Approved contract based on SRS 1.4, domain-model 1.1.6, architecture 0.2
+    Approved contract based on SRS 1.6, domain-model 1.1.7, architecture 0.2
     and security 0.1. Implementation remains gated by the development_gate.
     v0.4 (TASK-CR-VERIFY-CODE-001): verifyEmail / confirmPasswordReset change
     from opaque link token to 6-digit verification code.
     v0.5 records the existing owner-only QA cockpit operations and objective
     grounded/citation/latency observations; no rule-based quality score.
     v0.6 adds enumeration-safe registration verification-code resend.
+    v0.7 expands getSlotSnapshot week_offset to 0/1/2 for the approved
+    15-day window spanning the remainder of the current week and two following weeks.
 servers:
   - url: /api/v1
 security: []
@@ -274,7 +276,7 @@ paths:
       parameters:
         - name: week_offset
           in: query
-          schema: { type: integer, enum: [0, 1], default: 0 }
+          schema: { type: integer, enum: [0, 1, 2], default: 0 }
         - name: watermark
           in: query
           schema: { type: integer, minimum: 0 }
@@ -282,7 +284,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '200':
-          description: Two-week slot snapshot with privacy-safe ownership
+          description: Natural-week slot snapshot with privacy-safe ownership; callers combine offsets 0/1/2 and crop to the approved 15-day window
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SlotSnapshot' }

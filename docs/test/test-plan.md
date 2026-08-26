@@ -1,6 +1,6 @@
-# 测试计划 v0.3（approved）
+# 测试计划 v0.4（approved）
 
-> based_on：SRS 1.5 / domain-model 1.1.6 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.6（均 approved）。TC 总数仍为 69；TASK-CR-AUTH-RESEND-001 在既有 TC-AUTH-001/006 中增加注册验证码安全重发断言，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
+> based_on：SRS 1.6 / domain-model 1.1.7 / UI 1.0.1 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.7（均 approved）。TC 总数为 71；新增 TC-UI-006 与 TC-APT-012，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
 
 ## 1. 证据等级与门禁
 
@@ -24,6 +24,7 @@
 | TC-UI-003 | R1/R6 | 页面二展示 jianli 与 sleep 两项目，动效不阻断阅读，证据标签区分本地/模拟/未验证 |
 | TC-UI-004 | R16 | 他人红格只显示“已预约/不可约”，DOM、网络响应和可访问名称均无 PII |
 | TC-UI-005 | UI U3/U7 | 7×25 网格；选择连续三格后冲突校验通过直接进入二次确认 |
+| TC-UI-006 | UI U3/A4 | 预约/改期加载 offset 0/1/2 并裁剪为明天起 15 日；无历史日期；预约页铺满主内容区且关键日历文字≥12px；admin 可按精确 Slot 时间段设置不可约并在同一窗口生效 |
 
 ### 2.2 RAG、Persona 与会话
 
@@ -67,6 +68,7 @@
 | TC-APT-009 | arch §4.7 | 同一 Override 并发 UPDATE/DELETE 串行化并重读真实 old_range |
 | TC-APT-010 | arch §4.7 | Override 与改期/取消同范围由 Slot 锁串行化；booked 保持 booked |
 | TC-APT-011 | SRS 1.3 | 不存在 Override 返回 OVERRIDE_NOT_FOUND；范围零命中返回 OVERRIDE_RANGE_EMPTY，均回滚 |
+| TC-APT-012 | SRS 1.6 | `end_at <= now()` 的 active 预约被幂等自动置 completed 且 completed_at=end_at；不再触发 DUP_ACCOUNT/DUP_COMPANY；未过期预约保持 active；不发送取消通知 |
 
 ### 2.5 SSE
 

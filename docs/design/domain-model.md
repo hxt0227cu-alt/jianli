@@ -1,4 +1,4 @@
-# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.6
+# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.7
 
 > 本文档是《需求文档 v2.3.3》与《用例规约 v1.7.2》之后的分析设计工件，属"分析/设计"阶段产物。
 > 用途：冻结数据库边界与领域实体关系，作为《接口契约》《测试计划》与架构设计的前置输入。
@@ -9,6 +9,7 @@
 > **v1.1.5 整改（TASK-DM-003 review 草案，2026-08-08）**：修复 `NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」的实现阻塞——新增 `delivery_purpose` 枚举列（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），唯一约束由 `(event_id, channel, event_version, attempt_no)` 调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`；**事件类型继续表达业务事实**，投递目的表达该事实产生的**投递意图**，不得重新引入 `confirm_mail` 业务事件类型。本版**不改**密码哈希冲突升级条款（沿用 v1.1.4）。v1.1.4 已于 `f537296` 正式批准（历史事实保留，不予否认），其内容由本 v1.1.5 review 草案取代；下游 SRS v1.1 / UI v1.0 / architecture v0.2 的影响分析见 TASK-DM-003，**待用户批准 v1.1.5 后再同步下游，本草案不修改下游工件**。
 > **v1.1.5 补正（本次内容评审包）**：① 面试官收件人来源由错误虚构的 `Appointment.interview_id → Interview.interviewer_id → InterviewerProfile.registered_email` 修正为既有 `Appointment.user_id → User.id → User.email`（删除不存在的 `Interview` 实体引用与 `InterviewerProfile.registered_email` 字段）；② `OwnerContactConfig` 新增 `candidate_feishu_open_id_ciphertext` 字段（候选人飞书接收标识，原本无领域字段，作为**显式领域模型变更**列出，沿用已批准 AES 密文模式）；③ 候选人邮箱来源指向 `owner_admin` 的 `User.email`，但模型当前**无单 owner 唯一性约束、亦无显式配置关系**——**Stop & Report 触发**，未假设，留待用户裁定（方案 A：`User` 上 `WHERE role='owner_admin'` 部分唯一索引；方案 B：单例 `SiteConfig.owner_user_id`）；④ 补全事件类型→投递目的完整映射与「`appointment_cancelled` 同事件多目的并发投递」说明，明确面试官改期确认函 / 会议号更新函 / 面试官主动取消告知函均属 approved SRS v1.1 MVP 行为、非未来扩展。**（续）用户已裁定方案 A**：MVP 为单候选人个人站点、不引入 `SiteConfig`；新增部分唯一索引 `uq_active_owner_admin`（见 §6.1，强制至多一个未删除 owner_admin），确立三条运行不变量（恰一活跃 owner_admin / 缺失时 `candidate_notification` 失败告警不得任选 / `OwnerContactConfig.user_id` 必指该 owner_admin），`candidate_notification` 收件人解析链路固定为 `活跃 owner_admin User → User.email → 同 user_id OwnerContactConfig → candidate_phone_ciphertext / candidate_feishu_open_id_ciphertext`；并修正 `User.email` 安全表述（既有的账号邮箱字段、非 AES 密文、由访问控制保护，不得称"密文存取"），`candidate_feishu_open_id_ciphertext` 继续保持 AES 密文。
 > **v1.1.6（TASK-CR-ADMIN-QA-OBSERVABILITY-001，2026-08-26 approved）**：`Message` 新增三个 nullable 客观观测字段：`grounded`、`citations_count`、`latency_ms`。历史消息保持 null；非负计数/耗时由 CHECK 约束。明确不存储规则硬编码的 `quality_score`，回答质量需由独立评测集或经批准的 judge 流程产生，不得以“是否拒答”等规则冒充质量结论。
+> **v1.1.7（TASK-CR-APPOINTMENT-WINDOW-001，2026-08-26 approved）**：不新增实体/字段/枚举；明确 `Appointment.end_at <= now()` 时由维护流程或预约域访问路径幂等执行 `active → completed`，`completed_at=end_at`，使部分唯一索引只约束仍有效预约。
 
 ---
 
@@ -412,7 +413,7 @@ erDiagram
 | 状态机 | 枚举 | 持久化 | 关键不变量 |
 |--------|------|--------|-----------|
 | **SlotStatus**（时段） | `available` / `booked` / `owner_locked` / `unavailable` | `AppointmentSlot.status` | 🟨 黄格**不属此枚举**（前端 Session 态）；`unavailable`=系统规则（周末/节假日/用餐），可由 `AvailabilityOverride(action=force_unavailable)` 修正；`force_available` 可把系统判为不可约的某天强制设为可约；`owner_locked`=owner 主动锁定（含 owner 强制取消） |
-| **AppointmentStatus**（预约） | `active` / `cancelled` / `completed` | `Appointment.status` | 提交即 `active`；改期 `active→active`（原子事务）；无 `pending`/`draft`；`cancelled`/`completed` 仅置位时间字段 |
+| **AppointmentStatus**（预约） | `active` / `cancelled` / `completed` | `Appointment.status` | 提交即 `active`；改期 `active→active`（原子事务）；`end_at <= now()` 后幂等 `active→completed` 且 `completed_at=end_at`；无 `pending`/`draft`；`cancelled`/`completed` 仅置位时间字段 |
 | **DeliveryStatus**（通知投递，通道无关） | `queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter` | `NotificationDelivery.status` | 独立于预约；手动重发=**新建 `NotificationDelivery` 尝试记录**（`attempt_no`+1）；邮件 `bounced` 与飞书 `response_code` 仅存 `channel_metadata` JSONB 分支，不混入通用枚举 |
 
 > **NotificationEvent 生命周期（P0-6）**：`status` = `pending` → `processing` → `processed`（终态）；异常 `failed`（进入 Delivery 重试/死信）；**改期/取消时**：未执行的 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`），改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件。事件类型仅表达**业务事实**：`appointment_created` / `appointment_details_updated` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`；具体用哪个模板/通道由消费者与通道适配器决定，**不允许 `appointment_created` 与 `confirm_mail` 重复投递**（已移除 `confirm_mail` 类型）。**投递意图由 `NotificationDelivery.delivery_purpose` 表达**（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），与事件类型解耦；同一业务事件可针对不同目的产生不同 `NotificationDelivery` 行（例：`appointment_created` → 对候选人 `candidate_notification` + 对面试官 `interviewer_confirmation`，二者通道/收件人不同、独立记录尝试/状态/退信/重试/手动重发）。
@@ -496,6 +497,8 @@ CREATE UNIQUE INDEX uq_exception_open
   WHERE consumed_at IS NULL;
 ```
 > 预约创建时若命中 `DUP_COMPANY`：在事务内以行锁读取 `CompanyBookingException`（`consumed_at IS NULL AND revoked_at IS NULL AND expires_at > now()`，fingerprint 与 interviewer 匹配）；命中则在同一事务写入 `dedupe_exception_id` 并置 `consumed_at`、创建 `Appointment`（受 `uq_appointment_exception` 约束，防并发重复消费）；`uq_active_user` 在任何情况下都强制「一人一个 active 预约」。
+
+> **过期完成不变量**：预约域维护流程以及会触发 active 唯一约束的写路径，必须先以集合更新幂等完成 `status='active' AND end_at <= now()` 的预约；完成仅更新预约状态与 `completed_at=end_at`，历史 Slot 绑定保留作审计，不发送取消通知。
 
 ### 6.7 AppointmentSlot（P0-2）
 | id UUID PK | start_at / end_at timestamptz NOT NULL（带日期与时区） | status enum NOT NULL SlotStatus | appointment_id UUID FK→Appointment NULL（唯一占用真相源） | version int NOT NULL 乐观锁 |

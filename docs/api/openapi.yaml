@@ -1,13 +1,15 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.4.0
+  version: 0.5.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
-    Approved contract based on SRS 1.4, domain-model 1.1.5, architecture 0.2
+    Approved contract based on SRS 1.4, domain-model 1.1.6, architecture 0.2
     and security 0.1. Implementation remains gated by the development_gate.
     v0.4 (TASK-CR-VERIFY-CODE-001): verifyEmail / confirmPasswordReset change
     from opaque link token to 6-digit verification code.
+    v0.5 records the existing owner-only QA cockpit operations and objective
+    grounded/citation/latency observations; no rule-based quality score.
 servers:
   - url: /api/v1
 security: []
@@ -393,6 +395,53 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '204': { description: Cancelled; slot status rematerialized }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/conversations:
+    get:
+      tags: [Admin]
+      summary: List interviewer conversations for owner review
+      operationId: adminListConversations
+      security: [{ cookieSession: [] }]
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: Owner-only conversation list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConversationList' }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/conversations/{conversation_id}/messages:
+    get:
+      tags: [Admin]
+      summary: List messages and objective answer observations
+      operationId: adminListConversationMessages
+      security: [{ cookieSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/ConversationId'
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: Owner-only message history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMessageList' }
+        default: { $ref: '#/components/responses/Error' }
+  /admin/aiqa-stats:
+    get:
+      tags: [Admin]
+      summary: Get aggregate AI QA usage and objective observations
+      operationId: getAIQAStats
+      security: [{ cookieSession: [] }]
+      responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '200':
+          description: Owner-only aggregate statistics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AIQAStats' }
         default: { $ref: '#/components/responses/Error' }
   /admin/appointments:
     get:
@@ -828,6 +877,69 @@ components:
         content: { type: string }
         is_offtopic: { type: boolean }
         created_at: { type: string, format: date-time }
+    AdminConversation:
+      type: object
+      required: [id, user_id, user_email, created_at, updated_at, message_count]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        user_email: { type: string, format: email }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        message_count: { type: integer, minimum: 0 }
+    AdminConversationList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminConversation' } }
+    AdminMessage:
+      allOf:
+        - $ref: '#/components/schemas/Message'
+        - type: object
+          properties:
+            grounded: { type: [boolean, 'null'] }
+            citations_count: { type: [integer, 'null'], minimum: 0 }
+            latency_ms: { type: [integer, 'null'], minimum: 0 }
+    AdminMessageList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminMessage' } }
+    AIQAStats:
+      type: object
+      required: [totals, by_user, recent_7d]
+      properties:
+        totals:
+          type: object
+          required: [total_conversations, total_messages, user_messages, assistant_messages, offtopic_messages, offtopic_rate, active_users, observed_answers, grounded_messages, grounded_rate]
+          properties:
+            total_conversations: { type: integer, minimum: 0 }
+            total_messages: { type: integer, minimum: 0 }
+            user_messages: { type: integer, minimum: 0 }
+            assistant_messages: { type: integer, minimum: 0 }
+            offtopic_messages: { type: integer, minimum: 0 }
+            offtopic_rate: { type: number, minimum: 0, maximum: 1 }
+            active_users: { type: integer, minimum: 0 }
+            observed_answers: { type: integer, minimum: 0 }
+            grounded_messages: { type: integer, minimum: 0 }
+            grounded_rate: { type: number, minimum: 0, maximum: 1 }
+            avg_latency_ms: { type: [number, 'null'], minimum: 0 }
+        by_user:
+          type: array
+          items:
+            type: object
+            required: [email, conversation_count]
+            properties:
+              email: { type: string, format: email }
+              conversation_count: { type: integer, minimum: 0 }
+        recent_7d:
+          type: array
+          items:
+            type: object
+            required: [day, message_count]
+            properties:
+              day: { type: string, format: date }
+              message_count: { type: integer, minimum: 0 }
     RegisterRequest:
       type: object
       required: [email, password]

@@ -1,7 +1,7 @@
 # 软件需求规格（SRS）v1.4 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
 > **文档状态**：v1.4 · `status = approved`（用户于 2026-08-18 批准 TASK-CR-VERIFY-CODE-001 范围 B：注册验证与密码找回统一为 6 位数字验证码；v1.3 于 `71d7861` 批准的历史快照保留不重写）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.4 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / AI 治理 1.0.1。v1.4 由 TASK-CR-VERIFY-CODE-001 修订：注册邮箱验证与密码找回由链接 token 统一为 6 位数字验证码（对齐 PRD §5/§8.6 与 UI 线框 U5/U6 既有规格），并新增 `INVALID_VERIFY_CODE` 错误语义，现为行为唯一源。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.4 / 用例规约 v1.7.2 / 领域模型 **v1.1.6** / AI 治理 1.0.1。domain-model 1.1.6 只增加管理端问答的客观观测字段，不改变 SRS 行为，影响评审结论为文字同步；v1.4 行为版本保持 approved。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）为 SRS 边界，正文仅可引用、不可扩展。（注：「禁止 LLM 自动写预约」原 PRD §8.4#14 已据 `TASK-CR-AIQA-BOOKING-001` 经用户显式批准推翻，现以 `baseline.yml` `agent_tools` 白名单（RBAC 守卫的 `request_interview_booking` 等）为唯一边界，见 §2.4。）
@@ -11,7 +11,7 @@
 ## 1. 引言
 
 ### 1.1 目的与范围
-本文档吸收已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.5），现为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
+本文档吸收已批准的 PRD（业务需求 R1–R26）、用例规约（UC-01–UC-23）与领域模型（v1.1.6），现为**行为唯一源（behavioral SSOT）**：明确各功能域的系统行为、外部接口行为、异常与错误码、状态行为与权限行为、非功能量化阈值与验收判定。业务动机见 PRD，实体字段与存储策略见领域模型，二者本文不重复维护。
 **状态机所有权迁移（ownership transition）**：状态行为（SlotStatus / AppointmentStatus / DeliveryStatus / NotificationEvent 生命周期）现归属 SRS behavioral SSOT，PRD §8.10 保留业务意图历史、不再作为实现阶段状态机的直接 Owner；用例规约同步冻结（见 §1.2）。
 
 ### 1.2 定义、首字母缩写、缩略语
@@ -22,7 +22,7 @@
 ### 1.3 参考文档
 - PRD v2.3.3（`docs/requirements/PRD.md`）
 - 用例规约 v1.7.2（`docs/requirements/use-cases.md`）
-- 领域模型 v1.1.5（`docs/design/domain-model.md`）
+- 领域模型 v1.1.6（`docs/design/domain-model.md`）
 - AI 治理约束（`AGENTS.md` §9 事实来源路由与 Review/Audit Mode）
 - 分析设计基线（`docs/baseline.yml`，唯一规范源）
 

@@ -1,4 +1,4 @@
-# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.5
+# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.6
 
 > 本文档是《需求文档 v2.3.3》与《用例规约 v1.7.2》之后的分析设计工件，属"分析/设计"阶段产物。
 > 用途：冻结数据库边界与领域实体关系，作为《接口契约》《测试计划》与架构设计的前置输入。
@@ -8,6 +8,7 @@
 > **v1.1.4 整改（TASK-DM-002 独立修正，2026-08-08）**：**密码哈希算法彻底中性化**——领域模型**仅规定 `password_hash` 存储密码哈希（不存明文），不预选任何具体哈希算法**；算法裁定权归《安全设计》ADR。落点 4 处：§1 存储策略、§2.3 类图 `User`、§4 ER 图 `USER`、§6.1 字段表（原 Argon2id 实现指向全部清除）。同时新增**冲突升级条款**：若《安全设计》ADR **拟选算法**与 PRD §8.7 记载的 BCrypt 不一致，**必须先通过变更请求（Change Request）更新并批准所有受影响的规范（至少含 PRD §8.7 与 SRS 相关条款），规范同步完成并获批准前不得按该 ADR 实现**；不得允许 ADR 与规范长期冲突并存。本版不改领域实体 / 属性 / 关系 / 状态机 / 不变量 / 并发约束；对 SRS 存在**文字同步级**影响（SRS §6.3 现称「领域模型 §6.1 记为 Argon2id」已过期），须由 TASK-SRS-001 在 v1.1.4 获批后执行 impact review（结论不得记为 none）。
 > **v1.1.5 整改（TASK-DM-003 review 草案，2026-08-08）**：修复 `NotificationDelivery` 无法表达「同一业务事件、同一通道、多种投递目的」的实现阻塞——新增 `delivery_purpose` 枚举列（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），唯一约束由 `(event_id, channel, event_version, attempt_no)` 调整为 `(event_id, delivery_purpose, channel, event_version, attempt_no)`；**事件类型继续表达业务事实**，投递目的表达该事实产生的**投递意图**，不得重新引入 `confirm_mail` 业务事件类型。本版**不改**密码哈希冲突升级条款（沿用 v1.1.4）。v1.1.4 已于 `f537296` 正式批准（历史事实保留，不予否认），其内容由本 v1.1.5 review 草案取代；下游 SRS v1.1 / UI v1.0 / architecture v0.2 的影响分析见 TASK-DM-003，**待用户批准 v1.1.5 后再同步下游，本草案不修改下游工件**。
 > **v1.1.5 补正（本次内容评审包）**：① 面试官收件人来源由错误虚构的 `Appointment.interview_id → Interview.interviewer_id → InterviewerProfile.registered_email` 修正为既有 `Appointment.user_id → User.id → User.email`（删除不存在的 `Interview` 实体引用与 `InterviewerProfile.registered_email` 字段）；② `OwnerContactConfig` 新增 `candidate_feishu_open_id_ciphertext` 字段（候选人飞书接收标识，原本无领域字段，作为**显式领域模型变更**列出，沿用已批准 AES 密文模式）；③ 候选人邮箱来源指向 `owner_admin` 的 `User.email`，但模型当前**无单 owner 唯一性约束、亦无显式配置关系**——**Stop & Report 触发**，未假设，留待用户裁定（方案 A：`User` 上 `WHERE role='owner_admin'` 部分唯一索引；方案 B：单例 `SiteConfig.owner_user_id`）；④ 补全事件类型→投递目的完整映射与「`appointment_cancelled` 同事件多目的并发投递」说明，明确面试官改期确认函 / 会议号更新函 / 面试官主动取消告知函均属 approved SRS v1.1 MVP 行为、非未来扩展。**（续）用户已裁定方案 A**：MVP 为单候选人个人站点、不引入 `SiteConfig`；新增部分唯一索引 `uq_active_owner_admin`（见 §6.1，强制至多一个未删除 owner_admin），确立三条运行不变量（恰一活跃 owner_admin / 缺失时 `candidate_notification` 失败告警不得任选 / `OwnerContactConfig.user_id` 必指该 owner_admin），`candidate_notification` 收件人解析链路固定为 `活跃 owner_admin User → User.email → 同 user_id OwnerContactConfig → candidate_phone_ciphertext / candidate_feishu_open_id_ciphertext`；并修正 `User.email` 安全表述（既有的账号邮箱字段、非 AES 密文、由访问控制保护，不得称"密文存取"），`candidate_feishu_open_id_ciphertext` 继续保持 AES 密文。
+> **v1.1.6（TASK-CR-ADMIN-QA-OBSERVABILITY-001，2026-08-26 approved）**：`Message` 新增三个 nullable 客观观测字段：`grounded`、`citations_count`、`latency_ms`。历史消息保持 null；非负计数/耗时由 CHECK 约束。明确不存储规则硬编码的 `quality_score`，回答质量需由独立评测集或经批准的 judge 流程产生，不得以“是否拒答”等规则冒充质量结论。
 
 ---
 
@@ -224,6 +225,9 @@ classDiagram
         +role enum[user,assistant]
         +content text
         +is_offtopic bool
+        +grounded bool NULL
+        +citations_count int NULL
+        +latency_ms int NULL
         +created_at timestamptz
     }
     class KnowledgeDocument {
@@ -562,7 +566,9 @@ CREATE UNIQUE INDEX uq_delivery_attempt
 
 ### 6.13 Conversation / Message（含留存）
 | Conversation.id UUID PK | user_id FK→User | created_at / updated_at | deleted_at timestamptz NULL | purge_after timestamptz NULL（180 天） |
-| Message.id UUID PK | conv_id FK→Conversation | role enum(user/assistant) | content text | is_offtopic bool | created_at |
+| Message.id UUID PK | conv_id FK→Conversation | role enum(user/assistant) | content text | is_offtopic bool | grounded bool NULL | citations_count int NULL CHECK ≥0 | latency_ms int NULL CHECK ≥0 | created_at |
+
+> 三个观测字段只对 assistant 消息有业务含义；历史数据与 user 消息允许为 NULL。`grounded` 表示本次回答是否走有证据的 RAG 分支，`citations_count` 为实际返回引用数，`latency_ms` 为服务端从接收问题至 completed 的总耗时。禁止新增由固定规则直接计算的 `quality_score`：正确拒答不等于低质量，质量评价必须来自独立评测证据。
 
 ### 6.14 KnowledgeDocument / KnowledgeIndexVersion（P1-3）
 | KnowledgeDocument.id UUID PK | name | type enum(md/pdf/docx/txt) | size int | content_checksum string（SHA-256 解析文本，相同文件去重） | storage_key string（对象存储路径） | status enum(indexing/indexed/failed) | parse_mode enum(text,ocr,native) NULL | failure_reason text NULL | retrieval_disabled_at timestamptz NULL（删除立即禁检索） | active_index_version_id UUID FK→KnowledgeIndexVersion NULL（当前服务索引） | version int | created_at |

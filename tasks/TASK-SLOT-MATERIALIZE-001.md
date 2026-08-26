@@ -70,19 +70,19 @@
 - 遵循 `AGENTS.md §2`。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`593e99e`
+- 修改文件清单：物化 CLI、2026 官方日历、真实测试、production compose、deploy 脚本、部署指南、本任务（7 文件）
+- 测试命令及结果：`test_slot_materializer.py` 真实 PostgreSQL 3 passed；compose config 与 `bash -n` passed
+- lint / typecheck：本任务 Python 文件 ruff passed；`mypy app` 47 source files / 0 error
 - DB 迁移验证：无迁移
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：3 周固定窗口生成 525 行；二次运行状态/version 完全一致；booked v7 与 owner_locked v9 保留；2026-09-20 调休可用、09-25 中秋假期与 12:00 用餐不可用；缺 2027 日历 fail closed
+- 变更预算实际值：7/8 文件；生产/基础设施新增 194 行、测试新增 132 行；未超预算
+- 未解决风险：每年国务院公布次年放假安排后须在滚动窗口跨年前补对应官方 JSON；这是显式 fail-closed 运维门禁
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 关闭门禁：未关闭
+- verified_commit：`593e99e`
+- 关闭门禁：Closed（四条件满足）
 
 ## 关联
 - 官方日历来源：国务院办公厅《国务院办公厅关于2026年部分节假日安排的通知》（国办发明电〔2025〕7号）

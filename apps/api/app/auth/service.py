@@ -212,6 +212,25 @@ class AuthService:
             "Check the 6-digit code in your email or request a new one",
         )
 
+    def resend_email_verification(self, email: str, ip: str) -> None:
+        """Replace an unverified account's code without revealing account state."""
+
+        self._rate_limiter.check_ip(ip)
+        self._rate_limiter.check_verify_code_send(email, ip, "verify")
+        user = self._repository.find_user_by_email(email)
+        if user is None or user["verified"]:
+            return
+        now = datetime.now(UTC)
+        code = self._tokens.generate_code()
+        self._repository.replace_verification_token(
+            uuid4(),
+            user["id"],
+            self._tokens.digest(code),
+            now + VERIFICATION_TTL,
+            now,
+        )
+        self._send_verification_email(email, code)
+
     def request_password_reset(self, email: str, ip: str) -> None:
         """Create a reset code and email it. Always returns (202); never reveals
         whether the email exists (anti-enumeration)."""

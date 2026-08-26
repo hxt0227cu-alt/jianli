@@ -144,6 +144,15 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
         runtime.service.verify_email(payload.code, ip)
 
     @router.post(
+        "/resend-verification", status_code=202, operation_id="resendEmailVerification"
+    )
+    def resend_email_verification(payload: EmailRequest, request: Request) -> None:
+        # Same empty 202 for unknown, verified and unverified accounts.
+        _require_same_origin(request, runtime)
+        ip = request.client.host if request.client else "unknown"
+        runtime.service.resend_email_verification(payload.email, ip)
+
+    @router.post(
         "/password-reset/request", status_code=202, operation_id="requestPasswordReset"
     )
     def request_password_reset(payload: EmailRequest, request: Request) -> None:

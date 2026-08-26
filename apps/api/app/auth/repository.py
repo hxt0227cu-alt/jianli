@@ -142,6 +142,37 @@ class AuthRepository:
                 },
             )
 
+    def replace_verification_token(
+        self,
+        token_id: UUID,
+        user_id: UUID,
+        token_hash: str,
+        expires_at: datetime,
+        now: datetime,
+    ) -> None:
+        """Invalidate every old unused registration code and insert its replacement."""
+
+        with self._engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE email_verification_tokens SET consumed_at=:now "
+                    "WHERE user_id=:user_id AND consumed_at IS NULL"
+                ),
+                {"user_id": user_id, "now": now},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO email_verification_tokens (id,user_id,token_hash,expires_at) "
+                    "VALUES (:id,:user_id,:token_hash,:expires_at)"
+                ),
+                {
+                    "id": token_id,
+                    "user_id": user_id,
+                    "token_hash": token_hash,
+                    "expires_at": expires_at,
+                },
+            )
+
     def find_verification_token(
         self, token_hash: str, now: datetime
     ) -> dict[str, Any] | None:

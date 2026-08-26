@@ -195,6 +195,70 @@ async def test_verify_email_consumes_code_and_is_idempotent(real_stack, monkeypa
 
 
 @pytest.mark.asyncio
+async def test_resend_verification_is_generic_and_invalidates_old_code(
+    real_stack, monkeypatch
+) -> None:
+    engine, redis_client, app, _ = real_stack
+    codes = iter(("111111", "222222", "333333"))
+    runtime = app.state.auth_runtime
+    monkeypatch.setattr(runtime.service._tokens, "generate_code", lambda: next(codes))
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
+        registered = await client.post(
+            "/auth/register",
+            headers={"Origin": ORIGIN},
+            json={"email": "resend@example.com", "password": "correct-horse"},
+        )
+        assert registered.status_code == 202
+        redis_client.flushdb()  # simulate the documented 60-second resend interval
+
+        resent = await client.post(
+            "/auth/resend-verification",
+            headers={"Origin": ORIGIN},
+            json={"email": "resend@example.com"},
+        )
+        assert resent.status_code == 202
+        assert resent.json() is None
+
+        old = await client.post(
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "111111"}
+        )
+        assert old.status_code == 422
+        assert old.json()["code"] == "INVALID_VERIFY_CODE"
+        new = await client.post(
+            "/auth/verify-email", headers={"Origin": ORIGIN}, json={"code": "222222"}
+        )
+        assert new.status_code == 204
+
+        redis_client.flushdb()
+        unknown = await client.post(
+            "/auth/resend-verification",
+            headers={"Origin": ORIGIN},
+            json={"email": "unknown@example.com"},
+        )
+        redis_client.flushdb()
+        verified = await client.post(
+            "/auth/resend-verification",
+            headers={"Origin": ORIGIN},
+            json={"email": "resend@example.com"},
+        )
+        assert unknown.status_code == verified.status_code == 202
+        assert unknown.content == verified.content == resent.content
+
+    user = _user_row(engine, "resend@example.com")
+    with engine.connect() as connection:
+        tokens = connection.execute(
+            text(
+                "SELECT consumed_at FROM email_verification_tokens "
+                "WHERE user_id=:user_id ORDER BY expires_at, id"
+            ),
+            {"user_id": user["id"]},
+        ).mappings().all()
+    assert len(tokens) == 2
+    assert all(token["consumed_at"] is not None for token in tokens)
+
+
+@pytest.mark.asyncio
 async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerate(
     real_stack, monkeypatch
 ) -> None:
@@ -286,14 +350,20 @@ async def test_password_reset_is_one_time_revokes_sessions_and_does_not_enumerat
 async def test_verify_code_issuance_and_attempt_throttling(real_stack) -> None:
     _, _, app, _ = real_stack
     async with AsyncClient(transport=ASGITransport(app=app), base_url=ORIGIN) as client:
-        # Registration sends one code; a second send for the same email is 409
-        # (DUPLICATE_EMAIL, checked before the 60s/1 send limit).
+        # Registration sends one code; resend shares the same 60s/1 issue limit.
         first = await client.post(
             "/auth/register",
             headers={"Origin": ORIGIN},
             json={"email": "throttle@example.com", "password": "correct-horse"},
         )
         assert first.status_code == 202
+        resend = await client.post(
+            "/auth/resend-verification",
+            headers={"Origin": ORIGIN},
+            json={"email": "throttle@example.com"},
+        )
+        assert resend.status_code == 429
+        assert resend.json()["code"] == "RATE_LIMITED"
         dup = await client.post(
             "/auth/register",
             headers={"Origin": ORIGIN},

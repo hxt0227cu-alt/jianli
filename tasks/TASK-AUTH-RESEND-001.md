@@ -64,19 +64,19 @@
 - 遵循 `AGENTS.md §2`；未列明 DB/API/依赖变化、冻结测试失败或超预算立即停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`ce608b4`
+- 修改文件清单：auth repository/router/service、真实生命周期测试、本任务（5 文件）
+- 测试命令及结果：真实 PG/Redis `test_account_lifecycle.py` 6 passed；DB-free `tests/auth` 16 passed / 7 env-skipped
+- lint / typecheck：本任务 Python 文件 ruff passed；`mypy app` 46 source files / 0 error
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：旧码返回 422 INVALID_VERIFY_CODE、新码 204；未知/已验证/未验证响应均 202 JSON null；注册后立即重发 429 RATE_LIMITED
+- 变更预算实际值：5/6 文件；生产新增 59 行、测试新增 72 行；未超预算
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：updated（上游 CR 已批准）
 - spec_sync：clean
-- verified_commit：待回填
-- 关闭门禁：未关闭
+- verified_commit：`ce608b4`
+- 关闭门禁：Closed（四条件满足）
 
 ## 关联
 - Change Request：TASK-CR-AUTH-RESEND-001（Approved / Closed，`06ebfd7`）

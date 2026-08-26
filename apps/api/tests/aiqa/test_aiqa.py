@@ -155,6 +155,16 @@ def test_stream_answer_offtopic_refusal(client: TestClient) -> None:
     assert OFFTOPIC_REPLY in delta_text
 
 
+def test_stream_answer_scattered_cjk_overlap_is_not_grounding(client: TestClient) -> None:
+    status, events = _answer_stream(
+        client, question="解释一下量子纠缠的原理", page_key="resume"
+    )
+    assert status == 200
+    completed = dict(events[-1][1])
+    assert completed["grounded"] is False
+    assert completed["offtopic"] is True
+
+
 def test_stream_answer_greeting(client: TestClient) -> None:
     status, events = _answer_stream(client, question="你好", page_key="resume")
     assert status == 200

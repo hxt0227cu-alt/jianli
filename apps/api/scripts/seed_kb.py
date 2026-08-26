@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: RUF002  # Chinese operator guide intentionally uses full-width punctuation.
 """Re-seed the LIVE knowledge base from the canonical CORPUS (test_rag_eval.py).
 
 修复版（TASK-AIQA-KB-EXPAND-014）：上轮（2026-08-18）因未加载 ``.env.local`` 误连空库、
@@ -32,11 +33,11 @@ from sqlalchemy import Engine, create_engine, text
 # Make ``app`` and ``tests`` importable (scripts/ lives under apps/api).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.auth.passwords import PasswordHasher  # noqa: E402
-from app.auth.runtime import AuthRuntime, build_auth_runtime  # noqa: E402
-from app.config import Settings  # noqa: E402
-from app.factory import create_app  # noqa: E402
-from tests.aiqa.test_rag_eval import CORPUS  # noqa: E402
+from app.auth.passwords import PasswordHasher
+from app.auth.runtime import build_auth_runtime
+from app.config import Settings
+from app.factory import create_app
+from tests.aiqa.test_rag_eval import CORPUS
 
 SEED_EMAIL = os.environ.get("JIANLI_SEED_ADMIN_EMAIL", "seed-kb@jianli.local")
 # Bare `KEY=value` (the .env.local format) with an optional `export ` prefix

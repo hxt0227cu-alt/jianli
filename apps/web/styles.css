@@ -89,3 +89,14 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .admin-msg-meta{display:flex;gap:10px;align-items:center;font-size:12px;color:#5e6f65}
 .admin-msg-meta b{color:#2c4a3a}
 .admin-msg pre{font-family:inherit;white-space:pre-wrap;word-break:break-word;margin:0;font-size:13px;color:#2c4a3a;line-height:1.6}
+.stage-progress{flex-wrap:wrap;row-gap:4px}
+.stage-progress button{flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:8px 4px 0}
+.app-shell.no-chat .desktop-app{grid-template-columns:232px minmax(0,1fr)}
+.rail-logout{border:0;background:none;color:#85958c;display:flex;align-items:center;gap:3px;padding:4px 6px;border-radius:5px;cursor:pointer;flex:none;font-size:11px;white-space:nowrap}
+.rail-logout:hover{background:#34443d;color:#ff8f8f}
+.pdf-viewer{position:relative;height:100%}
+.pdf-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#5f7268;background:#fbfcfb;font-size:13px;z-index:1;transition:opacity .2s}
+.pdf-loading.hidden{opacity:0;pointer-events:none}
+.account span:nth-child(2){min-width:0;overflow:hidden}
+.account b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.chat-panel>.chat-body{display:flex;flex-direction:column;align-items:stretch;align-content:start}

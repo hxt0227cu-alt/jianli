@@ -85,7 +85,9 @@ def outbox_engine() -> Iterator[Engine]:
 def clean_data(outbox_engine: Engine) -> Iterator[None]:
     yield
     with outbox_engine.begin() as connection:
-        connection.execute(text("TRUNCATE TABLE notification_events, audit_logs"))
+        connection.execute(
+            text("TRUNCATE TABLE notification_deliveries, notification_events, audit_logs")
+        )
 
 
 def _shape(engine: Engine, table: str) -> dict[str, tuple[str, bool]]:

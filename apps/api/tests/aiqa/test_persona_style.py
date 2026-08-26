@@ -17,26 +17,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # apps/api
 
-from app.aiqa.content import build_pages  # noqa: E402
-from app.aiqa.persona import STYLE_FEW_SHOT, _SYSTEM_PROMPT  # noqa: E402
-from tests.aiqa.test_rag_eval import CORPUS  # noqa: E402
+from app.aiqa.content import build_pages
+from app.aiqa.persona import _SYSTEM_PROMPT, STYLE_FEW_SHOT
+from tests.aiqa.test_rag_eval import CORPUS
 
 _CORPUS_TEXT = "\n".join(CORPUS.values())
 _STATIC_TEXT = "\n".join(c.text for page in build_pages().values() for c in page.chunks)
 _TRACEABLE = _CORPUS_TEXT + "\n" + _STATIC_TEXT
 
 _STYLE_KEYWORDS = [
-    "结论前置",
-    "客观陈述",
-    "知之为知之",
-    "分段表达",
+    "面对面交流",
+    "短句",
+    "客观、可核验",
+    "诚实透明",
+    "不得隐藏",
     "踩坑",
-    "取舍",
     "指标",
-    "约束条件",
-    "技术选型理由",
-    "做了什么",
-    "学到什么",
+    "选型理由",
+    "绝不编造",
+    "search_knowledge",
+    "预约白名单工具",
 ]
 
 _EMOTIONAL_NEGATIVES = [
@@ -78,5 +78,8 @@ def test_few_shot_conclusion_first() -> None:
 
 
 def test_few_shot_numbers_traceable() -> None:
-    for num in ["90.4", "0.47", "0.464", "119 轮", "56,289", "12.6", "84/84", "60 条", "50 并发", "19%"]:
+    numbers = [
+        "90.4", "0.47", "0.464", "119 轮", "56,289", "12.6", "84/84", "60 条", "50 并发", "19%"
+    ]
+    for num in numbers:
         assert num in _TRACEABLE, f"示例数字不可溯源（不在 CORPUS/content.py）: {num}"

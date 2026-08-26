@@ -6,7 +6,9 @@ const source = readFileSync(resolve(process.cwd(), 'apps/web/main.tsx'), 'utf8')
 describe('web shell acceptance surface', () => {
   it('keeps the three static destinations and evidence boundaries', () => {
     expect(source).toContain("'resume' | 'projects'");
-    expect(source).toContain('PDF 简历将在这里显示');
+    expect(source).toContain('<iframe className="resume-embed" src="/resume.pdf" title="简历 PDF"');
+    expect(source).toContain('正在加载简历…');
+    expect(source).not.toContain('PDF 简历将在这里显示');
     expect(source).toContain('登录并查看时段');
     expect(source).toContain('/slots/snapshot?week_offset=');
     expect(source).toContain('/appointment-confirmations');
@@ -40,5 +42,8 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('DashboardView');
     expect(source).toContain('工作台');
     expect(source).toContain('登录后显示历史对话');
+    expect(source).toContain("'/auth/resend-verification'");
+    expect(source).toContain("'/auth/logout'");
+    expect(source).toContain("'app-shell no-chat'");
   });
 });

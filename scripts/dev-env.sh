@@ -26,7 +26,7 @@ export JIANLI_FIELD_ENCRYPTION_CURRENT_KEY_ID='k1'
 export JIANLI_FIELD_ENCRYPTION_KEYS='{"k1":"$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')"}'
 export JIANLI_COMPANY_FINGERPRINT_HMAC_KEY='$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')'
 export JIANLI_APPOINTMENT_CONFIRMATION_HMAC_KEY='$(python3 -c 'import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())')'
-export JIANLI_ALLOWED_ORIGINS='http://localhost:5173'
+export JIANLI_ALLOWED_ORIGINS='http://localhost:5173,http://127.0.0.1:5173'
 export JIANLI_DATABASE_URL='postgresql+psycopg://jianli:jianli_local_only@127.0.0.1:55432/jianli_dev'
 export JIANLI_REDIS_URL='redis://127.0.0.1:63790/0'
 export JIANLI_KB_MIN_SCORE='0.47'
@@ -40,7 +40,9 @@ fi
 # 加载 .env.local（只设置未导出的变量，不覆盖已 export 的真实凭据）
 set -a
 # shellcheck disable=SC1090
-source "$ENV_FILE"
+# Windows editors may persist this gitignored file with CRLF. Strip the trailing
+# carriage return in-memory so WSL never appends `\r` to URLs, host names or secrets.
+source <(sed 's/\r$//' "$ENV_FILE")
 set +a
 
 echo "env ready: DB=${JIANLI_DATABASE_URL:-<missing>} SMTP_HOST=${JIANLI_SMTP_HOST:-<missing>} ENC=${JIANLI_FIELD_ENCRYPTION_KEYS:+set}"

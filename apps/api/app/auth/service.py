@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -27,6 +28,8 @@ VERIFICATION_TTL = timedelta(minutes=10)  # PRD §5: verification code valid 10 
 RESET_TTL = timedelta(minutes=10)         # PRD §5: same 10-min window for reset codes
 DEFAULT_ROLE: UserRole = "interviewer"
 SECURITY_LOGGER = logging.getLogger("jianli.security.auth")
+EMAIL_LOGGER = logging.getLogger("jianli.auth.email")
+EmailCodeSink = Callable[[str, str, str], None]
 
 
 def _log_account_failure(
@@ -62,12 +65,14 @@ class AuthService:
         tokens: SessionTokens,
         rate_limiter: LoginRateLimiter,
         email_sender: EmailSender | None = None,
+        email_code_sink: EmailCodeSink | None = None,
     ) -> None:
         self._repository = repository
         self._passwords = passwords
         self._tokens = tokens
         self._rate_limiter = rate_limiter
         self._email_sender = email_sender
+        self._email_code_sink = email_code_sink
 
     def login(
         self,
@@ -256,13 +261,32 @@ class AuthService:
         self._repository.revoke_all_sessions(row["user_id"], datetime.now(UTC))
 
     def _send_verification_email(self, email: str, code: str) -> None:
-        if self._email_sender is None:
-            return
         subject, body = render_verification_email(email, code)
-        self._email_sender.send(email, subject, body)
+        self._deliver_email_code(email, code, "verification", subject, body)
 
     def _send_reset_email(self, email: str, code: str) -> None:
-        if self._email_sender is None:
-            return
         subject, body = render_reset_email(email, code)
-        self._email_sender.send(email, subject, body)
+        self._deliver_email_code(email, code, "reset", subject, body)
+
+    def _deliver_email_code(
+        self,
+        recipient: str,
+        code: str,
+        kind: str,
+        subject: str,
+        body: str,
+    ) -> None:
+        if self._email_sender is not None:
+            try:
+                self._email_sender.send(recipient, subject, body)
+            except Exception as error:
+                # Do not log the exception text: SMTP errors may echo recipients,
+                # message bodies, credentials, or provider responses.
+                EMAIL_LOGGER.warning(
+                    "auth_email_delivery_failed kind=%s error_type=%s",
+                    kind,
+                    type(error).__name__,
+                )
+            return
+        if self._email_code_sink is not None:
+            self._email_code_sink(kind, recipient, code)

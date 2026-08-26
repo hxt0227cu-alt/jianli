@@ -29,6 +29,7 @@
 
 ## 当前任务
 
+- **TASK-AUTH-EMAIL-DELIVERY-001**：**In Progress（2026-08-26 用户显式授权）**——隔离本地/test console 验证码通道与 production SMTP；生产禁止 console、SMTP 不完整时 Auth runtime fail closed、发送失败日志不含验证码/邮箱/正文/异常文本。无 API/DB/依赖变化；真实 QQ/163 邮箱仅作最终冒烟，不进入自动化测试或仓库。
 - **TASK-GOV-BASELINE-PRD-001**：**Closed（2026-08-26，verified_commit=`a9526b5`）**——纯治理元数据校正：`docs/baseline.yml` 的 PRD 当前版本由过期的 2.3.3 对齐至已批准 PRD 正文及 SRS v1.4 `based_on` 所引用的 2.3.4；无规范正文、代码、API、DB 或依赖变化。字符串一致性断言与 `git diff --check` 通过，spec_sync=clean；继续 `TASK-AUTH-EMAIL-DELIVERY-001`。
 
 - **TASK-DM-001**：历史**已关闭**（对应 domain_model v1.1.3，批准锚点 `f64b6de`）。不重开；其成果由 v1.1.4 取代。

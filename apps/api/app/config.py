@@ -6,9 +6,10 @@ import os
 from collections.abc import Mapping
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+EmailMode = Literal["smtp", "console"]
 
 
 class Settings(BaseModel):
@@ -36,6 +37,9 @@ class Settings(BaseModel):
     smtp_user: str | None = None
     smtp_password: SecretStr | None = None
     smtp_from: str | None = None
+    # Email delivery mode: "smtp" (default) uses the configured SMTP channel;
+    # "console" is an explicit local/test-only terminal sink for verification codes.
+    email_mode: EmailMode = "smtp"
     # Feishu channel (R13/R14, TASK-FEISHU-001): tenant_access_token credentials +
     # the Bitable table that mirrors appointments. Runtime-only secrets, never in source.
     feishu_app_id: str | None = None
@@ -70,6 +74,15 @@ class Settings(BaseModel):
     # semantic embedding — the local hash embedding has no semantic meaning, so a
     # positive threshold would wrongly reject hit cases there.
     kb_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def validate_email_delivery_environment(self) -> Settings:
+        """Keep the plaintext console code sink out of deployed environments."""
+
+        environment = self.environment.strip().lower()
+        if self.email_mode == "console" and environment not in {"local", "test"}:
+            raise ValueError("console email mode is allowed only in local or test environments")
+        return self
 
     @property
     def auth_configured(self) -> bool:
@@ -145,6 +158,7 @@ class Settings(BaseModel):
             "smtp_user": "JIANLI_SMTP_USER",
             "smtp_password": "JIANLI_SMTP_PASSWORD",
             "smtp_from": "JIANLI_SMTP_FROM",
+            "email_mode": "JIANLI_EMAIL_MODE",
             "feishu_app_id": "JIANLI_FEISHU_APP_ID",
             "feishu_app_secret": "JIANLI_FEISHU_APP_SECRET",
             "feishu_bitable_base_token": "JIANLI_FEISHU_BITABLE_BASE_TOKEN",

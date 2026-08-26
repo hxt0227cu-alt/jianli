@@ -15,14 +15,14 @@ artifacts:
   use_cases:        { version: "1.7.2", status: approved }  # 第六轮复评 + 收尾补丁通过（P0-1~P0-3/P0-7 + UC-23 + 治理微补丁）
   domain_model:     { version: "1.1.6", status: approved }  # 用户于 2026-08-26 批准 TASK-ADMIN-QA-OBSERVABILITY-001：Message 增 grounded/citations_count/latency_ms 三个 nullable 客观观测字段；明确禁止主观硬编码 quality_score。v1.1.5 历史批准事实保留。
   srs:
-    version: "1.4"
-    status: approved                                              # 用户于 2026-08-18 批准 TASK-CR-VERIFY-CODE-001（范围 B）：注册验证与密码找回统一为 6 位数字验证码 + 新增 INVALID_VERIFY_CODE(422)；v1.3 于 71d7861 approved 的历史快照保留（v1.3=认证错误契约 INVALID_CREDENTIALS + INVALID_REQUEST）
+    version: "1.5"
+    status: approved                                              # 用户于 2026-08-26 批准 TASK-CR-AUTH-RESEND-001：注册验证码安全重发恒 202、复用限频、旧码失效；v1.4 历史批准事实保留。
     based_on: { prd: "2.3.4", use_cases: "1.7.2", domain_model: "1.1.6" }  # TASK-CR-ADMIN-QA-OBSERVABILITY-001 影响评审：仅新增物理观测字段，SRS 行为不变；based_on 文字同步后 clean。
   ui_wireframe:     { version: "1.0",   status: approved }   # 阶段 1 设计工件；UI 线框 v1.0 经用户 2026-08-08 独立评审批准（approval_commit=38b102a91b3d8f0447de36791e67ae342be9e1f4）；TASK-UI-002/TASK-UI-003 内容修正均已闭合；precedence 现以 approved 的 v1.0 为准
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: approved }  # 用户于 2026-08-10 明确批准 security v0.1；批准锚点为本状态推进提交；BCrypt/会话/Redis/IMAP/AES-GCM 等方案开始约束实现
-  openapi:          { version: "0.5",   status: approved }  # 用户于 2026-08-26 批准管理端问答观测：登记三项既有 admin operation 与 grounded/citations_count/latency_ms 客观响应字段；无 quality_score。
-  test_plan:        { version: "0.2",   status: approved }  # 用户于 2026-08-11 批准同步；approval_commit=71d7861；69 个 TC 总数不变，仅收紧 TC-AUTH-002/004 错误契约断言
+  openapi:          { version: "0.6",   status: approved }  # 用户于 2026-08-26 批准 resendEmailVerification；恒 202 防枚举、429 限频，复用 EmailRequest。
+  test_plan:        { version: "0.3",   status: approved }  # 69 个 TC 总数不变；TC-AUTH-001/006 增注册验证码安全重发断言。
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── AIQA agent 工具注册（TASK-AIQA-BOOKING-001；2026-08-20 经 TASK-CR-AIQA-BOOKING-001 批准推翻 PRD 决策#14 对该功能的禁止）──

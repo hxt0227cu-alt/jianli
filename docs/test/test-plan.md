@@ -1,6 +1,6 @@
-# 测试计划 v0.2（approved）
+# 测试计划 v0.3（approved）
 
-> based_on：SRS 1.3 / domain-model 1.1.5 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.2（均 approved）。TC 总数仍为 69；本次只收紧 TC-AUTH-002/004 的错误契约断言，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
+> based_on：SRS 1.5 / domain-model 1.1.6 / UI 1.0 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.6（均 approved）。TC 总数仍为 69；TASK-CR-AUTH-RESEND-001 在既有 TC-AUTH-001/006 中增加注册验证码安全重发断言，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
 
 ## 1. 证据等级与门禁
 
@@ -43,12 +43,12 @@
 
 | TC | 覆盖 | 验收 |
 |---|---|---|
-| TC-AUTH-001 | R9/R20 | 注册只创建 interviewer；验证 token 10 分钟、单次消费 |
+| TC-AUTH-001 | R9/R20 | 注册只创建 interviewer；验证码 10 分钟、单次消费；重发恒 202 防枚举，有效重发使所有旧未消费注册码失效且仅新码可用 |
 | TC-AUTH-002 | R9 | 密码登录成功；验证码不能用于登录；账号不存在与错误密码均返回同码同文案的 401 `INVALID_CREDENTIALS` |
 | TC-AUTH-003 | R19 | 普通会话 12h、remember_me 14d；Cookie Secure/HttpOnly/SameSite=Lax |
 | TC-AUTH-004 | security §2 | BCrypt 10/72-byte 边界；73 bytes 返回 422 `INVALID_REQUEST` Problem 且不回显输入、不静默截断；dummy hash 降低账号枚举 |
 | TC-AUTH-005 | R20 | 密码重置后所有 AuthSession 被吊销，旧 Cookie 返回 AUTH_EXPIRED |
-| TC-AUTH-006 | SRS §5.6 | 注册/验证码/登录/预约/重发/问答/SSE 各阈值独立，超限统一 RATE_LIMITED + Retry-After |
+| TC-AUTH-006 | SRS §5.6 | 注册与注册验证码重发共享发码限频；登录/预约/通知重发/问答/SSE 各阈值独立，超限统一 RATE_LIMITED + Retry-After |
 | TC-AUTH-007 | security §3 | Redis 故障时敏感写 fail closed；公开静态页继续；不以进程内计数冒充正式限频 |
 | TC-AUTH-008 | security §2 | 写请求缺失/错误 CSRF 或非同源 Origin 被拒；CORS 不允许通配凭证 |
 
@@ -147,7 +147,7 @@
 | listRecommendedQuestions | TC-AI-006 |
 | streamAnswer | TC-AI-002 / TC-AI-003 / TC-AI-009 |
 | listConversations / createConversation / listConversationMessages | TC-AI-007 / TC-SEC-005 |
-| registerInterviewer / verifyEmail | TC-AUTH-001 |
+| registerInterviewer / verifyEmail / resendEmailVerification | TC-AUTH-001 / TC-AUTH-006 |
 | login / logout / getCurrentUser | TC-AUTH-002 / TC-AUTH-003 / TC-AUTH-008 |
 | requestPasswordReset / confirmPasswordReset | TC-AUTH-005 |
 | getSlotSnapshot / streamSlotEvents | TC-SSE-001~005 / TC-UI-004 |

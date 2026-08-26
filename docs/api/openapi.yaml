@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.5.0
+  version: 0.6.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
     Approved contract based on SRS 1.4, domain-model 1.1.6, architecture 0.2
@@ -10,6 +10,7 @@ info:
     from opaque link token to 6-digit verification code.
     v0.5 records the existing owner-only QA cockpit operations and objective
     grounded/citation/latency observations; no rule-based quality score.
+    v0.6 adds enumeration-safe registration verification-code resend.
 servers:
   - url: /api/v1
 security: []
@@ -163,6 +164,20 @@ paths:
       responses:
         '204': { description: Verified }
         '422': { $ref: '#/components/responses/InvalidVerifyCode' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        default: { $ref: '#/components/responses/Error' }
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend a registration verification code without account enumeration
+      operationId: resendEmailVerification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { description: Generic response; a new code is queued only for an unverified account }
         '429': { $ref: '#/components/responses/RateLimited' }
         default: { $ref: '#/components/responses/Error' }
   /auth/login:

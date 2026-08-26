@@ -1,6 +1,6 @@
 # TASK-AUTH-EMAIL-DELIVERY-001 注册验证码邮件环境隔离
 
-> 状态：In Progress（2026-08-26 用户显式授权）
+> 状态：Closed（2026-08-26，verified_commit=`537fbbf`）
 
 ## 任务类型
 - implementation
@@ -96,19 +96,38 @@
 - 超过 7 文件或生产/测试行预算，停止拆分。
 
 ## 交付证据
-- commit / PR：待回填。
-- 修改文件清单：待回填。
-- 测试命令及结果：待回填。
-- lint / typecheck：待回填。
+- commit / PR：实现提交 `537fbbf`；任务关闭证据提交见本文件后续 Git 历史。
+- 修改文件清单：本任务单、`PROJECT_STATE.md`、`app/config.py`、
+  `app/auth/runtime.py`、`app/auth/service.py`、`tests/test_config.py`、
+  `tests/auth/test_email_delivery.py`，共 7 文件。
+- 测试命令及结果：
+  - `PYTHONPATH=. python3 -m pytest tests/test_config.py tests/auth/test_email_delivery.py -q`
+    → 11 passed。
+  - `PYTHONPATH=. python3 -m pytest tests/test_app.py tests/test_config.py tests/auth/test_email_delivery.py -q`
+    → 14 passed。
+  - `PYTHONPATH=. python3 -m pytest tests/auth -q`
+    → 16 passed、6 skipped（缺少专用真实 PG/Redis 测试变量，既有集成用例按门禁跳过）。
+- lint / typecheck：
+  - 本任务 5 个 Python 文件 `ruff check` → pass。
+  - `mypy app/config.py app/auth/runtime.py app/auth/service.py` → 0 error。
+  - 全量 `mypy app` → 被任务外既有工作区改动阻塞：`aiqa/service.py` 2 error、
+    `aiqa/runtime.py` 1 error；未越界修改。
 - DB 迁移验证：无。
-- 验收证据：待回填（仅脱敏结果，不记录真实验证码）。
-- 变更预算实际值：待回填。
-- 未解决风险：待回填。
-- 是否偏离 TASK：待回填。
+- 验收证据：
+  - `production + console` 配置拒绝、production SMTP 不完整拒绝、SMTP 失败日志脱敏、
+    local/test console 显式输出均有自动化用例。
+  - 使用运行时 SMTP 配置向授权的 QQ 收件箱发送不含可用验证码的冒烟邮件；
+    SMTP 服务端接受，Chrome 中确认约 1 分钟内由 163 通道送达。未记录邮箱密码、
+    Cookie、验证码或邮件正文中的敏感值。
+  - 本任务文件 `git diff --check` 与 staged diff check → pass。
+- 变更预算实际值：7 文件；生产代码 75 changed lines；测试新增 129 行，未超预算。
+- 未解决风险：本机没有专用 `JIANLI_AUTH_TEST_DATABASE_URL` / Redis 测试变量，
+  因此未重复执行真实账户生命周期集成用例；全量 mypy 的 3 个 AIQA 错误属于任务外既有改动。
+- 是否偏离 TASK：否。
 - 规范影响结论：none。
-- spec_sync：待验证。
-- verified_commit：待回填。
-- 关闭门禁：待验证。
+- spec_sync：clean（无规范正文、API、DB 或依赖变化）。
+- verified_commit：`537fbbf`。
+- 关闭门禁：通过；任务范围内测试、lint、类型检查、真实 SMTP 收件与变更预算均满足。
 
 ## 关联
 - 前置治理：`TASK-GOV-BASELINE-PRD-001`（Closed）

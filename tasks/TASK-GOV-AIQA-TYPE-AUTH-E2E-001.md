@@ -1,6 +1,6 @@
 # TASK-GOV-AIQA-TYPE-AUTH-E2E-001 全量类型门禁与认证真栈复验
 
-> 状态：In Progress（2026-08-26，用户要求解决已披露的两项遗留风险）
+> 状态：Closed（2026-08-26，verified_commit=`142d680`）
 
 ## 任务类型
 - implementation
@@ -78,16 +78,29 @@
 - 超过 4 文件或生产代码 12 行时拆任务。
 
 ## 交付证据
-- commit / PR：待回填。
-- 修改文件清单：待回填。
-- 测试命令及结果：待回填。
-- lint / typecheck：待回填。
-- DB 迁移验证：待回填。
-- 验收证据：待回填。
-- 变更预算实际值：待回填。
-- 未解决风险：待回填。
-- 是否偏离 TASK：待回填。
+- commit / PR：`fd8e611`（首轮类型修复）+ `142d680`（收敛到任务预算内的最终实现）。
+- 修改文件清单：本任务单、`PROJECT_STATE.md`、`app/aiqa/service.py`、
+  `app/aiqa/runtime.py`，共 4 文件；`service.py` 其他既有未提交改动未纳入提交。
+- 测试命令及结果：
+  - `PYTHONPATH=. python3 -m pytest tests/aiqa tests/test_app.py -q`
+    → 62 passed、23 skipped（均为未提供 AIQA 真栈变量的既有条件测试）、0 failed。
+  - Docker 同会话启动 PG/Redis，迁移隔离库 `jianli_auth_001_db` 后运行
+    `tests/auth/test_account_lifecycle.py tests/auth/test_auth.py -q`
+    → 17 passed、0 skipped、0 failed。
+  - 首轮误用 `jianli_test` 时冻结测试按预期拒绝错误库名；未修改断言，改用其规定的
+    `jianli_auth_001_db` 后全绿。
+- lint / typecheck：`ruff check app/aiqa/service.py app/aiqa/runtime.py` → pass；
+  `mypy app` → 46 source files、0 error。
+- DB 迁移验证：既有迁移对隔离库 `alembic upgrade head` → `0008` 成功；本任务无迁移，
+  不需要 down 验证。
+- 验收证据：工具追踪结果显式声明为 `dict[str, Any]`，`BookingService` 注解可解析；
+  无 ignore、无测试 skip/放宽、无运行分支变化。任务文件 `git diff --check` 通过。
+- 变更预算实际值：4 文件；相对任务基线的最终生产代码净差异为 3 insertions / 2 deletions
+  （5 changed lines），测试代码 0 行，未超预算。
+- 未解决风险：本任务目标范围内无。测试环境会在终端调用结束后停止 compose 容器，已通过
+  同一会话内完成启动、迁移和测试解决；不影响仓库或生产部署。
+- 是否偏离 TASK：否。
 - 规范影响结论：none。
-- spec_sync：待验证。
-- verified_commit：待回填。
-- 关闭门禁：待验证。
+- spec_sync：clean（无规范、API、DB、依赖、鉴权、Prompt 或工具权限变化）。
+- verified_commit：`142d680`。
+- 关闭门禁：通过。

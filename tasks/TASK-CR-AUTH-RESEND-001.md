@@ -56,9 +56,9 @@
 
 ## 交付证据
 
-- commit / PR：待提交
-- 修改文件：待回填
-- 验证结果：待回填
-- 规范影响：待回填
+- commit / PR：`06ebfd7`
+- 修改文件：SRS / OpenAPI / test-plan / baseline / PROJECT_STATE / 本任务
+- 验证结果：OpenAPI 静态检查通过，38 个 operationId 唯一；resend 路径、operationId 与 EmailRequest 引用存在；`git diff --check` PASS
+- 规范影响：SRS 1.5 / OpenAPI 0.6 / test-plan 0.3 approved
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`06ebfd7`

@@ -80,18 +80,18 @@
 - 遵循 `AGENTS.md §2`。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`2ec808d`（主规格）+ `bc430ca`（管理端同源快照补充）
+- 修改文件清单：baseline、PRD、use-cases、SRS、domain-model、ui-wireframe、OpenAPI、test-plan、本任务单（9/9）
+- 测试命令及结果：`rg` 生效章节一致性检查通过；OpenAPI version/enum 结构断言通过（文本结构）；`git diff --check` 通过
 - lint / typecheck：文档任务不适用
 - DB 迁移验证：无迁移
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：周三 2026-08-26 示例统一为 2026-08-27 至 2026-09-10；week_offset=[0,1,2]；owner_admin 可读隐私安全快照
+- 变更预算实际值：9/9 文件；生产/测试代码 0 行
 - 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：updated
-- spec_sync：待验证
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`bc430ca`
 
 ## 关联
 - 实现任务：`TASK-APPOINTMENT-WINDOW-001`

@@ -57,9 +57,9 @@
 
 ## 交付证据
 
-- commit / PR：规范提交待生成后回填
+- commit / PR：`7b44781`（规范批准与契约快照）
 - 修改文件：domain-model / SRS based_on / OpenAPI / baseline / 本任务 / PROJECT_STATE
 - 验证结果：OpenAPI 静态结构、37 个 operationId 唯一、三 operation 与三字段存在、无 `quality_score` Schema；`git diff --check` PASS
 - 规范影响：domain-model 1.1.6 / OpenAPI 0.5 approved；SRS 1.4 behavior unchanged
 - spec_sync：clean
-- verified_commit：待提交后由下游任务引用本规范快照
+- verified_commit：`7b44781`

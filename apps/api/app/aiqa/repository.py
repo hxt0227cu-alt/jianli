@@ -2,7 +2,7 @@
 
 Follows the ``app/auth/repository.py`` style: raw ``text()`` SQL, ``connect()`` for reads
 and ``begin()`` for writes, UUIDs passed through psycopg directly. Tables:
-``conversations`` / ``conversation_messages`` (domain model v1.1.5 §6.13, 180d purge).
+``conversations`` / ``conversation_messages`` (domain model v1.1.6 §6.13, 180d purge).
 
 Handoff note for Codex: round 3 (knowledge ingestion) adds a sibling repository over
 ``knowledge_documents`` / ``knowledge_index_versions`` in this module.
@@ -72,7 +72,8 @@ class ConversationRepository:
         with self._engine.connect() as connection:
             rows = connection.execute(
                 text(
-                    "SELECT id, role, content, is_offtopic, created_at "
+                    "SELECT id, role, content, is_offtopic, grounded, citations_count, "
+                    "latency_ms, created_at "
                     "FROM conversation_messages WHERE conv_id=:conversation_id "
                     "ORDER BY created_at ASC, id ASC"
                 ),
@@ -88,13 +89,18 @@ class ConversationRepository:
         content: str,
         is_offtopic: bool,
         now: datetime,
+        grounded: bool | None = None,
+        citations_count: int | None = None,
+        latency_ms: int | None = None,
     ) -> None:
         with self._engine.begin() as connection:
             connection.execute(
                 text(
                     "INSERT INTO conversation_messages "
-                    "(id,conv_id,role,content,is_offtopic,created_at) "
-                    "VALUES (:id,:conv_id,:role,:content,:is_offtopic,:now)"
+                    "(id,conv_id,role,content,is_offtopic,grounded,citations_count,"
+                    "latency_ms,created_at) "
+                    "VALUES (:id,:conv_id,:role,:content,:is_offtopic,:grounded,"
+                    ":citations_count,:latency_ms,:now)"
                 ),
                 {
                     "id": uuid4(),
@@ -102,6 +108,9 @@ class ConversationRepository:
                     "role": role,
                     "content": content,
                     "is_offtopic": is_offtopic,
+                    "grounded": grounded,
+                    "citations_count": citations_count,
+                    "latency_ms": latency_ms,
                     "now": now,
                 },
             )

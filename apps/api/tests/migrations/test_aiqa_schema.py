@@ -148,6 +148,9 @@ def test_aiqa_schema_shape(aiqa_engine: Engine) -> None:
         "role": ("enum", False),
         "content": ("text", False),
         "is_offtopic": ("bool", False),
+        "grounded": ("bool", True),
+        "citations_count": ("int", True),
+        "latency_ms": ("int", True),
         "created_at": ("timestamptz", False),
     }
     assert _shape(aiqa_engine, "knowledge_documents") == {

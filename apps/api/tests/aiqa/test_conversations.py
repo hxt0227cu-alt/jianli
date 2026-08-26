@@ -201,6 +201,18 @@ async def test_stream_answer_persists_grounded_messages(real_stack: Any) -> None
         assert messages[0]["is_offtopic"] is False
         assert messages[1]["content"]
         assert messages[1]["is_offtopic"] is False
+        with engine.connect() as connection:
+            observed = connection.execute(
+                text(
+                    "SELECT grounded, citations_count, latency_ms "
+                    "FROM conversation_messages "
+                    "WHERE conv_id=:conversation_id AND role='assistant'"
+                ),
+                {"conversation_id": conversation_id},
+            ).mappings().one()
+        assert observed["grounded"] is True
+        assert observed["citations_count"] > 0
+        assert observed["latency_ms"] >= 0
 
 
 @pytest.mark.asyncio
@@ -216,6 +228,18 @@ async def test_stream_answer_persists_offtopic_flag(real_stack: Any) -> None:
         assert completed["offtopic"] is True
         messages = (await client.get(f"/conversations/{conversation_id}/messages")).json()["items"]
         assert messages[-1]["is_offtopic"] is True
+        with engine.connect() as connection:
+            observed = connection.execute(
+                text(
+                    "SELECT grounded, citations_count, latency_ms "
+                    "FROM conversation_messages "
+                    "WHERE conv_id=:conversation_id AND role='assistant'"
+                ),
+                {"conversation_id": conversation_id},
+            ).mappings().one()
+        assert observed["grounded"] is False
+        assert observed["citations_count"] == 0
+        assert observed["latency_ms"] >= 0
 
 
 @pytest.mark.asyncio

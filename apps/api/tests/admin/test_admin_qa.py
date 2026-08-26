@@ -118,15 +118,24 @@ def _seed_conversation(engine: Engine, user_id: UUID) -> UUID:
             ),
             {"id": conversation_id, "user_id": user_id, "now": now},
         )
-        for role, content, is_offtopic in (
-            ("user", "你在 Agent 工具越权方面做了什么？", False),
-            ("assistant", "工具白名单与 BookingService RBAC 双重约束。", False),
+        for role, content, is_offtopic, grounded, citations_count, latency_ms in (
+            ("user", "你在 Agent 工具越权方面做了什么？", False, None, None, None),
+            (
+                "assistant",
+                "工具白名单与 BookingService RBAC 双重约束。",
+                False,
+                True,
+                2,
+                1350,
+            ),
         ):
             connection.execute(
                 text(
                     "INSERT INTO conversation_messages "
-                    "(id,conv_id,role,content,is_offtopic,created_at) "
-                    "VALUES (:id,:conv_id,:role,:content,:is_offtopic,:now)"
+                    "(id,conv_id,role,content,is_offtopic,grounded,citations_count,"
+                    "latency_ms,created_at) "
+                    "VALUES (:id,:conv_id,:role,:content,:is_offtopic,:grounded,"
+                    ":citations_count,:latency_ms,:now)"
                 ),
                 {
                     "id": uuid4(),
@@ -134,6 +143,9 @@ def _seed_conversation(engine: Engine, user_id: UUID) -> UUID:
                     "role": role,
                     "content": content,
                     "is_offtopic": is_offtopic,
+                    "grounded": grounded,
+                    "citations_count": citations_count,
+                    "latency_ms": latency_ms,
                     "now": now,
                 },
             )
@@ -168,6 +180,14 @@ async def test_owner_reads_question_history_and_interviewer_is_denied(real_stack
     assert messages.status_code == 200
     assert [item["role"] for item in messages.json()["items"]] == ["user", "assistant"]
     assert messages.json()["items"][0]["content"].startswith("你在 Agent")
+    assert messages.json()["items"][0]["grounded"] is None
+    assert messages.json()["items"][1]["grounded"] is True
+    assert messages.json()["items"][1]["citations_count"] == 2
+    assert messages.json()["items"][1]["latency_ms"] == 1350
     assert stats.status_code == 200
     assert stats.json()["totals"]["total_conversations"] == 1
     assert stats.json()["totals"]["total_messages"] == 2
+    assert stats.json()["totals"]["observed_answers"] == 1
+    assert stats.json()["totals"]["grounded_messages"] == 1
+    assert stats.json()["totals"]["grounded_rate"] == 1.0
+    assert stats.json()["totals"]["avg_latency_ms"] == 1350.0

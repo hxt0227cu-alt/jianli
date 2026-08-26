@@ -941,7 +941,9 @@ class AnswerService:
             )
             if persist:
                 assert conversation_id is not None
-                await self._persist_assistant(conversation_id, GREETING_REPLY, False)
+                await self._persist_assistant(
+                    conversation_id, GREETING_REPLY, False, False, 0, latency_ms
+                )
             return
 
         # Privacy guard (TASK-AIQA-PRIVACY-GUARD-012): refuse PII / private-life questions
@@ -973,7 +975,9 @@ class AnswerService:
             )
             if persist:
                 assert conversation_id is not None
-                await self._persist_assistant(conversation_id, _PRIVACY_REPLY, True)
+                await self._persist_assistant(
+                    conversation_id, _PRIVACY_REPLY, True, False, 0, latency_ms
+                )
             return
 
         # Malicious-intent guard (TASK-AIQA-KB-DOMAIN-015): refuse harmful / illegal
@@ -1003,7 +1007,9 @@ class AnswerService:
             )
             if persist:
                 assert conversation_id is not None
-                await self._persist_assistant(conversation_id, _MALICIOUS_REPLY, True)
+                await self._persist_assistant(
+                    conversation_id, _MALICIOUS_REPLY, True, False, 0, latency_ms
+                )
             return
 
         # Agent tooling (TASK-AGENT-TOOLS-002): two-phase function calling. Phase 1 —
@@ -1079,6 +1085,7 @@ class AnswerService:
             )
             if not candidates:
                 self._log_offtopic(trace_id, conversation_id if persist else None, start)
+                latency_ms = int((time.monotonic() - start) * 1000)
                 yield tool_calls_frame(
                     seq := seq + 1,
                     [
@@ -1102,7 +1109,9 @@ class AnswerService:
                 )
                 if persist:
                     assert conversation_id is not None
-                    await self._persist_assistant(conversation_id, OFFTOPIC_REPLY, True)
+                    await self._persist_assistant(
+                        conversation_id, OFFTOPIC_REPLY, True, False, 0, latency_ms
+                    )
                 return
 
             yield tool_calls_frame(
@@ -1179,7 +1188,14 @@ class AnswerService:
             )
             if persist:
                 assert conversation_id is not None
-                await self._persist_assistant(conversation_id, "".join(deltas), False)
+                await self._persist_assistant(
+                    conversation_id,
+                    "".join(deltas),
+                    False,
+                    True,
+                    len(candidates),
+                    latency_ms,
+                )
             return
 
         # ===== tool branch (booking / list / cancel / reschedule) =====
@@ -1231,6 +1247,7 @@ class AnswerService:
             if usage_acc["total_tokens"] > 0
             else None
         )
+        latency_ms = int((time.monotonic() - start) * 1000)
         yield completed_frame(
             seq := seq + 1,
             grounded=False,
@@ -1241,7 +1258,9 @@ class AnswerService:
         )
         if persist:
             assert conversation_id is not None
-            await self._persist_assistant(conversation_id, "".join(deltas), False)
+            await self._persist_assistant(
+                conversation_id, "".join(deltas), False, False, 0, latency_ms
+            )
         return
 
     async def _search_candidates(
@@ -1341,7 +1360,13 @@ class AnswerService:
         return candidates
 
     async def _persist_assistant(
-        self, conversation_id: UUID, content: str, is_offtopic: bool
+        self,
+        conversation_id: UUID,
+        content: str,
+        is_offtopic: bool,
+        grounded: bool,
+        citations_count: int,
+        latency_ms: int,
     ) -> None:
         if self._repository is None:
             return
@@ -1352,6 +1377,9 @@ class AnswerService:
             role="assistant",
             content=content,
             is_offtopic=is_offtopic,
+            grounded=grounded,
+            citations_count=citations_count,
+            latency_ms=max(0, latency_ms),
             now=now,
         )
         await asyncio.to_thread(self._repository.touch, conversation_id, now)

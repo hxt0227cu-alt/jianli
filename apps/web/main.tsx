@@ -810,6 +810,8 @@ function AdminView() {
       { label: '总消息数', value: stats.totals.total_messages, tone: 'blue' },
       { label: '活跃 interviewer', value: stats.totals.active_users, tone: 'gray' },
       { label: '拒答数', value: `${stats.totals.offtopic_messages}（${(stats.totals.offtopic_rate * 100).toFixed(1)}%）`, tone: 'gray' },
+      { label: '基于资料', value: `${stats.totals.grounded_messages}/${stats.totals.observed_answers}（${(stats.totals.grounded_rate * 100).toFixed(1)}%）`, tone: 'green' },
+      { label: '平均响应耗时', value: stats.totals.avg_latency_ms == null ? '暂无' : `${(stats.totals.avg_latency_ms / 1000).toFixed(2)} 秒`, tone: 'blue' },
     ].map((stat) => <div className={`dash-stat ${stat.tone}`} key={stat.label}><b>{stat.value}</b><span>{stat.label}</span></div>)}</div>}{<section className="admin-panel"><span className="eyebrow">NEAR 7 DAYS</span><h3>近 7 天每日消息量</h3>{stats.recent_7d.length === 0 ? <p className="kb-empty">近 7 天无消息。</p> : <ul className="bars">{(() => { const max = Math.max(...stats.recent_7d.map((d: any) => d.message_count)); return stats.recent_7d.map((d: any) => <li key={d.day}><span className="bar-label">{d.day}</span><span className="bar-track"><span className="bar-fill" style={{ width: `${(d.message_count / max) * 100}%` }} /></span><b>{d.message_count}</b></li>); })()}</ul>}</section>}{<section className="admin-panel"><span className="eyebrow">TOP INTERVIEWERS</span><h3>对话数 Top 10</h3>{stats.by_user.length === 0 ? <p className="kb-empty">暂无数据。</p> : <ol className="admin-rank">{stats.by_user.map((row: any, i: number) => <li key={row.email}><b>#{i + 1}</b><span>{row.email}</span><small>{row.conversation_count} 个对话</small></li>)}</ol>}</section>}</>}</section>}
     {user && activeTab === 'appointments' && (
       <section className="admin-panel">
@@ -860,6 +862,9 @@ function AdminView() {
                           <div className="admin-msg-meta">
                             <b>{m.role === 'user' ? '👤 用户' : '🤖 助手'}</b>
                             {m.is_offtopic && <span className="kb-status indexed">越界拒答</span>}
+                            {m.role === 'assistant' && m.grounded != null && <span className={`kb-status ${m.grounded ? 'indexed' : 'failed'}`}>{m.grounded ? '基于资料' : '未走资料检索'}</span>}
+                            {m.role === 'assistant' && m.citations_count != null && <small>引用 {m.citations_count} 条</small>}
+                            {m.role === 'assistant' && m.latency_ms != null && <small>耗时 {(m.latency_ms / 1000).toFixed(2)} 秒</small>}
                             <small>{shortTime(m.created_at)}</small>
                           </div>
                           <pre>{m.content}</pre>

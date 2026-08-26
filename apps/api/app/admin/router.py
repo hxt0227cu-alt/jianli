@@ -199,7 +199,8 @@ def create_admin_router(
         with engine.connect() as connection:
             rows = connection.execute(
                 text(
-                    "SELECT id, role, content, is_offtopic, created_at "
+                    "SELECT id, role, content, is_offtopic, grounded, citations_count, "
+                    "latency_ms, created_at "
                     "FROM conversation_messages WHERE conv_id = :cid ORDER BY created_at"
                 ),
                 {"cid": conversation_id},
@@ -211,6 +212,9 @@ def create_admin_router(
                     "role": row["role"],
                     "content": row["content"],
                     "is_offtopic": bool(row["is_offtopic"]),
+                    "grounded": row["grounded"],
+                    "citations_count": row["citations_count"],
+                    "latency_ms": row["latency_ms"],
                     "created_at": row["created_at"].isoformat(),
                 }
                 for row in rows
@@ -230,7 +234,13 @@ def create_admin_router(
                     "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'user') AS user_messages, "  # noqa: E501
                     "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'assistant') AS assistant_messages, "  # noqa: E501
                     "(SELECT COUNT(*) FROM conversation_messages WHERE role = 'assistant' AND is_offtopic = true) AS offtopic_messages, "  # noqa: E501
-                    "(SELECT COUNT(DISTINCT user_id) FROM conversations) AS active_users"
+                    "(SELECT COUNT(DISTINCT user_id) FROM conversations) AS active_users, "
+                    "(SELECT COUNT(*) FROM conversation_messages "
+                    " WHERE role = 'assistant' AND grounded IS NOT NULL) AS observed_answers, "
+                    "(SELECT COUNT(*) FROM conversation_messages "
+                    " WHERE role = 'assistant' AND grounded = true) AS grounded_messages, "
+                    "(SELECT AVG(latency_ms) FROM conversation_messages "
+                    " WHERE role = 'assistant' AND latency_ms IS NOT NULL) AS avg_latency_ms"
                 )
             ).mappings().one()
             by_user = connection.execute(
@@ -249,6 +259,8 @@ def create_admin_router(
                 )
             ).mappings().all()
         assistant = int(totals["assistant_messages"])
+        observed = int(totals["observed_answers"])
+        grounded = int(totals["grounded_messages"])
         return {
             "totals": {
                 "total_conversations": int(totals["total_conversations"]),
@@ -258,6 +270,14 @@ def create_admin_router(
                 "offtopic_messages": int(totals["offtopic_messages"]),
                 "offtopic_rate": (int(totals["offtopic_messages"]) / assistant) if assistant else 0.0,  # noqa: E501
                 "active_users": int(totals["active_users"]),
+                "observed_answers": observed,
+                "grounded_messages": grounded,
+                "grounded_rate": (grounded / observed) if observed else 0.0,
+                "avg_latency_ms": (
+                    float(totals["avg_latency_ms"])
+                    if totals["avg_latency_ms"] is not None
+                    else None
+                ),
             },
             "by_user": [{"email": row["email"], "conversation_count": int(row["conv_count"])} for row in by_user],  # noqa: E501
             "recent_7d": [

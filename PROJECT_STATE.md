@@ -29,6 +29,8 @@
 
 ## 当前任务
 
+- **TASK-RELEASE-REPAIR-001**：**Closed（2026-08-26，verified_commit=`7563965`）**——完成上线前完整修复：真实 PDF iframe/loading、认证重发入口、登录态同步与退出、非问答页收起聊天栏、管理端客观指标保持、Agent persona 白名单工具规则与诚实局限、CJK 相邻词门控修复“量子纠缠”误命中、全仓 57 条 Ruff 债、WSL CRLF 环境加载。门禁：Ruff 全绿、Mypy 47 files 0 error、DB-free 96 passed、真实栈多套件全绿、SMTP 真实投递通过、前端 test/typecheck/build 与 Chrome 本地烟测通过。开发库 0009 漂移已无损校正至 head。
+- **TASK-TEST-OUTBOX-CLEANUP-001 / TASK-TEST-WEB-RESUME-001**：**Closed（2026-08-26，verified_commit=`7563965`）**——旧 outbox teardown 已纳入 0008 delivery 子表且原断言不变（4 passed）；PDF 冻结测试已改为验收 `/resume.pdf` iframe、可访问标题和加载层（Vitest 1 passed）。
 - **TASK-GOV-AIQA-TYPE-AUTH-E2E-001**：**Closed（2026-08-26，verified_commit=`142d680`）**——全量 `mypy app` 已恢复为 46 source files / 0 error；AIQA DB-free 回归 62 passed，认证真栈在隔离 `jianli_auth_001_db` + Redis DB 15 上迁移至 0008 后 17 passed / 0 skipped。纯类型修复最终净差异 5 changed lines，无行为/API/DB/依赖/Prompt/工具权限变化，工作区其他未提交功能改动未纳入提交。
 - **TASK-DEPLOY-HARDEN-002**：**Implemented / Awaiting container smoke（2026-08-26）**——已修复根路径 API 反代、SSE buffering、首次无证书 HTTP 启动、compose Certbot 服务、migration-first 启动依赖及 API/Worker/Nginx 探活；Compose 渲染、Shell 语法和 Nginx 静态覆盖检查通过。本机未缓存 Nginx/Certbot 镜像，遵照用户要求未联网拉取；待本地演示首次拉镜像后补 `nginx -t`/容器 healthy 证据再关闭。
 - **TASK-ADMIN-QA-BUGFIX-001**：**Closed（2026-08-26，verified_commit=`741c242`）**——修复既有 admin cockpit 查询误用 `conversation_id`（真实 schema 为 `conv_id`）以及 app factory 未挂载 engine；owner 可读对话列表/消息详情/基础统计、interviewer 三接口 403 的真实 PostgreSQL/Redis 用例 1 passed。Ruff 与全量 mypy 通过；测试通过 WSL Docker 容器 IP 规避镜像网络模式的 localhost 转发限制，无 API/DB/依赖变化。

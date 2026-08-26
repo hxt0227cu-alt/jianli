@@ -97,19 +97,19 @@
 - 遵循 `AGENTS.md §2`；出现未列明 DB/API/依赖/安全变化、冻结测试失败或超过预算时立即停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：`6b4df92`
+- commit / PR：`6b4df92`（实现）/ `7563965`（全仓门禁债清理）
 - 修改文件清单：0009 迁移、AIQA repository/service、admin router、三组后端测试、Web 管理端、任务单（10 文件）
 - 测试命令及结果：迁移套件 7 passed；admin 真栈 1 passed；AIQA 会话真栈 5 passed；AIQA DB-free 59 passed / 23 env-skipped；前端 typecheck/build passed
-- lint / typecheck：本任务 8 个 Python 文件 `ruff` passed；`mypy app` 46 source files / 0 error；全仓 `ruff check .` 被既有任务外 `scripts/seed_kb.py`、`test_persona_style.py`、`test_rag_eval.py` 57 条问题阻塞
+- lint / typecheck：全仓 `ruff check .` passed；`mypy app` 47 source files / 0 error；前端 typecheck/build passed。
 - DB 迁移验证：隔离 `jianli_tc_aiqa_001_db` 完成 upgrade head → downgrade 0008 → upgrade head；nullable 与两个非负 CHECK 均验证通过
 - 验收证据：owner 三接口 200 且返回 grounded=true / citations_count=2 / latency_ms=1350；interviewer 三接口均 403；RAG 与拒答真栈分别落库 true/>0/非负耗时及 false/0/非负耗时
 - 变更预算实际值：10/11 文件；生产新增 122 行、测试新增 157 行（任务治理 116 行不计生产/测试）；未超预算
-- 未解决风险：仓库全量 ruff 的 57 条既有任务外问题需独立授权任务处理；本任务功能、迁移、权限、类型与前端门禁均通过
+- 未解决风险：无。
 - 是否偏离 TASK：否
 - 规范影响结论：updated（上游 CR 已批准）
 - spec_sync：clean
-- verified_commit：`6b4df92`
-- 关闭门禁：Implemented / 验收通过；因全仓 ruff 任务外阻塞暂不标 Closed
+- verified_commit：`7563965`
+- 关闭门禁：Closed
 
 ## 关联
 - Change Request：`TASK-CR-ADMIN-QA-OBSERVABILITY-001`（Approved / Closed，`7b44781`）

@@ -1,6 +1,6 @@
 # TASK-RELEASE-REPAIR-001 上线前完整修复与本地验收
 
-> 状态：In Progress（2026-08-26）。用户明确授权处理当前已识别的全部发布修复，不限于最小 PDF 测试改动。
+> 状态：Closed（2026-08-26，verified_commit=`7563965`）。用户明确授权处理当前已识别的全部发布修复，不限于最小 PDF 测试改动。
 
 ## 任务类型
 - implementation
@@ -105,19 +105,19 @@
 - 若超过变更预算或冻结验收仍失败，停止并拆分。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
-- DB 迁移验证：无新增迁移；既有迁移回归待回填
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- commit / PR：`7563965`
+- 修改文件清单：AIQA persona/retrieval/seed 与测试、Web shell/CSS/冻结测试、WSL dev-env、两个任务单，共 13 文件。
+- 测试命令及结果：后端 DB-free 全量 96 passed / 106 env-skipped；真实 booking/admin/auth/worker 55 passed / 1 SMTP-skipped，SMTP E2E 1 passed；Agent/迁移定向 41 + 7 + 4 + 4 + 1 passed；RAG reject/false-reject 2 passed；前端 Vitest 1 passed。
+- lint / typecheck：全仓 Ruff passed；Mypy 47 source files / 0 error；前端 typecheck/build passed（Vite 1792 modules）。
+- DB 迁移验证：无新增迁移；0001–0009 专用库回归通过。开发库发现 0009 字段已存在但账本仍为 0008，在确认 0 条负值后补齐两个批准 CHECK 并校正至 `0009_aiqa_observations (head)`，数据未删除。
+- 验收证据：Chrome 本地烟测确认 PDF iframe 加载完成；量子纠缠越界拒答；Agent 可靠性问题命中 7 个片段并展示 tool trace/citations/grounded；预约页无聊天栏；163 收件箱确认真实 SMTP 邮件。
+- 变更预算实际值：13/16 文件；生产约 98 新增 / 54 删除，测试约 64 新增 / 29 删除，未超预算。
+- 未解决风险：QQ 认证邮件的第二次真实请求被既有限频 429 拦截，遵照用户要求未绕过；相同认证 SMTP 投递器已有单测、真实生命周期测试与 163 真投递证据。生产域名/DNS/TLS/云端容器烟测仍属于实际部署步骤。
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 关闭门禁：In Progress
+- verified_commit：`7563965`
+- 关闭门禁：Closed
 
 ## 关联
 - `TASK-ADMIN-QA-OBSERVABILITY-001`

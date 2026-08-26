@@ -1,6 +1,6 @@
 # TASK-TEST-WEB-RESUME-001 简历 PDF iframe 冻结测试同步
 
-> 状态：Blocked by implementation mismatch（2026-08-26）。当前 master 使用 `<embed>` 且保留占位文案；用户要求本任务仅更新测试以验收“当前真实 iframe”，两者不一致。
+> 状态：Closed（2026-08-26，verified_commit=`7563965`）。前置实现由用户扩大授权后的 `TASK-RELEASE-REPAIR-001` 恢复，本任务只同步冻结验收。
 
 ## 任务类型
 - test
@@ -52,14 +52,14 @@
 - 只修改冻结测试会制造必然失败；恢复 iframe 又超出本任务明确非目标，故等待用户批准独立最小实现修复。
 
 ## 交付证据
-- commit / PR：待解除阻塞
-- 修改文件清单：当前仅任务单
-- 测试命令及结果：未运行（实现前置不满足）
-- lint / typecheck：未运行
+- commit / PR：`7563965`
+- 修改文件清单：`tests/web-shell/shell.test.ts` 与本任务单；iframe 实现归属 `TASK-RELEASE-REPAIR-001`。
+- 测试命令及结果：Vitest 1 passed；前端 typecheck 与 production build passed。
+- lint / typecheck：TypeScript 0 error；Vite 1792 modules built。
 - DB 迁移验证：无
-- 未解决风险：当前 master 与用户所述“真实 PDF iframe”不一致
+- 未解决风险：无。
 - 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
-- 关闭门禁：Blocked
+- verified_commit：`7563965`
+- 关闭门禁：Closed

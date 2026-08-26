@@ -10,6 +10,8 @@ is supplied (the auth runtime's engine when auth is configured), conversation pe
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Engine
 
 from app.config import Settings
@@ -21,11 +23,14 @@ from .repository import ConversationRepository, KnowledgeRepository
 from .service import AnswerService
 from .storage import KnowledgeStorage
 
+if TYPE_CHECKING:
+    from app.appointments.service import BookingService
+
 
 def build_aiqa_runtime(
     settings: Settings,
     engine: Engine | None = None,
-    booking_service: "BookingService | None" = None,
+    booking_service: BookingService | None = None,
 ) -> AnswerService:
     """Construct the Answer service; pass ``engine`` to enable DB-backed features.
 

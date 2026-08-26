@@ -1,6 +1,6 @@
 # TASK-GOV-BASELINE-PRD-001 校正 PRD 基线版本锚点
 
-> 状态：In Progress（2026-08-26 用户显式授权）
+> 状态：Closed（2026-08-26）
 
 ## 任务类型
 - documentation
@@ -79,19 +79,19 @@
 - 超过 3 个文件立即停止。
 
 ## 交付证据
-- commit / PR：待回填。
-- 修改文件清单：待回填。
-- 测试命令及结果：待回填。
+- commit / PR：`a9526b5`（治理校正实现快照）。
+- 修改文件清单：`docs/baseline.yml`、`PROJECT_STATE.md`、`tasks/TASK-GOV-BASELINE-PRD-001.md`。
+- 测试命令及结果：PowerShell 字符串断言 → PRD current=2.3.4、SRS `based_on.prd`=2.3.4、PRD 正文 v2.3.4 记录存在；全部通过。`git diff --check` → 通过（仅 Git 行尾转换提示）。
 - lint / typecheck：不适用（纯治理元数据）。
 - DB 迁移验证：无。
-- 验收证据：待回填。
-- 变更预算实际值：待回填。
-- 未解决风险：待回填。
-- 是否偏离 TASK：待回填。
+- 验收证据：`docs/baseline.yml` `artifacts.prd.version=2.3.4` 且 `status=approved`；与 SRS v1.4 `based_on.prd=2.3.4` 一致。
+- 变更预算实际值：3/3 文件；生产代码 0 行；测试代码 0 行，未超预算。
+- 未解决风险：无。
+- 是否偏离 TASK：否。
 - 规范影响结论：none。
-- spec_sync：待验证。
-- verified_commit：待回填。
-- 关闭门禁：待验证。
+- spec_sync：clean。
+- verified_commit：`a9526b5`。
+- 关闭门禁：① 验证通过；② 规范影响 none；③ spec_sync=clean；④ verified_commit 已记录——全部满足。
 
 ## 关联
 - 已批准变更任务：`TASK-CR-VERIFY-CODE-001`

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
@@ -33,6 +33,7 @@ from tests.test_worker import (
     _authorized_client,
     _draft,
     _reset_database,
+    _safe_future_start,
     _seed_slots,
     _seed_user,
     _settings,
@@ -103,7 +104,7 @@ def _create_appointment(engine: Engine, settings: object, owner: UUID) -> tuple[
     auth_runtime = build_auth_runtime(settings)  # type: ignore[arg-type]
     booking = build_booking_runtime(settings, auth_runtime)  # type: ignore[arg-type]
     app = create_app(settings, auth_runtime, booking)  # type: ignore[arg-type]
-    slot_ids = _seed_slots(engine, datetime.now(UTC) + timedelta(days=1, minutes=30))
+    slot_ids = _seed_slots(engine, _safe_future_start())
     draft = _draft(slot_ids)
 
     import asyncio
@@ -187,6 +188,75 @@ def test_candidate_dual_channel_delivers_email_and_feishu() -> None:
         metadata = by_channel["feishu"]["channel_metadata"]
         assert metadata["feishu_record_id"] is not None
         assert metadata["open_id_configured"] is True
+    finally:
+        redis_client.close()
+        _reset_database(engine)
+        engine.dispose()
+
+
+@_NEEDS_DB
+def test_completed_event_updates_bitable_without_email_or_feishu_message() -> None:
+    settings = _settings()
+    engine = create_engine(settings.database_url)
+    redis_client = redis.Redis.from_url(settings.redis_url)
+    redis_client.flushdb()
+    _reset_database(engine)
+    try:
+        cipher = _field_cipher(settings)
+        _seed_owner_admin(engine, cipher, "ou_candidate_completed")
+        interviewer = _seed_user(engine)
+        appointment_id, _created_event_id = _create_appointment(engine, settings, interviewer)
+        completed_event_id = uuid4()
+        now = datetime.now(UTC)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE appointments SET status='completed',completed_at=end_at "
+                    "WHERE id=:id"
+                ),
+                {"id": appointment_id},
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO notification_events "
+                    "(id,type,biz_id,idempotency_key,status,created_at) VALUES "
+                    "(:id,'appointment_completed',:biz_id,:key,'pending',:now)"
+                ),
+                {
+                    "id": completed_event_id,
+                    "biz_id": appointment_id,
+                    "key": f"appointment:{appointment_id}:appointment_completed",
+                    "now": now,
+                },
+            )
+
+        email_sender = _FakeEmailSender()
+        feishu = StubFeishuGateway()
+        booking = build_booking_runtime(
+            settings, build_auth_runtime(settings)  # type: ignore[arg-type]
+        )
+        notification_worker._deliver_candidate(
+            engine,
+            booking,
+            email_sender,
+            feishu,
+            cipher,
+            completed_event_id,
+            "appointment_completed",
+            appointment_id,
+            now,
+        )
+
+        rows = _delivery_rows(engine, completed_event_id)
+        assert len(rows) == 1
+        assert rows[0]["channel"] == "feishu"
+        assert rows[0]["status"] == "succeeded"
+        assert rows[0]["channel_metadata"]["message_suppressed"] is True
+        assert email_sender.sent == []
+        assert feishu.messages == []
+        assert len(feishu.rows) == 1
+        assert next(iter(feishu.rows.values()))["状态"] == "completed"
+        assert notification_worker._has_failed_delivery(engine, completed_event_id) is False
     finally:
         redis_client.close()
         _reset_database(engine)

@@ -23,6 +23,7 @@ from .crypto import (
     FieldCipher,
     canonical_payload_digest,
 )
+from .lifecycle import complete_expired_appointments
 from .models import (
     Appointment,
     AppointmentDraft,
@@ -187,6 +188,7 @@ class BookingService:
         now = datetime.now(UTC)
         try:
             with self._engine.begin() as connection:
+                complete_expired_appointments(connection, now=now)
                 company_ciphertext = self._cipher.encrypt(
                     draft.company_name,
                     "companies",
@@ -432,14 +434,15 @@ class BookingService:
     # ---- 我的预约 / 改期 / 取消（M1）----
 
     def list_my(self, principal: Principal) -> list[Appointment]:
-        with self._engine.connect() as connection:
+        with self._engine.begin() as connection:
+            complete_expired_appointments(connection, now=datetime.now(UTC), user_id=principal.id)
             rows = list(
                 connection.execute(
                     text(
                         "SELECT id,status,version,start_at,end_at,company_name_ciphertext,"
                         "company_name_fingerprint,meeting_platform_ciphertext,"
                         "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
-                        "FROM appointments WHERE user_id=:user_id AND status='active' "
+                        "FROM appointments WHERE user_id=:user_id "
                         "ORDER BY start_at DESC"
                     ),
                     {"user_id": principal.id},
@@ -455,6 +458,7 @@ class BookingService:
     ) -> Appointment:
         now = datetime.now(UTC)
         with self._engine.begin() as connection:
+            complete_expired_appointments(connection, now=now, user_id=principal.id)
             row = self._load_owned_for_write(connection, appointment_id, principal.id)
             if row["status"] != "active":
                 raise AuthError("TERMINAL_STATE", 409, "Cannot modify", "Appointment is not active")
@@ -483,6 +487,7 @@ class BookingService:
     def cancel(self, principal: Principal, appointment_id: UUID) -> None:
         now = datetime.now(UTC)
         with self._engine.begin() as connection:
+            complete_expired_appointments(connection, now=now, user_id=principal.id)
             row = self._load_owned_for_write(connection, appointment_id, principal.id)
             if row["status"] == "cancelled":
                 return None
@@ -836,7 +841,8 @@ class BookingService:
         company/meeting/contact/notes that are otherwise ciphertext at rest.
         """
 
-        with self._engine.connect() as connection:
+        with self._engine.begin() as connection:
+            complete_expired_appointments(connection, now=datetime.now(UTC))
             rows = list(
                 connection.execute(
                     text(
@@ -862,6 +868,7 @@ class BookingService:
 
         now = datetime.now(UTC)
         with self._engine.begin() as connection:
+            complete_expired_appointments(connection, now=now)
             row = connection.execute(
                 text("SELECT id,status,version FROM appointments WHERE id=:id FOR UPDATE"),
                 {"id": appointment_id},

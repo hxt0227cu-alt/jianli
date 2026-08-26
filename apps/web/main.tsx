@@ -65,6 +65,20 @@ const shanghaiDay = (iso: string) => new Intl.DateTimeFormat('en-CA', {
   year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai',
 }).format(new Date(iso));
 
+const cropBookingWindow = (items: Slot[]) => {
+  const today = shanghaiDay(new Date().toISOString());
+  const start = new Date(`${today}T00:00:00+08:00`);
+  start.setUTCDate(start.getUTCDate() + 1);
+  const endExclusive = new Date(start);
+  endExclusive.setUTCDate(endExclusive.getUTCDate() + 15);
+  const startDay = shanghaiDay(start.toISOString());
+  const endDay = shanghaiDay(endExclusive.toISOString());
+  return items.filter((slot) => {
+    const day = shanghaiDay(slot.start_at);
+    return day >= startDay && day < endDay;
+  });
+};
+
 function csrfCookie(): string {
   return document.cookie.split('; ').find((part) => part.startsWith('__Host-csrf='))?.split('=')[1] || '';
 }
@@ -539,8 +553,8 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
   const pendingCreds = useRef<{ email: string; password: string } | null>(null);
 
   const loadSlots = async () => {
-    const snapshots = await Promise.all([0, 1].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)));
-    setSlots(snapshots.flatMap((item) => item.items));
+    const snapshots = await Promise.all([0, 1, 2].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)));
+    setSlots(cropBookingWindow(snapshots.flatMap((item) => item.items)));
   };
 
   useEffect(() => {
@@ -704,7 +718,7 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
     <div className="booking-steps">{stages.map((item, index) => { const Icon = item.icon; return <div className={index === stageIndex ? 'booking-step active' : 'booking-step'} key={item.title}><span className="step-icon"><Icon size={18} /></span><div><small>STEP 0{index + 1}</small><b>{item.title}</b><p>{item.detail}</p></div></div>; })}</div>
     {error && <div className="booking-error">{error}</div>}
     {step === 'login' && <section className="login-panel"><div><span className="eyebrow">{authMode === 'register' ? 'CREATE ACCOUNT' : authMode === 'verify' ? 'VERIFY EMAIL' : authMode === 'forgot' ? 'RESET PASSWORD' : 'SECURE SIGN IN'}</span><h2>{authMode === 'register' ? '注册账号' : authMode === 'verify' ? '验证邮箱' : authMode === 'forgot' ? '找回密码' : '面试官登录'}</h2><p>{authMode === 'register' ? '注册后前往邮箱输入验证码，即可预约面试。' : authMode === 'verify' ? `验证码已发送至 ${verifyEmail}，10 分钟内有效。` : authMode === 'forgot' ? '输入注册邮箱获取验证码，设置新密码。' : '使用已验证账号进入预约日历。'}</p></div>{notice && <div className="booking-success">{notice}</div>}{authMode === 'login' && <form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><label className="check-row"><input name="remember" type="checkbox" /> 14 天内保持登录</label><button disabled={busy}>{busy ? '正在登录…' : '登录并查看时段'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('register'); }}>没有账号？注册</button><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('forgot'); }}>忘记密码？</button></div></form>}{authMode === 'register' && <form onSubmit={register}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码（10-72 字符）<input name="password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={busy}>{busy ? '正在注册…' : '注册并发送验证码'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>已有账号？返回登录</button></div></form>}{authMode === 'verify' && <form onSubmit={verifyAccount}><label>验证码<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6 位数字" required value={verifyCode} onChange={(event) => setVerifyCode(event.currentTarget.value.replace(/\D/g, '').slice(0, 6))} /></label><button disabled={busy}>{busy ? '验证中…' : '验证并继续'}</button><div className="auth-switch"><button type="button" className="text-command" disabled={busy || cooldown > 0} onClick={() => void resendVerification()}>{cooldown > 0 ? `${cooldown}s 后可重发` : '重新发送验证码'}</button><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>返回登录</button></div></form>}{authMode === 'forgot' && <form name="forgot-form" onSubmit={resetPassword}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>验证码<div className="code-row"><input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6 位数字" required /><button type="button" className="text-command" disabled={busy || cooldown > 0} onClick={() => void sendResetCode()}>{cooldown > 0 ? `${cooldown}s 后重发` : '发送验证码'}</button></div></label><label>新密码<input name="new_password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={busy}>{busy ? '提交中…' : '重置密码'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>返回登录</button></div></form>}</section>}
-    {step === 'slots' && <section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 未来两周可预约时间</span><span className="muted">绿色可选 · 红色不可约 · 深红色为本人预约</span></div><div className="slot-grid">{dayGroups.map(([day, items]) => <div className="slot-day" key={day}><b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(items[0].start_at))}</b><div>{items.map((slot) => { const ownBooking = slot.status === 'booked' && slot.ownership === 'self'; const slotLabel = ownBooking ? '已预约（本人）' : slot.status === 'booked' ? '已预约' : ''; return <button key={slot.id} className={`${slot.status} ${ownBooking ? 'own-booking' : ''} ${selected.includes(slot.id) ? 'selected' : ''}`} disabled={slot.status !== 'available'} title={slotLabel || undefined} aria-label={slotLabel ? `${new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))} ${slotLabel}` : undefined} onClick={() => choose(slot)}>{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>; })}</div></div>)}</div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>账号</dt><dd>{user?.email}</dd></div><div><dt>时长</dt><dd>90 分钟</dd></div><div><dt>时间</dt><dd>{selectedSlots[0] ? `${new Date(selectedSlots[0].start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 起` : '尚未选择'}</dd></div></dl><button className="primary-command" disabled={selected.length !== 3} onClick={() => setStep('details')}>填写预约信息</button></aside></section>}
+    {step === 'slots' && <section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 从明天起 15 天可预约时间</span><span className="muted">绿色可选 · 红色不可约 · 深红色为本人预约</span></div><div className="slot-grid">{dayGroups.map(([day, items]) => <div className="slot-day" key={day}><b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(items[0].start_at))}</b><div>{items.map((slot) => { const ownBooking = slot.status === 'booked' && slot.ownership === 'self'; const slotLabel = ownBooking ? '已预约（本人）' : slot.status === 'booked' ? '已预约' : ''; return <button key={slot.id} className={`${slot.status} ${ownBooking ? 'own-booking' : ''} ${selected.includes(slot.id) ? 'selected' : ''}`} disabled={slot.status !== 'available'} title={slotLabel || undefined} aria-label={slotLabel ? `${new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))} ${slotLabel}` : undefined} onClick={() => choose(slot)}>{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>; })}</div></div>)}</div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>账号</dt><dd>{user?.email}</dd></div><div><dt>时长</dt><dd>90 分钟</dd></div><div><dt>时间</dt><dd>{selectedSlots[0] ? `${new Date(selectedSlots[0].start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 起` : '尚未选择'}</dd></div></dl><button className="primary-command" disabled={selected.length !== 3} onClick={() => setStep('details')}>填写预约信息</button></aside></section>}
     {step === 'details' && <section className="details-panel"><button className="text-command" onClick={() => setStep('slots')}><ArrowLeft size={15} /> 返回选时</button><form onSubmit={submitDetails}><h2>填写会议信息</h2><div className="form-grid"><label>公司名称<input name="company_name" required maxLength={200} /></label><label>会议平台<input name="meeting_platform" defaultValue="腾讯会议" required /></label><label>会议号<input name="meeting_number" required /></label><label>联系人姓氏<input name="contact_last_name" required /></label><label>称呼<select name="contact_salutation"><option>老师</option><option>先生</option><option>女士</option></select></label><label>联系电话<input name="contact_phone" required /></label><label className="wide">备注<textarea name="notes" maxLength={2000} /></label></div><button className="primary-command" disabled={busy}>{busy ? '正在生成预览…' : '下一步：确认信息'}</button></form></section>}
     {step === 'confirm' && preview && <section className="confirm-panel"><span className="eyebrow">FINAL CHECK</span><h2>请确认预约信息</h2><p>确认链接有效至 {new Date(preview.expires_at).toLocaleTimeString('zh-CN')}，期间不预占时段。</p><dl><div><dt>公司</dt><dd>{preview.company_name}</dd></div><div><dt>收件邮箱</dt><dd>{preview.recipient_email}</dd></div><div><dt>称呼</dt><dd>{preview.salutation}</dd></div><div><dt>会议</dt><dd>{draft.meeting_platform} · {draft.meeting_number}</dd></div></dl><div className="confirm-actions"><button className="text-command" onClick={() => setStep('details')}>返回修改</button><button className="primary-command" disabled={busy} onClick={confirm}>{busy ? '正在提交…' : '确认预约'}</button></div></section>}
     {step === 'done' && <section className="success-panel"><CheckCircle2 size={34} /><h2>预约已创建</h2><p>时段已原子锁定，通知事件已进入异步处理队列。</p><button className="primary-command" disabled={busy} onClick={returnToCalendar}>{busy ? '正在刷新…' : '返回日历'}</button></section>}
@@ -727,6 +741,7 @@ function AdminView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {
   const [feishuOpenId, setFeishuOpenId] = useState('');
   type AvailabilityOverride = { id: string; start_at: string; end_at: string; action: 'force_unavailable' | 'force_available'; reason: string | null; created_at: string };
   const [overrides, setOverrides] = useState<AvailabilityOverride[]>([]);
+  const [adminSlots, setAdminSlots] = useState<Slot[]>([]);
   const [ovForm, setOvForm] = useState<{ id: string | null; start_at: string; end_at: string; action: AvailabilityOverride['action']; reason: string }>({ id: null, start_at: '', end_at: '', action: 'force_unavailable', reason: '' });
 
   const saveFeishuOpenId = async () => {
@@ -741,10 +756,15 @@ function AdminView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {
     const data = await api<{ items: KnowledgeDoc[] }>('/admin/knowledge-documents');
     setDocs(data.items);
   };
+  const loadAdminSlots = async () => {
+    const snapshots = await Promise.all([0, 1, 2].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)));
+    setAdminSlots(cropBookingWindow(snapshots.flatMap((snapshot) => snapshot.items)));
+  };
   const loadAdminData = async () => {
     try { const data = await api<any>('/admin/aiqa-stats'); setStats(data); } catch { /* ignore */ }
     try { const data = await api<{ items: any[] }>('/admin/appointments'); setAllAppts(data.items); } catch { /* ignore */ }
     try { const data = await api<{ items: any[] }>('/admin/conversations'); setQaConvs(data.items); } catch { /* ignore */ }
+    try { await loadAdminSlots(); } catch { /* ignore */ }
     await loadOverrides();
   };
   useEffect(() => {
@@ -805,15 +825,30 @@ function AdminView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {
         await api('/admin/availability-overrides', { method: 'POST', headers: { 'X-CSRF-Token': csrf }, body });
       }
       setOvForm({ id: null, start_at: '', end_at: '', action: 'force_unavailable', reason: '' });
-      await loadOverrides();
+      await Promise.all([loadOverrides(), loadAdminSlots()]);
     } catch (reason) { setError(reason instanceof Error ? reason.message : '保存失败'); } finally { setBusy(false); }
   };
   const removeOverride = async (id: string) => {
     if (!window.confirm('删除该时段设置？已约时段不受影响。')) return;
     setBusy(true); setError('');
-    try { await api(`/admin/availability-overrides/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': csrf } }); await loadOverrides(); } catch (reason) { setError(reason instanceof Error ? reason.message : '删除失败'); } finally { setBusy(false); }
+    try { await api(`/admin/availability-overrides/${id}`, { method: 'DELETE', headers: { 'X-CSRF-Token': csrf } }); await Promise.all([loadOverrides(), loadAdminSlots()]); } catch (reason) { setError(reason instanceof Error ? reason.message : '删除失败'); } finally { setBusy(false); }
   };
   const fmtOv = (iso: string) => new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(iso));
+  const adminDayGroups = Object.entries(adminSlots.reduce<Record<string, Slot[]>>((groups, slot) => {
+    const day = shanghaiDay(slot.start_at);
+    (groups[day] ||= []).push(slot);
+    return groups;
+  }, {}));
+  const selectAdminSlot = (slot: Slot) => {
+    setOvForm({
+      id: null,
+      start_at: isoToLocalInput(slot.start_at),
+      end_at: isoToLocalInput(slot.end_at),
+      action: slot.status === 'unavailable' ? 'force_available' : 'force_unavailable',
+      reason: '',
+    });
+    setError('');
+  };
   const openConv = async (id: string) => {
     setOpenConvId(id); setOpenConvMessages([]);
     try { const data = await api<{ items: any[] }>(`/admin/conversations/${id}/messages`); setOpenConvMessages(data.items); } catch { /* ignore */ }
@@ -900,11 +935,29 @@ function AdminView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {
     {user && activeTab === 'feishu' && <section className="kb-upload" style={{ alignItems: 'flex-start' }}><div><span className="eyebrow">R13 CANDIDATE FEISHU</span><h2 style={{ margin: '6px 0 10px' }}>候选人飞书 open_id 配置</h2><p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 14 }}>用于 R13 双通道提醒的飞书消息投递（候选人 = owner_admin 本人）。保存后 AES 加密落库，不会明文回显。</p></div><div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 560 }}><input value={feishuOpenId} onChange={(event) => setFeishuOpenId(event.currentTarget.value)} placeholder="如 ou_xxxxxxxx" style={{ flex: 1, padding: '9px 12px', border: '1px solid #dde6de', borderRadius: 6 }} /><button className="primary-command" disabled={busy || !feishuOpenId.trim()} onClick={saveFeishuOpenId}>{busy ? '保存中…' : '保存配置'}</button></div></section>}
     {user && activeTab === 'availability' && (
       <section className="admin-panel">
+        <div className="admin-slot-board">
+          <div className="calendar-head">
+            <span><CalendarDays size={17} /> 管理未来 15 天可约时段</span>
+            <span className="muted">点击任意 30 分钟格子，自动带入下方设置</span>
+          </div>
+          <div className="slot-grid">
+            {adminDayGroups.map(([day, daySlots]) => <div className="slot-day" key={day}>
+              <b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(daySlots[0].start_at))}</b>
+              <div>{daySlots.map((slot) => <button
+                type="button"
+                key={slot.id}
+                className={`${slot.status} ${ovForm.start_at === isoToLocalInput(slot.start_at) ? 'selected' : ''}`}
+                title={slot.status === 'unavailable' ? '点击恢复可约' : '点击设为不可约'}
+                onClick={() => selectAdminSlot(slot)}
+              >{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>)}</div>
+            </div>)}
+          </div>
+        </div>
         <div className="kb-upload" style={{ alignItems: 'flex-start', marginBottom: 18 }}>
           <div>
             <span className="eyebrow">AVAILABILITY OVERRIDES / A4</span>
             <h3 style={{ margin: '6px 0 8px' }}>{ovForm.id ? '编辑时段设置' : '新建时段设置'}</h3>
-            <p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 12 }}>「强制不可约」把该时段在预约日历中标红不可选；「恢复可约」把默认不可用的时段重新开放。保存后预约日历立即生效。</p>
+            <p style={{ fontSize: 13, color: '#5e6f65', marginBottom: 12 }}>可直接点击上方精确 30 分钟格子。「强制不可约」会标红禁用；点击红色格子会自动选择「恢复可约」。保存后面试官预约日历同步生效。</p>
           </div>
           <form onSubmit={submitOverride} style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 640 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

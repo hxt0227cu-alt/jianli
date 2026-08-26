@@ -296,6 +296,7 @@ async def test_slot_snapshot_is_authenticated_and_privacy_safe(real_stack) -> No
     engine, _, app, settings = real_stack
     user_id = _seed_user(engine)
     other_user_id = _seed_user(engine)
+    owner_id = _seed_user(engine, "owner_admin")
     now = datetime.now(UTC)
     days_until_monday = -now.astimezone(ZoneInfo("Asia/Shanghai")).weekday()
     start = (now + timedelta(days=days_until_monday)).replace(
@@ -364,6 +365,98 @@ async def test_slot_snapshot_is_authenticated_and_privacy_safe(real_stack) -> No
     assert set(body) == {"watermark", "generated_at", "items"}
     assert [item["ownership"] for item in body["items"]] == ["self", "other", "none"]
     assert all("appointment_id" not in item for item in body["items"])
+    async with _authorized_client(app, engine, settings, owner_id) as owner_client:
+        owner_response = await owner_client.get("/slots/snapshot?week_offset=2")
+    assert owner_response.status_code == 200
+    assert all("appointment_id" not in item for item in owner_response.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_expired_appointment_auto_completes_and_no_longer_blocks_create(real_stack) -> None:
+    engine, _, app, settings = real_stack
+    user_id = _seed_user(engine)
+    first_slots = _seed_slots(engine, datetime(2030, 6, 5, 1, 0, tzinfo=UTC))
+    first_draft = _draft(first_slots, "Lifecycle Company")
+
+    async with _authorized_client(app, engine, settings, user_id) as client:
+        first_preview = await client.post("/appointment-confirmations", json=first_draft)
+        first = await client.post(
+            "/appointments",
+            headers={"Idempotency-Key": str(uuid4())},
+            json={
+                "confirmation_token": first_preview.json()["confirmation_token"],
+                "appointment": first_draft,
+            },
+        )
+        assert first.status_code == 201
+
+        ended_at = datetime.now(UTC) - timedelta(days=1)
+        with engine.begin() as connection:
+            connection.execute(
+                text("UPDATE appointments SET start_at=:start,end_at=:end WHERE id=:id"),
+                {
+                    "id": UUID(first.json()["id"]),
+                    "start": ended_at - timedelta(minutes=90),
+                    "end": ended_at,
+                },
+            )
+
+        listed = await client.get("/appointments")
+        assert listed.status_code == 200
+        assert [item["status"] for item in listed.json()["items"]] == ["completed"]
+
+        with engine.connect() as connection:
+            completed = connection.execute(
+                text("SELECT status::text,completed_at,version FROM appointments WHERE id=:id"),
+                {"id": UUID(first.json()["id"])},
+            ).mappings().one()
+            assert completed["status"] == "completed"
+            assert completed["completed_at"] == ended_at
+            first_version = completed["version"]
+            event_types = list(
+                connection.execute(
+                    text("SELECT type::text FROM notification_events WHERE biz_id=:id"),
+                    {"id": UUID(first.json()["id"])},
+                ).scalars()
+            )
+            assert "appointment_cancelled" not in event_types
+            assert event_types.count("appointment_completed") == 1
+            assert connection.execute(
+                text(
+                    "SELECT count(*) FROM notification_events "
+                    "WHERE biz_id=:id AND type='reminder_due' AND status='cancelled'"
+                ),
+                {"id": UUID(first.json()["id"])},
+            ).scalar_one() == 1
+
+        # A second read is idempotent, and the old company/account unique constraints
+        # no longer block a fresh appointment.
+        assert (await client.get("/appointments")).status_code == 200
+        with engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT version FROM appointments WHERE id=:id"),
+                {"id": UUID(first.json()["id"])},
+            ).scalar_one() == first_version
+            assert connection.execute(
+                text(
+                    "SELECT count(*) FROM notification_events "
+                    "WHERE biz_id=:id AND type='appointment_completed'"
+                ),
+                {"id": UUID(first.json()["id"])},
+            ).scalar_one() == 1
+
+        second_slots = _seed_slots(engine, datetime(2030, 6, 6, 1, 0, tzinfo=UTC))
+        second_draft = _draft(second_slots, "Lifecycle Company")
+        second_preview = await client.post("/appointment-confirmations", json=second_draft)
+        second = await client.post(
+            "/appointments",
+            headers={"Idempotency-Key": str(uuid4())},
+            json={
+                "confirmation_token": second_preview.json()["confirmation_token"],
+                "appointment": second_draft,
+            },
+        )
+    assert second.status_code == 201
 
 
 @pytest.mark.asyncio

@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const source = readFileSync(resolve(process.cwd(), 'apps/web/main.tsx'), 'utf8');
+const myAppointments = readFileSync(resolve(process.cwd(), 'apps/web/my-appointments.tsx'), 'utf8');
+const appointmentCss = readFileSync(resolve(process.cwd(), 'apps/web/appointment.css'), 'utf8');
 describe('web shell acceptance surface', () => {
   it('keeps the three static destinations and evidence boundaries', () => {
     expect(source).toContain("'resume' | 'projects'");
@@ -45,5 +47,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain("'/auth/resend-verification'");
     expect(source).toContain("'/auth/logout'");
     expect(source).toContain("'app-shell no-chat'");
+    expect(source).toContain('[0, 1, 2]');
+    expect(source).toContain('cropBookingWindow');
+    expect(source).toContain('从明天起 15 天可预约时间');
+    expect(source).toContain('admin-slot-board');
+    expect(source).toContain('点击任意 30 分钟格子');
+    expect(myAppointments).toContain('[0, 1, 2]');
+    expect(myAppointments).toContain('从明天起 15 天内');
+    expect(appointmentCss).toContain('grid-template-columns: minmax(0, 1fr) 300px');
+    expect(appointmentCss).toContain('.admin-slot-board');
   });
 });

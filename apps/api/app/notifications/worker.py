@@ -58,6 +58,7 @@ _CANDIDATE_EVENTS = {
     "appointment_rescheduled",
     "appointment_cancelled",
     "reminder_due",
+    "appointment_completed",
 }
 
 
@@ -252,6 +253,19 @@ def _mark_delivery(
         )
 
 
+def _has_failed_delivery(engine: Engine, event_id: UUID) -> bool:
+    with engine.connect() as connection:
+        return bool(
+            connection.scalar(
+                text(
+                    "SELECT EXISTS (SELECT 1 FROM notification_deliveries "
+                    "WHERE event_id=:event_id AND status='failed')"
+                ),
+                {"event_id": event_id},
+            )
+        )
+
+
 def _send_candidate_email(
     engine: Engine,
     email_sender: EmailSender,
@@ -295,10 +309,9 @@ def _send_candidate_feishu(
     except Exception as error:
         error_text = f"bitable: {error}"
 
-    open_id = _decrypt_open_id(
-        cipher,
-        owner_admin.get("config_id"),
-        owner_admin.get("candidate_feishu_open_id_ciphertext"),
+    completion_only = event_type == "appointment_completed"
+    open_id = None if completion_only else _decrypt_open_id(
+        cipher, owner_admin.get("config_id"), owner_admin.get("candidate_feishu_open_id_ciphertext")
     )
     if error_text is None and open_id:  # R13 message only when mirror succeeded
         try:
@@ -313,7 +326,11 @@ def _send_candidate_feishu(
             delivery_id,
             "succeeded",
             provider_id=message_id,
-            metadata={"feishu_record_id": mirror_record_id, "open_id_configured": bool(open_id)},
+            metadata={
+                "feishu_record_id": mirror_record_id,
+                "open_id_configured": bool(open_id),
+                "message_suppressed": completion_only,
+            },
         )
         LOGGER.info(
             "candidate_feishu_sent",
@@ -366,7 +383,10 @@ def _deliver_candidate(
     if appointment is None:
         return
 
-    channels: tuple[str, ...] = ("email",) if feishu is None else ("email", "feishu")
+    if event_type == "appointment_completed":
+        channels: tuple[str, ...] = () if feishu is None else ("feishu",)
+    else:
+        channels = ("email",) if feishu is None else ("email", "feishu")
     for delivery_id, channel in _materialize_candidate_deliveries(
         engine, event_id, now, channels
     ):
@@ -405,7 +425,8 @@ def run_notification_worker(
         claimed = _claim_batch(engine)
         for event_id, event_type, biz_id in claimed:
             try:
-                _process(engine, booking, auth_repo, email_sender, event_id, event_type, biz_id)
+                if event_type != "appointment_completed":
+                    _process(engine, booking, auth_repo, email_sender, event_id, event_type, biz_id)
                 _mark(engine, event_id, "processed")
             except Exception:  # one bad event must not kill the worker
                 LOGGER.exception("notification_failed", extra={"event_id": str(event_id)})
@@ -427,6 +448,13 @@ def run_notification_worker(
                     LOGGER.exception(
                         "candidate_delivery_failed", extra={"event_id": str(event_id)}
                     )
+                    if event_type == "appointment_completed":
+                        _mark(engine, event_id, "failed")
+                else:
+                    if event_type == "appointment_completed" and _has_failed_delivery(
+                        engine, event_id
+                    ):
+                        _mark(engine, event_id, "failed")
         _requeue_failed(engine)
         _requeue_failed_deliveries(engine)
         time.sleep(_POLL_INTERVAL)

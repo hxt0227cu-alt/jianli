@@ -128,6 +128,7 @@ def test_outbox_audit_schema_shape(outbox_engine: Engine) -> None:
         "appointment_rescheduled",
         "appointment_cancelled",
         "reminder_due",
+        "appointment_completed",
     ]
     assert _enum_labels(outbox_engine, "notification_event_status") == [
         "pending",

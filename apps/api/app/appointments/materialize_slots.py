@@ -15,6 +15,8 @@ from sqlalchemy import Engine, create_engine, text
 
 from app.config import Settings
 
+from .lifecycle import complete_expired_appointments
+
 LOCAL_TIME = ZoneInfo("Asia/Shanghai")
 CALENDAR_DIR = Path(__file__).with_name("calendars")
 DAY_START = time(9, 30)
@@ -91,6 +93,10 @@ def materialize_slots(
     window_start = datetime.combine(first_day, time.min, LOCAL_TIME).astimezone(UTC)
     window_end = datetime.combine(end_day, time.min, LOCAL_TIME).astimezone(UTC)
     with engine.begin() as connection:
+        completed = complete_expired_appointments(
+            connection,
+            now=datetime.now(UTC),
+        )
         overrides = [
             dict(row)
             for row in connection.execute(
@@ -139,6 +145,8 @@ def materialize_slots(
                     },
                 )
                 processed += 1
+    if completed:
+        print(f"[appointments] completed_expired={completed}")
     return processed
 
 

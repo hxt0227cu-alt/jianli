@@ -43,6 +43,7 @@
 - `apps/api/tests/appointments/**`
 - `apps/api/tests/migrations/test_outbox_audit_schema.py`
 - `apps/api/tests/test_feishu.py`
+- `apps/api/tests/test_worker.py`
 - `apps/web/main.tsx`
 - `apps/web/my-appointments.tsx`
 - `apps/web/appointment.css`

@@ -134,6 +134,14 @@ def _seed_slots(engine: Engine, start: datetime) -> list[UUID]:
     return ids
 
 
+def _safe_future_start() -> datetime:
+    """Return a future morning slot that never crosses a Shanghai calendar day."""
+
+    return (datetime.now(UTC) + timedelta(days=1)).replace(
+        hour=1, minute=0, second=0, microsecond=0
+    )
+
+
 def _authorized_client(
     app: object, engine: Engine, settings: Settings, user_id: UUID
 ) -> AsyncClient:
@@ -191,7 +199,7 @@ def test_worker_smtp_path_claims_renders_marks() -> None:
     app = create_app(settings, auth_runtime, booking)
     try:
         interviewer = _seed_user(engine)
-        slot_ids = _seed_slots(engine, datetime.now(UTC) + timedelta(days=1, minutes=30))
+        slot_ids = _seed_slots(engine, _safe_future_start())
         draft = _draft(slot_ids)
 
         async def _create_appointment() -> None:
@@ -328,7 +336,7 @@ def test_worker_real_smtp_e2e() -> None:
     app = create_app(settings, auth_runtime, booking)
     try:
         owner = _seed_user_with_email(engine, E2E_RECIPIENT)
-        slot_ids = _seed_slots(engine, datetime.now(UTC) + timedelta(days=1, minutes=30))
+        slot_ids = _seed_slots(engine, _safe_future_start())
         draft = _draft(slot_ids)
 
         async def _create_appointment() -> None:

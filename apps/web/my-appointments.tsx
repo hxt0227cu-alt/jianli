@@ -35,6 +35,20 @@ const shanghaiDay = (iso: string) =>
     timeZone: 'Asia/Shanghai',
   }).format(new Date(iso));
 
+const cropBookingWindow = (items: Slot[]) => {
+  const today = shanghaiDay(new Date().toISOString());
+  const start = new Date(`${today}T00:00:00+08:00`);
+  start.setUTCDate(start.getUTCDate() + 1);
+  const endExclusive = new Date(start);
+  endExclusive.setUTCDate(endExclusive.getUTCDate() + 15);
+  const startDay = shanghaiDay(start.toISOString());
+  const endDay = shanghaiDay(endExclusive.toISOString());
+  return items.filter((slot) => {
+    const day = shanghaiDay(slot.start_at);
+    return day >= startDay && day < endDay;
+  });
+};
+
 function csrfCookie(): string {
   return (
     document.cookie.split('; ').find((part) => part.startsWith('__Host-csrf='))?.split('=')[1] || ''
@@ -123,9 +137,9 @@ export function MyAppointmentsView({ onInterview }: { onInterview: () => void })
     setError('');
     try {
       const snapshots = await Promise.all(
-        [0, 1].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)),
+        [0, 1, 2].map((week) => api<{ items: Slot[] }>(`/slots/snapshot?week_offset=${week}`)),
       );
-      setSlots(snapshots.flatMap((snap) => snap.items));
+      setSlots(cropBookingWindow(snapshots.flatMap((snap) => snap.items)));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '加载时段失败');
     }
@@ -258,7 +272,7 @@ export function MyAppointmentsView({ onInterview }: { onInterview: () => void })
                 <div className="booking-calendar">
                   <div className="calendar-head">
                     <span>
-                      <CalendarDays size={17} /> 选择新的连续三格（共 90 分钟）
+                      <CalendarDays size={17} /> 从明天起 15 天内选择新的连续三格（共 90 分钟）
                     </span>
                     <span className="muted">绿色可选 · 红色不可约</span>
                   </div>

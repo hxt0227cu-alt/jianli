@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import StreamingResponse
 
+from app.auth.errors import AuthError
 from app.auth.models import Principal
 from app.auth.router import _principal, _require_csrf
 from app.auth.runtime import AuthRuntime
@@ -35,10 +36,10 @@ def create_appointment_router(
         return auth_runtime.service.require_role(_principal(request, auth_runtime), "interviewer")
 
     @router.get("/slots/snapshot", response_model=SlotSnapshot, operation_id="getSlotSnapshot")
-    def snapshot(request: Request, week_offset: int = Query(default=0, ge=0, le=1)) -> SlotSnapshot:
-        principal = auth_runtime.service.require_role(
-            _principal(request, auth_runtime), "interviewer"
-        )
+    def snapshot(request: Request, week_offset: int = Query(default=0, ge=0, le=2)) -> SlotSnapshot:
+        principal = _principal(request, auth_runtime)
+        if principal.role not in ("interviewer", "owner_admin"):
+            raise AuthError("PERM_DENIED", 403, "Forbidden", "Role is not allowed")
         return booking_service.slot_snapshot(principal, week_offset)
 
     @router.get("/slots/events", operation_id="streamSlotEvents")

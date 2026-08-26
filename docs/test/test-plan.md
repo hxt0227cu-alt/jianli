@@ -1,6 +1,6 @@
-# 测试计划 v0.4（approved）
+# 测试计划 v0.5（approved）
 
-> based_on：SRS 1.6 / domain-model 1.1.7 / UI 1.0.1 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.7（均 approved）。TC 总数为 71；新增 TC-UI-006 与 TC-APT-012，其他冻结 TC 不变。实现任务不得删除、skip、放宽或降级真实依赖级别，`spec_sync=clean`。
+> based_on：SRS 1.7 / domain-model 1.1.8 / UI 1.0.1 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.7（均 approved）。TC 总数为 72；新增 TC-NOTIFY-012，其他冻结 TC 不变。
 
 ## 1. 证据等级与门禁
 
@@ -95,6 +95,7 @@
 | TC-NOTIFY-009 | security §5 | 超大/MIME炸弹/未知/歧义退信拒绝且告警，不创建新记录 |
 | TC-NOTIFY-010 | R26 | A6/A7 可按通道、失败状态、退信筛选，退信触发双告警 |
 | TC-NOTIFY-011 | R14 | 预约新增/修改/取消近实时同步至飞书完整视图；同步失败写失败记录、邮件告警并按既定策略重试，不回滚预约 |
+| TC-NOTIFY-012 | R14/SRS 1.7 | 自动完成事务写唯一 appointment_completed Outbox；Worker 仅建 feishu Delivery 并 upsert 状态=completed，不发送候选人/面试官 email 或飞书私信；0010 up/down/up 通过 |
 
 ### 2.7 Admin、知识库与权限
 

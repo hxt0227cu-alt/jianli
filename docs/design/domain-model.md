@@ -1,4 +1,4 @@
-# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.7
+# 个人 AI 问答网站 — 领域模型设计（Domain Model）v1.1.8
 
 > 本文档是《需求文档 v2.3.3》与《用例规约 v1.7.2》之后的分析设计工件，属"分析/设计"阶段产物。
 > 用途：冻结数据库边界与领域实体关系，作为《接口契约》《测试计划》与架构设计的前置输入。
@@ -10,6 +10,7 @@
 > **v1.1.5 补正（本次内容评审包）**：① 面试官收件人来源由错误虚构的 `Appointment.interview_id → Interview.interviewer_id → InterviewerProfile.registered_email` 修正为既有 `Appointment.user_id → User.id → User.email`（删除不存在的 `Interview` 实体引用与 `InterviewerProfile.registered_email` 字段）；② `OwnerContactConfig` 新增 `candidate_feishu_open_id_ciphertext` 字段（候选人飞书接收标识，原本无领域字段，作为**显式领域模型变更**列出，沿用已批准 AES 密文模式）；③ 候选人邮箱来源指向 `owner_admin` 的 `User.email`，但模型当前**无单 owner 唯一性约束、亦无显式配置关系**——**Stop & Report 触发**，未假设，留待用户裁定（方案 A：`User` 上 `WHERE role='owner_admin'` 部分唯一索引；方案 B：单例 `SiteConfig.owner_user_id`）；④ 补全事件类型→投递目的完整映射与「`appointment_cancelled` 同事件多目的并发投递」说明，明确面试官改期确认函 / 会议号更新函 / 面试官主动取消告知函均属 approved SRS v1.1 MVP 行为、非未来扩展。**（续）用户已裁定方案 A**：MVP 为单候选人个人站点、不引入 `SiteConfig`；新增部分唯一索引 `uq_active_owner_admin`（见 §6.1，强制至多一个未删除 owner_admin），确立三条运行不变量（恰一活跃 owner_admin / 缺失时 `candidate_notification` 失败告警不得任选 / `OwnerContactConfig.user_id` 必指该 owner_admin），`candidate_notification` 收件人解析链路固定为 `活跃 owner_admin User → User.email → 同 user_id OwnerContactConfig → candidate_phone_ciphertext / candidate_feishu_open_id_ciphertext`；并修正 `User.email` 安全表述（既有的账号邮箱字段、非 AES 密文、由访问控制保护，不得称"密文存取"），`candidate_feishu_open_id_ciphertext` 继续保持 AES 密文。
 > **v1.1.6（TASK-CR-ADMIN-QA-OBSERVABILITY-001，2026-08-26 approved）**：`Message` 新增三个 nullable 客观观测字段：`grounded`、`citations_count`、`latency_ms`。历史消息保持 null；非负计数/耗时由 CHECK 约束。明确不存储规则硬编码的 `quality_score`，回答质量需由独立评测集或经批准的 judge 流程产生，不得以“是否拒答”等规则冒充质量结论。
 > **v1.1.7（TASK-CR-APPOINTMENT-WINDOW-001，2026-08-26 approved）**：不新增实体/字段/枚举；明确 `Appointment.end_at <= now()` 时由维护流程或预约域访问路径幂等执行 `active → completed`，`completed_at=end_at`，使部分唯一索引只约束仍有效预约。
+> **v1.1.8（TASK-CR-APPOINTMENT-COMPLETION-SYNC-001，2026-08-26 approved）**：`NotificationEvent.type` 新增 `appointment_completed` 业务事实；仅产生 Feishu `candidate_notification` Delivery 用于多维表格状态镜像，不发送候选人/面试官邮件或飞书私信。
 
 ---
 
@@ -189,7 +190,7 @@ classDiagram
     }
     class NotificationEvent {
         +id UUID PK
-        +type enum "appointment_created/appointment_details_updated/appointment_rescheduled/appointment_cancelled/reminder_due"
+        +type enum "appointment_created/appointment_details_updated/appointment_rescheduled/appointment_cancelled/appointment_completed/reminder_due"
         +biz_id UUID
         +scheduled_at timestamptz NULL "仅 reminder_due"
         +idempotency_key string UK
@@ -416,7 +417,7 @@ erDiagram
 | **AppointmentStatus**（预约） | `active` / `cancelled` / `completed` | `Appointment.status` | 提交即 `active`；改期 `active→active`（原子事务）；`end_at <= now()` 后幂等 `active→completed` 且 `completed_at=end_at`；无 `pending`/`draft`；`cancelled`/`completed` 仅置位时间字段 |
 | **DeliveryStatus**（通知投递，通道无关） | `queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter` | `NotificationDelivery.status` | 独立于预约；手动重发=**新建 `NotificationDelivery` 尝试记录**（`attempt_no`+1）；邮件 `bounced` 与飞书 `response_code` 仅存 `channel_metadata` JSONB 分支，不混入通用枚举 |
 
-> **NotificationEvent 生命周期（P0-6）**：`status` = `pending` → `processing` → `processed`（终态）；异常 `failed`（进入 Delivery 重试/死信）；**改期/取消时**：未执行的 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`），改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件。事件类型仅表达**业务事实**：`appointment_created` / `appointment_details_updated` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`；具体用哪个模板/通道由消费者与通道适配器决定，**不允许 `appointment_created` 与 `confirm_mail` 重复投递**（已移除 `confirm_mail` 类型）。**投递意图由 `NotificationDelivery.delivery_purpose` 表达**（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），与事件类型解耦；同一业务事件可针对不同目的产生不同 `NotificationDelivery` 行（例：`appointment_created` → 对候选人 `candidate_notification` + 对面试官 `interviewer_confirmation`，二者通道/收件人不同、独立记录尝试/状态/退信/重试/手动重发）。
+> **NotificationEvent 生命周期（P0-6）**：`status` = `pending` → `processing` → `processed`（终态）；异常 `failed`（进入 Delivery 重试/死信）；**改期/取消/完成时**：未执行的 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`），改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件。事件类型仅表达**业务事实**：`appointment_created` / `appointment_details_updated` / `appointment_rescheduled` / `appointment_cancelled` / `appointment_completed` / `reminder_due`；`appointment_completed` 仅驱动飞书表格镜像，不发送邮件或私信。具体用哪个模板/通道由消费者与通道适配器决定，**不允许 `appointment_created` 与 `confirm_mail` 重复投递**（已移除 `confirm_mail` 类型）。**投递意图由 `NotificationDelivery.delivery_purpose` 表达**（`candidate_notification` / `interviewer_confirmation` / `interviewer_cancellation`），与事件类型解耦。
 
 > **通道元数据判别联合（P1-5）**：`NotificationDelivery.channel_metadata` 为 JSONB，但代码中必须定义为两个独立类型，禁止作为任意字典穿透业务层：
 > - email 分支：`smtp_accepted_at` / `bounced_at` / `bounce_reason`
@@ -537,7 +538,7 @@ COMMIT;
 | id UUID PK | content text | updated_at timestamptz |
 
 ### 6.11 NotificationEvent（Outbox，合并 ReminderSchedule，P0-6）
-| id UUID PK | type enum[appointment_created,appointment_details_updated,appointment_rescheduled,appointment_cancelled,reminder_due] | biz_id UUID | scheduled_at timestamptz NULL（仅 reminder_due） | idempotency_key string UK | status enum[pending,processing,processed,cancelled,failed] | cancelled_at timestamptz NULL | superseded_by_event_id UUID NULL | created_at |
+| id UUID PK | type enum[appointment_created,appointment_details_updated,appointment_rescheduled,appointment_cancelled,appointment_completed,reminder_due] | biz_id UUID | scheduled_at timestamptz NULL（仅 reminder_due） | idempotency_key string UK | status enum[pending,processing,processed,cancelled,failed] | cancelled_at timestamptz NULL | superseded_by_event_id UUID NULL | created_at |
 > 临近提醒：定时任务扫描 `type=reminder_due AND scheduled_at<=now() AND status=pending`，触发生成 `NotificationDelivery`，不独立建表。**改期/取消时**：将未执行 `reminder_due` 事件置 `cancelled`（填 `cancelled_at`）；改期产生的旧提醒可经 `superseded_by_event_id` 指向新事件，确保提醒随预约生命周期正确撤销/重建。
 
 ### 6.12 NotificationDelivery（通用状态 + 投递目的 + 通道元数据 JSONB，合并 Email/Feishu 元数据）
@@ -555,13 +556,13 @@ CREATE UNIQUE INDEX uq_delivery_attempt
 
 | delivery_purpose | 含义 | 合法 channel | 收件人来源（不新增明文字段） |
 |---|---|---|---|
-| `candidate_notification` | 面向**候选人（即站点 owner_admin 本人）**的通知/提醒：涵盖 `appointment_created` / `appointment_rescheduled` / `appointment_cancelled` 的候选人侧告知，以及 `reminder_due` | `email` + `feishu`（双通道，SRS §3.8） | 收件人解析固定链路：**活跃 owner_admin User**（由 `uq_active_owner_admin` 唯一确定）→ 其 `User.email`（邮箱）→ 同一 `user_id` 的 `OwnerContactConfig` → `candidate_phone_ciphertext`（手机）/ `candidate_feishu_open_id_ciphertext`（飞书，新增 AES 密文字段）；不存在活跃 owner_admin 时解析失败并告警（见 §6.1 运行不变量） |
+| `candidate_notification` | 面向**候选人（即站点 owner_admin 本人）**的通知/提醒与飞书状态镜像：新建/改期/取消/提醒走既有双通道；`appointment_completed` 仅建 feishu Delivery 并 upsert 多维表格，不发私信 | 通常 `email` + `feishu`；完成事件仅 `feishu` | 收件人解析固定链路：活跃 owner_admin User → `User.email` → 同 user_id 的 `OwnerContactConfig`；不存在活跃 owner_admin 时解析失败并告警 |
 | `interviewer_confirmation` | 面向**面试官**的预约确认函（涵盖 `appointment_created` / `appointment_rescheduled` / `appointment_details_updated` 的面试官侧确认，含改期确认函与会议号更新函） | `email`（PRD §4.5.1 确认函投递至面试官注册邮箱） | `Appointment.user_id` → `User.id` → `User.email`（面试官注册邮箱；`User.email` 为既有账号邮箱字段、**非 AES 密文**，沿用既有全局唯一约束与访问控制保护） |
 | `interviewer_cancellation` | 面向**面试官**的取消告知函（涵盖 `appointment_cancelled` 的面试官侧告知，含面试官主动取消场景） | `email` | 同上，`Appointment.user_id` → `User.id` → `User.email` |
 
 > 收件人**绝不**以明文列冗余存储：候选人联系方式 = `OwnerContactConfig.candidate_phone_ciphertext` / `OwnerContactConfig.candidate_feishu_open_id_ciphertext`（均为已批准加密字段模式下的 **AES 密文**）+ `owner_admin` 的 `User.email`（既有账号邮箱字段、**非 AES 密文**，由访问控制保护）；面试官联系方式沿用 `User.email`（由 `Appointment.user_id` 关联，同上）。`delivery_purpose` 仅决定「取哪个业务实体的哪个联系方式」与「用哪个通道模板」，不改变收件人存储方式。
 > **事件类型 → 投递目的映射（完整，已是 approved SRS v1.1 MVP 行为，非未来扩展）**：
-> - `candidate_notification`：`appointment_created` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`
+> - `candidate_notification`：`appointment_created` / `appointment_rescheduled` / `appointment_cancelled` / `reminder_due`；`appointment_completed` 仅 feishu 表格镜像
 > - `interviewer_confirmation`：`appointment_created` / `appointment_rescheduled` / `appointment_details_updated`
 > - `interviewer_cancellation`：`appointment_cancelled`
 > **同事件多目的并发投递**：`appointment_cancelled` 必须**同时**产生① 候选人 `candidate_notification`（`email` + `feishu` 两行）与② 面试官 `interviewer_cancellation`（`email` 一行）；面试官的改期确认函（`appointment_rescheduled`）、会议号更新函（`appointment_details_updated`）、面试官主动取消告知函（`appointment_cancelled` 的面试官侧）**均为上述三目的既有覆盖范围，属 approved SRS v1.1 MVP 行为，不得列为未来扩展**。

@@ -11,18 +11,18 @@
 # 上游版本变化（current != based_on）→ 该下游工件需做 impact review（不自动判废、不自动重写；错别字级改动可能无需改下游）。
 # 机器门禁：对比 based_on 与当前 artifacts 版本，不一致即报"needs impact check"。
 artifacts:
-  prd:              { version: "2.3.5", status: approved }  # TASK-CR-APPOINTMENT-WINDOW-001：预约过期自动完成 + 明天起15日窗口。
-  use_cases:        { version: "1.7.3", status: approved }  # UC-07/09/10/13 同步预约生命周期、三自然周窗口与精确 override。
-  domain_model:     { version: "1.1.7", status: approved }  # 不新增字段；明确 active 过期幂等转 completed，completed_at=end_at。
+  prd:              { version: "2.3.6", status: approved }  # 自动完成状态经Outbox同步飞书表格，便于整理已/未面试。
+  use_cases:        { version: "1.7.4", status: approved }  # UC-10/11同步完成事件与飞书状态镜像。
+  domain_model:     { version: "1.1.8", status: approved }  # NotificationEvent新增appointment_completed。
   srs:
-    version: "1.6"
-    status: approved                                              # TASK-CR-APPOINTMENT-WINDOW-001 用户明确批准的预约生命周期与窗口修正。
-    based_on: { prd: "2.3.5", use_cases: "1.7.3", domain_model: "1.1.7" }
+    version: "1.7"
+    status: approved                                              # TASK-CR-APPOINTMENT-COMPLETION-SYNC-001 完成状态飞书同步。
+    based_on: { prd: "2.3.6", use_cases: "1.7.4", domain_model: "1.1.8" }
   ui_wireframe:     { version: "1.0.1", status: approved }   # U3/A4 同步15日窗口、铺满布局与精确时间段 override。
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: approved }  # 用户于 2026-08-10 明确批准 security v0.1；批准锚点为本状态推进提交；BCrypt/会话/Redis/IMAP/AES-GCM 等方案开始约束实现
   openapi:          { version: "0.7",   status: approved }  # getSlotSnapshot week_offset 扩为0/1/2，响应结构不变。
-  test_plan:        { version: "0.4",   status: approved }  # 71个TC；新增15日UI窗口与过期预约自动完成验收。
+  test_plan:        { version: "0.5",   status: approved }  # 72个TC；新增完成事件只同步飞书表格验收。
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── AIQA agent 工具注册（TASK-AIQA-BOOKING-001；2026-08-20 经 TASK-CR-AIQA-BOOKING-001 批准推翻 PRD 决策#14 对该功能的禁止）──

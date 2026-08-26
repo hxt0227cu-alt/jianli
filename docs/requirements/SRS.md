@@ -1,7 +1,7 @@
-# 软件需求规格（SRS）v1.6 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
+# 软件需求规格（SRS）v1.7 — 个人 AI 问答网站（含作品集 + 数字分身 + 面试预约）
 
-> **文档状态**：v1.6 · `status = approved`（用户于 2026-08-26 批准 TASK-CR-APPOINTMENT-WINDOW-001：过期预约自动完成、15 日三自然周窗口与精确时间段不可约管理）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.5 / 用例规约 v1.7.3 / 领域模型 **v1.1.7** / AI 治理 1.0.1。
+> **文档状态**：v1.7 · `status = approved`（用户于 2026-08-26 批准 TASK-CR-APPOINTMENT-COMPLETION-SYNC-001：完成状态经 Outbox 仅同步飞书多维表格）。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.6 / 用例规约 v1.7.4 / 领域模型 **v1.1.8** / AI 治理 1.0.1。
 > **SRS 输入基线 commit**：`d7510254a9e900fab06ebc5216cd2dd68bd2eef2`（SRS 启动前基线；SRS 正文与 baseline 更新在后续 commit `b7ef847`）。
 > **范围边界（硬约束）**：本文档定义系统功能、外部接口行为、异常、状态与权限行为；**不定义** REST URL、请求/响应 Schema、OpenAPI、SSE 事件载荷、物理表结构或部署拓扑——这些分别留给《接口契约》《架构设计与 ADR》《领域模型》。本文档为后续接口契约、测试计划、架构设计的输入。
 > **持续生效治理约束**：禁止新增产品功能、禁止新增 Agent/AI Infra、禁止新增未来扩展表；MVP 硬规则（`docs/baseline.yml` `mvp_hard_rules`）为 SRS 边界，正文仅可引用、不可扩展。（注：「禁止 LLM 自动写预约」原 PRD §8.4#14 已据 `TASK-CR-AIQA-BOOKING-001` 经用户显式批准推翻，现以 `baseline.yml` `agent_tools` 白名单（RBAC 守卫的 `request_interview_booking` 等）为唯一边界，见 §2.4。）
@@ -138,7 +138,7 @@
   - **改会议号 = 原地改字段**（不涉及时段占用）。
   - **改时间 = 原子事务**：同一事务内锁新段→占新段→释旧段→提交；新段不可用则原预约保持不变（**禁止先释放原格再重选**）；成功后发双通道通知+飞书同步+**改期重发确认函（标注时间已更新）**。
   - **取消 = 事务中释放原 3 格**+触发通知+飞书同步+**取消成功发取消告知函（必须）**。
-  - **自动完成**：预约到达 `end_at` 后幂等转为 `completed`，终态不可修改/取消，不发送取消告知函。
+  - **自动完成**：预约到达 `end_at` 后幂等转为 `completed`，终态不可修改/取消；同事务写 `appointment_completed` Outbox，Worker 仅 upsert 飞书多维表格状态，不发送邮件、取消告知函或飞书私信。
 - **业务规则**：R11（修改/取消原子）、R26（改期/会议号变更重发更新函、取消发告知函）。
 - **异常流程**：改时间新格被占 → 提示重选、原预约不变（`SLOT_TAKEN`，UC-10 2a）；权限不足 `PERM_DENIED`。
 - **验收判定**：会议号原地改、原子改期无数据丢失（≥50 并发重复≥10 次仅一人成功）、本人可改/取消、其他面试官看不到红格明文（PRD §6）。
@@ -151,7 +151,7 @@
 - **验收判定**：owner 锁定→3 格 `owner_locked`+SSE 刷新红+告知函+审计；去重例外一次性放行且 `uq_active_user` 不绕过。
 
 ### 3.8 候选人侧视图与提醒（R13 / R14 / R14a / R18 / R21 → UC-11 / UC-12 / UC-14 / UC-23）
-- **飞书完整视图（R14，UC-11）**：系统 DB 为唯一真相源，预约变更实时/近实时同步至飞书多维表格（全公司明文：公司/平台/会议号/HR联系方式/备注/时段/状态）；同步失败邮件告警候选人+飞书任务重试（R21/UC-11 3a）。
+- **飞书完整视图（R14，UC-11）**：系统 DB 为唯一真相源，预约新增/修改/取消/自动完成实时或近实时同步至飞书多维表格（全公司明文：公司/平台/会议号/HR联系方式/备注/时段/状态），其中完成事件只更新表格、不发私信或邮件；同步失败邮件告警候选人+飞书任务重试（R21/UC-11 3a）。
 - **双通道提醒（R13，UC-12，MVP）**：新预约/修改(改时间)/取消事件实时推送候选人**飞书+邮箱**；面试前 **10 分钟**临近提醒（R18/UC-14）；微信助理为延后项。
 - **后台只读应急视图（R14a，UC-23）**：飞书不可用时，admin 在网站后台**只读**查看完整预约（全公司明文）、通知投递状态、飞书同步状态/故障记录；**不可改/删预约**。
 - **通知可靠性语义（PRD §4.6，见 §4.3）**：业务事务 + 可靠持久化的业务事件（Outbox 模式）+ 异步消费者；每事件唯一幂等 ID；≤3 次指数退避重试；不重复产生业务后果；预约成功不依赖第三方通知成功。
@@ -249,7 +249,7 @@
 - **SlotStatus**：`available` / `booked` / `owner_locked` / `unavailable`（黄格不属此枚举，为前端临时态）。
 - **AppointmentStatus**：`active` / `cancelled` / `completed`（提交即 active；改期 active→active 原子；`end_at <= now()` 后自动 active→completed 且 `completed_at=end_at`；无 pending/draft）。
 - **DeliveryStatus**：`queued` / `sending` / `succeeded` / `failed` / `retry_scheduled` / `dead_letter`（通道无关；手动重发=新建尝试记录）；退信(Bounce) 不属本枚举，仅邮件通道于 `channel_metadata.bounced_at`/`bounce_reason` 记录（见 §3.8/§4.3；领域模型 v1.1.5 §5）。
-- **NotificationEvent 生命周期**：`pending→processing→processed`（终态）；异常 `failed`（进入 `NotificationDelivery` 重试/死信，不重复产生业务后果）；改期/取消置旧提醒 `cancelled`；类型仅表达业务事实（appointment_created/details_updated/rescheduled/cancelled/reminder_due）。
+- **NotificationEvent 生命周期**：`pending→processing→processed`（终态）；异常 `failed`（进入 `NotificationDelivery` 重试/死信，不重复产生业务后果）；改期/取消/完成置旧提醒 `cancelled`；类型仅表达业务事实（appointment_created/details_updated/rescheduled/cancelled/completed/reminder_due），completed 仅驱动飞书表格镜像。
 - （所有权说明：SRS approved 后，上述状态枚举与转换规则以本文为唯一规范源；PRD §8.10 仅作业务意图历史参考，不再作为实现阶段状态机的直接 Owner——与 §1.1 所有权迁移一致。）
 
 ### 6.3 加密 / 留存 / 删除（引用 PRD §8.7 / 领域模型 §8–§9）

@@ -10,10 +10,9 @@ is supplied (the auth runtime's engine when auth is configured), conversation pe
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from sqlalchemy import Engine
 
+from app.appointments.service import BookingService
 from app.config import Settings
 
 from .embeddings import build_embedding_gateway
@@ -22,9 +21,6 @@ from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository
 from .service import AnswerService
 from .storage import KnowledgeStorage
-
-if TYPE_CHECKING:
-    from app.appointments.service import BookingService
 
 
 def build_aiqa_runtime(

@@ -27,7 +27,7 @@ import re
 import time
 from collections.abc import AsyncIterator, Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
@@ -338,11 +338,6 @@ def _add_usage(acc: dict[str, int], payload: dict[str, object]) -> None:
         value = payload.get(key)
         if isinstance(value, int):
             acc[key] += value
-
-
-class _ToolTraceEntry(TypedDict):
-    name: str
-    result: dict[str, Any]
 
 
 def _conversation_from(row: dict[str, Any]) -> Conversation:
@@ -1035,7 +1030,7 @@ class AnswerService:
             *history,
             {"role": "user", "content": f"用户问题：{question}"},
         ]
-        tool_trace: list[_ToolTraceEntry] = []
+        tool_trace: list[dict[str, Any]] = []
         search_query: str | None = None
         usage_acc = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         MAX_STEPS = 4

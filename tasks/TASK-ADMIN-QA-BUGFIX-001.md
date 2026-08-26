@@ -1,6 +1,6 @@
 # TASK-ADMIN-QA-BUGFIX-001 管理端问答历史真实 Schema 修复
 
-> 状态：Implemented / Awaiting real-stack rerun（2026-08-26）。用户明确要求把管理员查看面试官问题的功能做好。本任务只修复既有 approved 行为与既有 3 个 operation 的运行时缺陷。
+> 状态：Closed（2026-08-26，verified_commit=`741c242`）。用户明确要求把管理员查看面试官问题的功能做好。本任务只修复既有 approved 行为与既有 3 个 operation 的运行时缺陷。
 
 ## 基线与规范引用
 
@@ -71,12 +71,12 @@
 
 ## 交付证据
 
-- commit / PR：实现提交待生成后回填
+- commit / PR：`741c242`
 - 修改文件：`apps/api/app/admin/router.py`、`apps/api/app/factory.py`、`apps/api/tests/admin/test_admin_qa.py`、本任务单、`PROJECT_STATE.md`
-- 测试命令及结果：新增真实栈用例 1 个；收集成功，但当前 WSL localhost 转发异常，Redis `127.0.0.1:63790` 连接超时，未形成 pass 证据
+- 测试命令及结果：`pytest tests/admin/test_admin_qa.py -v`（WSL Docker 容器 IP，隔离 `jianli_auth_001_db` + Redis DB 15）→ **1 passed**；owner 三接口 200 且内容/计数正确，interviewer 三接口均 403
 - lint / typecheck：任务路径 Ruff PASS；`mypy app` PASS（46 source files / 0 error）
 - DB 迁移：不涉及
 - 未解决风险：质量/延迟/grounding 指标另走 CR + migration，不得混入
 - 是否偏离 TASK：否
 - 建议审查重点：RBAC、真实列名、消息跨用户泄漏边界
-- verified_commit：待真实栈用例 PASS 后回填
+- verified_commit：`741c242`

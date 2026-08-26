@@ -23,7 +23,7 @@
 1. `active` 预约在 `end_at <= now()` 后自动转为 `completed`，不再占用一人一个 active 预约约束。
 2. 可约窗口统一为从明天起至下下周同星期（含首尾）共 15 个自然日，覆盖当前周剩余部分与后续两个自然周。
 3. `getSlotSnapshot.week_offset` 扩至 0/1/2；预约与改期 UI 使用同一窗口。
-4. 管理端继续复用 `AvailabilityOverride`，允许设置与 Slot 边界对齐的精确起止时间段不可约/恢复可约。
+4. 管理端继续复用 `AvailabilityOverride`，读取同一隐私安全 Slot 快照并允许点击格子带入与 Slot 边界对齐的精确起止时间段，设置不可约/恢复可约。
 5. 预约页充分使用无聊天栏页面宽度并提升日历、摘要与步骤字号。
 
 ## 非目标
@@ -47,7 +47,7 @@
 
 ## 已批准的 DB / API / 依赖变更
 - DB：无 schema 变更；批准既有 Appointment 行的 `active → completed` 自动状态迁移。
-- API：批准 `getSlotSnapshot.week_offset` 枚举由 `[0,1]` 扩为 `[0,1,2]`，响应 Schema 不变。
+- API：批准 `getSlotSnapshot.week_offset` 枚举由 `[0,1]` 扩为 `[0,1,2]`；只读角色由 interviewer 扩为 interviewer/owner_admin，响应 Schema 与隐私安全 ownership 语义不变。
 - 依赖：无。
 
 ## 规范影响评估

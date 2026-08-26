@@ -273,6 +273,7 @@ paths:
       summary: Get a slot snapshot
       operationId: getSlotSnapshot
       security: [{ cookieSession: [] }]
+      description: Readable by interviewer and owner_admin; response keeps privacy-safe ownership and contains no appointment PII.
       parameters:
         - name: week_offset
           in: query

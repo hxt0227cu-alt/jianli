@@ -29,6 +29,8 @@
 
 ## 当前任务
 
+- **TASK-GOV-BASELINE-PRD-001**：**In Progress（2026-08-26 用户显式授权）**——纯治理元数据校正：`docs/baseline.yml` 的 PRD 当前版本由过期的 2.3.3 对齐至已批准 PRD 正文及 SRS v1.4 `based_on` 所引用的 2.3.4；无规范正文、代码、API、DB 或依赖变化。完成后继续 `TASK-AUTH-EMAIL-DELIVERY-001`。
+
 - **TASK-DM-001**：历史**已关闭**（对应 domain_model v1.1.3，批准锚点 `f64b6de`）。不重开；其成果由 v1.1.4 取代。
 - **TASK-DM-002**：**已关闭（Closed，2026-08-08）**——领域模型 v1.1.3→v1.1.4 密码算法中性化修正。关闭门禁按 `tasks/TASK-TEMPLATE.md` 四条件执行（`spec_sync=dirty` 不得关闭，现已满足并关闭）。
   - **执行顺序（2026-08-08 第三轮修正并已执行完毕）**：① 用户批准 v1.1.4 → 生成**独立批准锚点** `f537296`（不得复用 `f64b6de`）；② **先**由 TASK-SRS-001 执行 SRS impact review 并将其 `spec_sync` 转 clean（`d166992`）；③ **然后**本任务 `spec_sync` 由 dirty 转 clean，补齐 `verified_commit`/验证结果/关闭结论后**关闭**（本任务关闭提交）。

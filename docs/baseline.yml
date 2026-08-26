@@ -11,7 +11,7 @@
 # 上游版本变化（current != based_on）→ 该下游工件需做 impact review（不自动判废、不自动重写；错别字级改动可能无需改下游）。
 # 机器门禁：对比 based_on 与当前 artifacts 版本，不一致即报"needs impact check"。
 artifacts:
-  prd:              { version: "2.3.3", status: approved }  # 第六轮复评通过（P0-1~P0-3/P0-7）
+  prd:              { version: "2.3.4", status: approved }  # v2.3.4 经 TASK-CR-VERIFY-CODE-001 范围 B 获用户批准；注册验证与密码找回统一为 6 位数字验证码
   use_cases:        { version: "1.7.2", status: approved }  # 第六轮复评 + 收尾补丁通过（P0-1~P0-3/P0-7 + UC-23 + 治理微补丁）
   domain_model:     { version: "1.1.5", status: approved }  # v1.1.5 经用户 2026-08-08 末明确批准（「我批准领域模型 v1.1.5」）；承载 NotificationDelivery.delivery_purpose + uq_delivery_attempt 调整 + OwnerContactConfig.candidate_feishu_open_id_ciphertext + User.uq_active_owner_admin（单 owner 决议方案 A）。v1.1.4 已于 f537296 正式批准（历史事实保留，不予否认），其内容由 v1.1.5 取代。批准锚点 = 本状态推进提交（独立锚点，不复用 f537296）。状态推进由用户具名指令授权，WorkBuddy 不得自改为 approved
   srs:

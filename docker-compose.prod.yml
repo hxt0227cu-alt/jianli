@@ -45,6 +45,17 @@ services:
       postgres:
         condition: service_healthy
 
+  slots:
+    build: ./apps/api
+    restart: "no"
+    env_file: ${JIANLI_ENV_FILE:-.env}
+    environment:
+      JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
+    command: ["python", "-m", "app.appointments.materialize_slots", "--weeks", "8"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   api:
     build: ./apps/api
     restart: always
@@ -58,7 +69,7 @@ services:
       - jianli_knowledge:/srv/jianli/var/knowledge
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     depends_on:
-      migrate:
+      slots:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
@@ -83,7 +94,7 @@ services:
       - jianli_knowledge:/srv/jianli/var/knowledge
     command: ["python", "-m", "app.worker"]
     depends_on:
-      migrate:
+      slots:
         condition: service_completed_successfully
       redis:
         condition: service_healthy

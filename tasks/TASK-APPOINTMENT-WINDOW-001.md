@@ -7,14 +7,14 @@
 - test
 
 ## 基线版本与基线 commit
-- baseline：PRD 2.3.5 / 用例规约 1.7.3 / 领域模型 1.1.7 / SRS 1.6 / OpenAPI 0.7 / 测试计划 0.4
-- 基线 commit：`bc430ca`
+- baseline：PRD 2.3.6 / 用例规约 1.7.4 / 领域模型 1.1.8 / SRS 1.7 / OpenAPI 0.7 / 测试计划 0.5
+- 基线 commit：`13b5c06`
 
 ## 精确规范引用
 - `docs/requirements/SRS.md §3.4 / §3.5 / §3.6 / §3.9 / §6.2`
-- `docs/design/domain-model.md §5 / §6.6`
+- `docs/design/domain-model.md §5 / §6.6 / §6.12`
 - `docs/api/openapi.yaml` `getSlotSnapshot`
-- `docs/test/test-plan.md` TC-UI-006 / TC-APT-012
+- `docs/test/test-plan.md` TC-UI-006 / TC-APT-012 / TC-NOTIFY-011
 
 ## 需求来源
 - 用户 2026-08-26 当前请求；已批准 CR `TASK-CR-APPOINTMENT-WINDOW-001`。
@@ -25,10 +25,12 @@
 3. 预约、改期与管理端统一裁剪为明天起 15 日窗口。
 4. 管理端显示同源 Slot 网格，点击格子带入精确 30 分钟 override 表单。
 5. 预约日历充分铺满无聊天栏主区并提升关键字号。
+6. 自动完成预约时同事务写唯一 Outbox 事件；Worker 只更新飞书多维表格状态，不发送完成邮件或飞书私信。
 
 ## 非目标
-- 不新增迁移、状态枚举、公开 operationId、响应字段或外部依赖。
-- 不改变 Slot 并发锁、预约加密、通知、Agent 工具权限。
+- 不新增数据库表/字段、公开 operationId、响应字段或外部依赖。
+- 不改变 Slot 并发锁、预约加密、既有新建/改期/取消通知、Agent 工具权限。
+- 不新增“面试完成”邮件或飞书私信。
 - 不新增公告编辑功能。
 
 ## 允许修改路径
@@ -36,7 +38,11 @@
 - `apps/api/app/appointments/service.py`
 - `apps/api/app/appointments/materialize_slots.py`
 - `apps/api/app/appointments/router.py`
+- `apps/api/app/notifications/worker.py`
+- `apps/api/migrations/versions/0010_appointment_completed_event.py`
 - `apps/api/tests/appointments/**`
+- `apps/api/tests/migrations/test_outbox_audit_schema.py`
+- `apps/api/tests/test_feishu.py`
 - `apps/web/main.tsx`
 - `apps/web/my-appointments.tsx`
 - `apps/web/appointment.css`
@@ -45,10 +51,10 @@
 - `PROJECT_STATE.md`
 
 ## 禁止修改路径
-- migrations、依赖清单、认证/加密/通知实现、AIQA、其他规范工件。
+- 依赖清单、认证/加密、AIQA、其他规范工件，以及通知模块中本任务完成事件以外的行为。
 
 ## 已批准的 DB / API / 依赖变更
-- DB：无 schema 变化；批准更新既有 `appointments.status/completed_at` 数据。
+- DB：批准 0010 可逆迁移，为既有 `notification_event_type` enum 新增 `appointment_completed`；批准更新既有 `appointments.status/completed_at` 数据并写唯一 Outbox 事件。
 - API：`getSlotSnapshot.week_offset` 允许 0/1/2；读取角色允许 interviewer/owner_admin；响应 Schema 不变。
 - 依赖：无。
 
@@ -59,6 +65,7 @@
 
 ## 功能验收
 - TC-APT-012：过期 active → completed、completed_at=end_at、幂等、未过期保持 active、无取消事件。
+- TC-NOTIFY-011：完成事务写唯一 `appointment_completed` 事件；Worker 只 upsert 飞书多维表格，不发 email/IM；失败沿用既有 Delivery 重试。
 - TC-UI-006：三个 offset、15 日裁剪、管理端同源网格与精确格子选择、关键字号≥12px。
 - 当前本地 8 月 24 日旧预约运行维护命令后变 completed，可再次预约。
 - 现有 override CRUD 仍可设置任意对齐时间段并即时物化。
@@ -68,22 +75,23 @@
 - interviewer 归属与 CSRF/RBAC 不放宽。
 
 ## 性能验收
-- 过期完成单条集合 UPDATE，无逐行 N+1。
+- 过期完成采用集合式 CTE 更新并批量写 Outbox，无逐行 N+1。
 - 前端最多并发拉取 3 个自然周（525 个 Slot），无额外轮询频率。
 
 ## 变更预算
-- max_files：12
-- expected_prod_lines：260
-- expected_test_lines：220
+- max_files：18
+- expected_prod_lines：380
+- expected_test_lines：320
 
 ## 必须运行的测试命令
 - `pytest tests/appointments/test_booking.py tests/appointments/test_slot_materializer.py -v`（真实 PG）
+- `pytest tests/migrations/test_outbox_audit_schema.py tests/test_feishu.py -v`（真实 PG）
 - `ruff check . && mypy app`
 - `npm test -- --run && npm run typecheck && npm run build`
 - 真实本地 DB 状态与 HTTP 快照检查。
 
 ## 回滚方法
-- 回退实现提交；已转 completed 的真实过期预约符合旧枚举且无需逆转；无 schema 回滚。
+- 回退实现提交并执行 0010 downgrade；downgrade 删除 `appointment_completed` 事件及其 Delivery 后重建旧 enum。已转 completed 的真实过期预约符合旧状态枚举且无需逆转。
 
 ## 强制停止条件
 - 遵循 `AGENTS.md §2`；冻结 TC 失败、超预算或需新增未批准字段/API/依赖立即停止。
@@ -93,7 +101,7 @@
 - 修改文件清单：待回填
 - 测试命令及结果：待回填
 - lint / typecheck：待回填
-- DB 迁移验证：无迁移
+- DB 迁移验证：待执行 0010 up/down/up
 - 验收证据：待回填
 - 变更预算实际值：待回填
 - 未解决风险：待回填
@@ -104,4 +112,5 @@
 
 ## 关联
 - Change Request：`TASK-CR-APPOINTMENT-WINDOW-001`
-- 测试：TC-UI-006 / TC-APT-012
+- Change Request：`TASK-CR-APPOINTMENT-COMPLETION-SYNC-001`
+- 测试：TC-UI-006 / TC-APT-012 / TC-NOTIFY-011

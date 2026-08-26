@@ -61,18 +61,18 @@
 - 遵循 `AGENTS.md §2`。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`13b5c06`
+- 修改文件清单：`docs/baseline.yml`、`docs/requirements/PRD.md`、`docs/requirements/use-cases.md`、`docs/requirements/SRS.md`、`docs/design/domain-model.md`、`docs/test/test-plan.md`、`tasks/TASK-CR-APPOINTMENT-COMPLETION-SYNC-001.md`
+- 测试命令及结果：规范关键词一致性检查通过；`git diff --check` 通过
 - lint / typecheck：不适用
 - DB 迁移验证：设计为可逆，实测在实现任务
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：PRD/用例/SRS/领域模型/测试计划均明确完成事件仅同步飞书多维表格，不发送 email/IM
+- 变更预算实际值：7 files / 规范与治理文档变更
 - 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：updated
-- spec_sync：待验证
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`13b5c06`
 
 ## 关联
 - `TASK-APPOINTMENT-WINDOW-001`

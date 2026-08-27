@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-AIQA-RERANKER-001**：**In Progress（2026-08-27）**——实现 RRF 后置可选 Cross-Encoder、失败回退、低基数观测与版本化对照证据。
+- **TASK-AIQA-RERANKER-001**：**Closed（2026-08-27，verified_commit=`c8f0e46`）**——已实现 `vector + BM25 → RRF top12 → 可选 Cross-Encoder top6`、超时/服务/协议失败原序回退、低基数 Prometheus/OTel 与 Grafana 面板；任务范围 API 27 passed，Web test/typecheck/build 全绿。真实 Qwen3-Reranker-8B 组件对照 5 cases：MRR 0.3333→1.0000、Hit@1 0/5→5/5，并已在作品页版本化展示；明确不外推为端到端生产质量。
 
 - **TASK-CR-RERANKER-001**：**Approved / Closed（2026-08-27，verified_commit=`5d2f934`）**——批准 RRF 后置可选 Cross-Encoder、失败回退、数据最小化与版本化对照证据；architecture 0.4 / security 0.3 / test-plan 1.0 已同步。
 

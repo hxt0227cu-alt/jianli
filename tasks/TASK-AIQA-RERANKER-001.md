@@ -1,6 +1,6 @@
 # TASK-AIQA-RERANKER-001 Cross-Encoder Reranker 与对照实验
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27）**
 
 ## 任务类型
 - implementation
@@ -77,14 +77,14 @@
 - 需要 DB/公开 API/新依赖、改变拒答门槛或超 17 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：核心实现 `64b5799`；公开对照证据 `c8f0e46`
+- 修改文件清单：17 个允许路径（后端/配置/运维 7、测试/评测 4、公开证据/UI 4、任务与项目状态 2）
+- 测试命令及结果：任务范围 API 27 passed / 1 既有 StarletteDeprecationWarning；Web Vitest 1 passed；真实 `Qwen/Qwen3-Reranker-8B` 组件对照 5 cases，MRR 0.3333→1.0000、Hit@1 0/5→5/5；报告校验 65/65
+- lint / typecheck：Ruff pass；Mypy 50 source files / 0 errors；Web TypeScript pass；Vite production build pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：成功重排、外部失败原序回退、索引/响应严格校验、默认关闭零外调；Prometheus/Grafana 新增 rerank outcome/P95；浏览器确认 65/65 与真实 provider 对照卡可见且控制台无错误
+- 变更预算实际值：17/17 个允许路径；实现与证据约 575 新增、16 删除，未超行数预算合计
+- 未解决风险：公开数值为 5 条人工构造候选集的真实 provider 组件评测，不宣称端到端生产质量；生产启用需配置独立 Reranker 凭证
+- 是否偏离 TASK：否
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`c8f0e46`

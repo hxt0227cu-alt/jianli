@@ -1,6 +1,6 @@
-# 测试计划 v1.1（approved）
+# 测试计划 v1.2（approved）
 
-> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.5 / security 0.4 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 77；新增 TC-AI-013，既有冻结 TC 不变。
+> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.6 / security 0.5 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 78；新增 TC-AI-014，既有冻结 TC 不变。
 
 ## 1. 证据等级与门禁
 
@@ -43,6 +43,7 @@
 | TC-AI-011 | SRS §3.1/§3.2 / UI U2 | jianli 评测证据板读取版本化报告，展示各套件通过数/样本数、验证时间/commit、CI 门禁与脱敏失败分类；报告≤50KB 且不含问题原文、完整回答、Prompt、知识原文、PII/密钥；GitHub Actions push/PR 硬门禁失败返回非零 |
 | TC-AI-012 | architecture §8.3 / ADR-RERANK-001 | RRF 候选可经 Cross-Encoder 重排取 top6；未配置零外调，超时/429/5xx/畸形响应/索引越界均回退原顺序；只向 provider 发送域过滤后的问题与候选；低基数观测与版本化对照报告不含输入正文或密钥 |
 | TC-AI-013 | architecture §8.3/§9.4 / ADR-RESILIENCE-001 | Semantic Cache 仅命中匿名 grounded 同域回答，按 TTL/容量限制且知识变更失效；Redis/embedding 故障旁路；LLM/Reranker 熔断器覆盖 closed→open→half-open→closed、恢复窗口与单探针；观测无正文、embedding、Redis key 或高基数 ID |
+| TC-AI-014 | architecture §9.4 / ADR-RESILIENCE-001 | 两个进程视角共享 Redis failure/open 状态，恢复窗口通过原子操作只允许一个跨实例 half-open 探针；成功/失败转换与 TTL 正确；Redis 故障退回本地 breaker，LLM 异步调用不被同步 Redis I/O 阻塞 |
 
 ### 2.3 认证、会话与限频
 

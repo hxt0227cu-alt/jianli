@@ -1,6 +1,6 @@
-# 安全设计与 ADR（v0.4 / approved）
+# 安全设计与 ADR（v0.5 / approved）
 
-> 状态：`approved`（2026-08-27 经 TASK-CR-AIQA-RESILIENCE-001 批准 Semantic Cache 数据边界与熔断策略）。依据 PRD 2.3.6 / SRS 1.9 / domain-model 1.1.8 / architecture 0.5（均 approved）。
+> 状态：`approved`（2026-08-27 经 TASK-CR-AIQA-DISTRIBUTED-RESILIENCE-001 批准共享熔断的数据边界）。依据 PRD 2.3.6 / SRS 1.9 / domain-model 1.1.8 / architecture 0.6（均 approved）。
 
 ## 1. 安全目标与信任边界
 
@@ -79,6 +79,7 @@
 - 删除知识文档立即置 `retrieval_disabled_at`，检索路径先校验禁用状态；缓存答案同步失效。
 - Cross-Encoder Reranker 只接收当前问题与已通过页面/项目域过滤的候选片段；独立密钥与超时，不得发送用户/会话/预约数据。失败只按固定类别观测并回退 RRF，日志、指标和 Trace 禁止记录请求正文、候选正文或第三方异常正文。
 - Semantic Cache 仅缓存匿名公共 grounded 回答；Redis 条目不得包含问题原文、用户/会话 ID、工具参数/结果或预约信息。仅保存 embedding、公开回答与引用，按页面/项目隔离并设 TTL/容量上限；知识库变更立即失效，Redis 故障 fail-open 旁路。
+- Circuit Breaker Redis key 仅含固定组件枚举，value 仅含状态、失败计数和毫秒时间；不得包含 provider URL/密钥、请求内容、用户/会话或异常正文。Lua 脚本只操作单个组件 key，Redis 失败退回本地状态机。
 
 ## 10. 退信、通知与外部集成
 

@@ -7,7 +7,7 @@
 
 ## 决策
 
-使用既有 Redis 实现可选 Semantic Answer Cache，仅缓存匿名公共 grounded 回答；使用进程内、线程安全的 closed/open/half-open Circuit Breaker 保护 LLM 与 Reranker provider。
+使用既有 Redis 实现可选 Semantic Answer Cache，仅缓存匿名公共 grounded 回答；LLM 与 Reranker provider 使用 Redis 共享、Lua 原子转换的 closed/open/half-open Circuit Breaker，多副本共享状态。Redis 不可用时退回各进程内线程安全 breaker。
 
 ## Cache 边界
 
@@ -18,7 +18,7 @@
 
 ## Circuit Breaker 边界
 
-连续 3 次逻辑失败后 open 30 秒；恢复窗口后只允许一个 half-open 探针。成功恢复 closed，失败重新 open。熔断只阻止对已故障 provider 的调用，不提供第二模型 fallback。
+连续 3 次逻辑失败后 open 30 秒；恢复窗口后通过 Redis 原子声明只允许一个跨副本 half-open 探针。成功恢复 closed，失败重新 open；状态 key 使用固定组件名并自动过期。Redis 故障时 fail-open 到本地 breaker。熔断只阻止对已故障 provider 的调用，不提供第二模型 fallback。
 
 ## 可观测与隐私
 

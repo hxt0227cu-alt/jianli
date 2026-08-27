@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-AIQA-DISTRIBUTED-RESILIENCE-001**：**In Progress（2026-08-27，baseline_commit=`e6b1a1c`）**——实现 Redis 共享原子熔断、故障本地降级及 push 前 CI 等价门禁。
+- **TASK-AIQA-DISTRIBUTED-RESILIENCE-001**：**Closed（2026-08-27，verified_commit=`b8e973d`）**——Provider 熔断已升级为 Redis Lua 原子共享状态，跨副本共享失败/open/单探针恢复；Redis 失败退回本地 breaker，LLM 路径异步非阻塞。绑定验收 37 passed、GitHub backend 本地等价 40 passed、真实 PG/Redis RAG 等价 4 passed / 1 expected xfail、Web test/typecheck/build 全绿，公开评测 79/79。未执行 push。
 
 - **TASK-CR-AIQA-DISTRIBUTED-RESILIENCE-001**：**Approved / Closed（2026-08-27，verified_commit=`e6b1a1c`）**——批准 Redis 多副本共享 Provider 熔断与本地 fail-open fallback。
 

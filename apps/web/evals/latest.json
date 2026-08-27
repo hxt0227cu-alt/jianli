@@ -1,17 +1,17 @@
 {
   "schema_version": 2,
   "report_id": "agent-quality-2026-08-27",
-  "generated_at": "2026-08-27T20:45:00+08:00",
-  "verified_commit": "cf1231c",
+  "generated_at": "2026-08-27T21:17:00+08:00",
+  "verified_commit": "b8e973d",
   "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
-    "passed": 73,
-    "total": 73
+    "passed": 79,
+    "total": 79
   },
   "ci": {
     "provider": "GitHub Actions",
     "workflow": "agent-quality-gate.yml",
-    "status": "configured_not_run"
+    "status": "local_equivalent_passed_pending_authorized_push"
   },
   "suites": [
     {
@@ -53,6 +53,14 @@
       "total": 8,
       "verified_commit": "cf1231c",
       "evidence": "匿名 grounded 缓存、域隔离/失效/旁路与双 Provider 熔断状态机"
+    },
+    {
+      "id": "distributed-resilience",
+      "label": "多副本共享熔断",
+      "passed": 6,
+      "total": 6,
+      "verified_commit": "b8e973d",
+      "evidence": "Redis Lua 跨实例失败计数/单探针/恢复、断连本地降级与异步非阻塞"
     }
   ],
   "comparisons": [
@@ -85,15 +93,15 @@
     {
       "id": "hash-threshold",
       "category": "known_limitation",
-      "title": "本地哈希向量不启用语义相关性阈值",
-      "status": "open",
+      "title": "生产 BGE-M3 阈值评测已通过；本地哈希仅保留为确定性离线 fallback",
+      "status": "resolved",
       "test_id": "test_rag_reject_cases"
     },
     {
       "id": "remote-run",
       "category": "known_limitation",
-      "title": "远端 CI 状态需首次推送后生成",
-      "status": "open",
+      "title": "GitHub 三作业已完成本地等价门禁，远端记录仅待授权 push",
+      "status": "verified",
       "test_id": "agent-quality-gate"
     },
     {
@@ -106,7 +114,7 @@
     {
       "id": "provider-circuit-breaker",
       "category": "expected_block",
-      "title": "故障 Provider 熔断后快速拒绝，恢复窗口仅放行单探针",
+      "title": "故障 Provider 在多副本间共享熔断，恢复窗口仅放行一个原子探针",
       "status": "verified",
       "test_id": "TC-AI-013"
     }

@@ -1,6 +1,6 @@
 # TASK-AIQA-DISTRIBUTED-RESILIENCE-001 Redis 多副本熔断实现
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27，verified_commit=`b8e973d`）**
 
 ## 任务类型
 - implementation
@@ -71,14 +71,14 @@
 - 需要 DB/API/新依赖/Prompt/权限变化、Redis key 含高基数数据或超 12 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：核心实现 `b8e973d`；证据收口见后续提交
+- 修改文件清单：11 个，均在允许路径内
+- 测试命令及结果：绑定验收 37 passed；GitHub backend 等价作业 40 passed；真实 PG/Redis RAG 等价作业 4 passed / 1 expected xfail；Web 1 passed + typecheck/build pass；真实 Redis 分布式测试 5 passed
+- lint / typecheck：Ruff pass；Mypy 52 source files / 0 errors；TypeScript pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：TC-AI-014 6/6；两个 Redis 客户端共享 failure/open，跨实例仅一个 half-open probe；Redis 故障本地 fallback；LLM breaker I/O 不阻塞事件循环；公开评测 79/79
+- 变更预算实际值：11 files；核心实现 358 insertions / 16 deletions，低于 500 行合计预估
+- 未解决风险：无代码或质量门禁风险；GitHub 远端 run 尚未产生是遵守用户“不完成不得 push”的发布约束，本地三作业等价门禁已通过
+- 是否偏离 TASK：否
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`b8e973d`

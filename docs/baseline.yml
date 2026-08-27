@@ -15,14 +15,14 @@ artifacts:
   use_cases:        { version: "1.7.4", status: approved }  # UC-10/11同步完成事件与飞书状态镜像。
   domain_model:     { version: "1.1.8", status: approved }  # NotificationEvent新增appointment_completed。
   srs:
-    version: "1.7"
+    version: "1.8"
     status: approved                                              # TASK-CR-APPOINTMENT-COMPLETION-SYNC-001 完成状态飞书同步。
     based_on: { prd: "2.3.6", use_cases: "1.7.4", domain_model: "1.1.8" }
-  ui_wireframe:     { version: "1.0.1", status: approved }   # U3/A4 同步15日窗口、铺满布局与精确时间段 override。
+  ui_wireframe:     { version: "1.0.2", status: approved }   # U2新增Agent Lab挑战入口与脱敏执行轨迹。
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: approved }  # 用户于 2026-08-10 明确批准 security v0.1；批准锚点为本状态推进提交；BCrypt/会话/Redis/IMAP/AES-GCM 等方案开始约束实现
-  openapi:          { version: "0.8",   status: approved }  # AIQA SSE契约对齐既有5工具/answer.booking实现；无新事件或运行行为。
-  test_plan:        { version: "0.6",   status: approved }  # based_on同步OpenAPI-SSE 0.8；72个冻结TC不变。
+  openapi:          { version: "0.9",   status: approved }  # 新增脱敏answer.trace可选事件；既有内容帧顺序不变。
+  test_plan:        { version: "0.7",   status: approved }  # 73个TC；新增TC-AI-010 Agent Lab/Trace验收。
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── AIQA agent 工具注册（TASK-AIQA-BOOKING-001；2026-08-20 经 TASK-CR-AIQA-BOOKING-001 批准推翻 PRD 决策#14 对该功能的禁止）──

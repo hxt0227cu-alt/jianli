@@ -1,4 +1,4 @@
-# SSE 契约（OpenAPI-SSE v0.8）
+# SSE 契约（OpenAPI-SSE v0.9）
 
 > based_on：SRS 1.2 / architecture 0.2 / security 0.1（均 approved）；本轮已完成 CSRF/会话与断线恢复 impact review，`spec_sync=clean`。
 
@@ -59,6 +59,14 @@ data: <single-line JSON>
 
 所有成功分支均以 `answer.started` 开始、以 `answer.completed` 结束；异常时发送
 `answer.error` 标准错误体后关闭连接。中间帧按实际分支互斥组合：
+
+- **结构化执行轨迹（可选）**：零到多个 `answer.trace` 可在对应阶段完成时穿插发送；移除
+  Trace 帧后，原有内容帧顺序保持不变。数据字段严格为 `step`、`phase`、`status`、
+  `label`、可空 `duration_ms`、可空 `tool_name`、可空 `detail`、`trace_id`。
+  `step` 从 1 单调递增；`phase=policy|routing|retrieval|tool|generation|result`；
+  `status=started|completed|blocked|failed`。`label/detail` 为服务端固定模板且各≤160字符，
+  不得包含用户原始输入、系统 Prompt、知识库原文、完整工具参数/结果、预约 PII 或密钥；
+  `tool_name` 只能取 baseline 白名单。该事件是可观测信息，不作为业务状态真相。
 
 - **知识问答 / 问候 / 拒答**：零到一次 `answer.tool_calls` → 零到多个 `answer.delta` →
   `answer.citations` → `answer.completed`。`answer.tool_calls.calls` 当前用于

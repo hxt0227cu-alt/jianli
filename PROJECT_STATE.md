@@ -29,6 +29,8 @@
 
 ## 当前任务
 
+- **TASK-CR-AGENT-LAB-001**：**Approved / In Progress（2026-08-27）**——现有 U2/jianli 增加 4 个真实挑战场景，问答 SSE 新增脱敏结构化 `answer.trace`；不新增工具、权限、DB 或依赖，批准后由 `TASK-AIQA-AGENT-LAB-001` 实现。
+
 - **TASK-CR-AIQA-SSE-ALIGN-001**：**Closed（2026-08-27，verified_commit=`a087f2c`）**——baseline/SSE 已对齐 SRS 1.7、安全设计与当前 5 工具、多轮循环、`answer.booking` 实现；OpenAPI-SSE 0.8 / test-plan 0.6 approved，72 个冻结 TC 不变，无运行行为、DB、依赖或权限变化。
 
 - **TASK-APPOINTMENT-WINDOW-001**：**Closed（2026-08-26，verified_commit=`bf82960`）**——过期 active 预约集合式幂等转 completed 并释放账号/公司唯一约束；同事务写唯一 `appointment_completed` Outbox，Worker 仅 upsert 飞书多维表格状态且不发完成邮件/IM，失败可重试。预约/改期/管理端统一为明日起 15 日窗口，owner_admin 可读隐私安全 Slot 快照并点击精确 30 分钟格子设置不可约/恢复可约；预约布局铺满并提升关键字号。0010 可逆迁移 up/down/up、真实 PG/Redis 22 passed、Worker/飞书 10 passed、Ruff/Mypy/前端 test+typecheck+build 全绿；开发库两条历史过期预约已收敛并真实同步飞书（2 succeeded / 0 failed）。

@@ -1,6 +1,6 @@
 # TASK-OBSERVABILITY-001 OpenTelemetry + Prometheus/Grafana 实现
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27）**
 
 ## 任务类型
 - implementation
@@ -92,18 +92,18 @@
 - 需要 DB/公开 OpenAPI/额外依赖、暴露公网 metrics/Grafana 或超 19 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：实现提交 `79ed06c`
+- 修改文件清单：17 个（API 埋点/配置/依赖 7、验收测试 1、Compose/Nginx 4、Prometheus/Collector/Grafana 5）
+- 测试命令及结果：`PYTHONPATH=. pytest tests/test_observability.py tests/aiqa/test_agent_lab.py tests/aiqa/test_aiqa.py -q` → 21 passed / 1 既有 StarletteDeprecationWarning；`pip check` → No broken requirements
+- lint / typecheck：`ruff check app tests/test_observability.py` → pass；`mypy app` → 49 source files / 0 errors
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：可观测关闭时 `/internal/metrics` 404；开启后 HTTP/AIQA/token/tool 低基数指标可抓取，敏感 marker 不进入指标，metrics 不进入 OpenAPI；两份 Nginx 均 exact 404；开发与生产 Compose `config --quiet` 通过；预置 6 面板 Agent Overview
+- 变更预算实际值：17/19 文件；545 新增、3 删除（其中测试 83 行），未超预算
+- 未解决风险：本轮按任务门禁验证 Compose 渲染，未拉取镜像执行整栈容器 smoke；首次部署需配置 Grafana 管理密码并完成镜像拉取
+- 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`79ed06c`
 
 ## 关联
 - Change Request：`TASK-CR-OBSERVABILITY-001`

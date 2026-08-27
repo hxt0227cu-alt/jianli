@@ -88,7 +88,7 @@
 - DB 迁移验证：无
 - 验收证据：本地 UI 冒烟通过——61/61、三个套件、commit/日期和诚实 CI 状态可见；4 个边界案例可展开；控制台 0 error
 - 变更预算实际值：8 文件 / 424 新增行 / 1 删除行，文件数未超预算
-- 未解决风险：GitHub remote 未配置，首次远端 run 需仓库推送后产生
+- 未解决风险：GitHub remote 未配置，首次远端 run 需仓库推送后产生；本机 Docker Redis 未运行，未在本机复刻 `rag-integration` 容器作业，真实 BGE-M3/pgvector 的既有 38/38 证据仍保留在版本化报告中
 - 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean

@@ -23,6 +23,7 @@ from .auth.errors import AuthError
 from .auth.router import create_auth_router, problem_response
 from .auth.runtime import AuthRuntime, build_auth_runtime
 from .config import Settings
+from .observability import configure_observability
 
 SECURITY_LOGGER = logging.getLogger("jianli.security.auth")
 
@@ -75,6 +76,7 @@ def create_app(
 
     config = settings or Settings.from_env()
     app = FastAPI(title=config.app_title, version=config.app_version)
+    configure_observability(app, config)
     runtime = auth_runtime or (build_auth_runtime(config) if config.auth_configured else None)
     allowed_origins = _validated_origins(
         runtime.allowed_origins if runtime is not None else frozenset(config.allowed_origins)

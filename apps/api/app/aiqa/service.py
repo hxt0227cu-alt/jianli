@@ -36,6 +36,7 @@ from app.appointments.models import AppointmentDraft, AppointmentUpdate, Slot
 from app.appointments.service import LOCAL_TIME, BookingService
 from app.auth.errors import AuthError
 from app.auth.models import Principal
+from app.observability import ToolStatus, observe_agent_tool, observe_aiqa_answer
 
 from . import bm25
 from .chunking import chunk_text as _chunk_text
@@ -956,6 +957,7 @@ class AnswerService:
         # Greeting first (no model round-trip, unchanged policy).
         if is_greeting(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            observe_aiqa_answer("greeting", latency_ms, model=_GREETING_CODE)
             yield _trace(
                 phase="routing",
                 status="completed",
@@ -1002,6 +1004,7 @@ class AnswerService:
         # make privacy queries score just above the 0.47 threshold.
         if _is_privacy_question(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            observe_aiqa_answer("offtopic", latency_ms, model=_PRIVACY_CODE)
             yield _trace(
                 phase="routing",
                 status="blocked",
@@ -1046,6 +1049,7 @@ class AnswerService:
         # requests before any model round-trip, same deterministic layer as privacy.
         if _is_malicious_question(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            observe_aiqa_answer("offtopic", latency_ms, model=_MALICIOUS_CODE)
             yield _trace(
                 phase="routing",
                 status="blocked",
@@ -1150,7 +1154,7 @@ class AnswerService:
                 result = await self._run_agent_tool(name, args, principal)
                 tool_trace.append({"name": name, "result": result})
                 outcome = str(result.get("outcome") or "failed")
-                trace_status = (
+                trace_status: ToolStatus = (
                     "blocked"
                     if outcome == "forbidden"
                     else "failed"
@@ -1158,6 +1162,8 @@ class AnswerService:
                     else "completed"
                 )
                 trace_tool_name = name if name in _TRACE_TOOL_NAMES else None
+                tool_duration_ms = int((time.monotonic() - tool_started) * 1000)
+                observe_agent_tool(name, trace_status, tool_duration_ms)
                 yield _trace(
                     phase="tool",
                     status=trace_status,
@@ -1166,7 +1172,7 @@ class AnswerService:
                         if trace_tool_name is not None
                         else "白名单外工具已拒绝"
                     ),
-                    duration_ms=int((time.monotonic() - tool_started) * 1000),
+                    duration_ms=tool_duration_ms,
                     tool_name=trace_tool_name,
                     detail=f"结构化结果：{outcome}",
                 )
@@ -1188,6 +1194,13 @@ class AnswerService:
                 )
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
+            observe_aiqa_answer(
+                "error",
+                int((time.monotonic() - start) * 1000),
+                model=self._gateway.model_name,
+                prompt_tokens=usage_acc["prompt_tokens"],
+                completion_tokens=usage_acc["completion_tokens"],
+            )
             yield _trace(
                 phase="routing",
                 status="failed",
@@ -1207,8 +1220,10 @@ class AnswerService:
             )
             retrieval_ms = int((time.monotonic() - retrieval_started) * 1000)
             if not candidates:
+                observe_agent_tool("search_knowledge", "blocked", retrieval_ms)
                 self._log_offtopic(trace_id, conversation_id if persist else None, start)
                 latency_ms = int((time.monotonic() - start) * 1000)
+                observe_aiqa_answer("offtopic", latency_ms, model=_OFFTOPIC_CODE)
                 yield _trace(
                     phase="retrieval",
                     status="blocked",
@@ -1252,6 +1267,7 @@ class AnswerService:
                     )
                 return
 
+            observe_agent_tool("search_knowledge", "completed", retrieval_ms)
             yield _trace(
                 phase="retrieval",
                 status="completed",
@@ -1305,6 +1321,13 @@ class AnswerService:
                     yield delta_frame(seq := seq + 1, payload, trace_id)
             except GatewayError as error:
                 self._log_error(trace_id, conversation_id if persist else None, error)
+                observe_aiqa_answer(
+                    "error",
+                    int((time.monotonic() - start) * 1000),
+                    model=self._gateway.model_name,
+                    prompt_tokens=usage_acc["prompt_tokens"],
+                    completion_tokens=usage_acc["completion_tokens"],
+                )
                 yield _trace(
                     phase="generation",
                     status="failed",
@@ -1332,6 +1355,13 @@ class AnswerService:
                 else None
             )
             latency_ms = int((time.monotonic() - start) * 1000)
+            observe_aiqa_answer(
+                "grounded",
+                latency_ms,
+                model=self._gateway.model_name,
+                prompt_tokens=usage_acc["prompt_tokens"],
+                completion_tokens=usage_acc["completion_tokens"],
+            )
             logger.info(
                 "answer_completed",
                 extra={
@@ -1427,6 +1457,13 @@ class AnswerService:
                 yield delta_frame(seq := seq + 1, payload, trace_id)
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
+            observe_aiqa_answer(
+                "error",
+                int((time.monotonic() - start) * 1000),
+                model=self._gateway.model_name,
+                prompt_tokens=usage_acc["prompt_tokens"],
+                completion_tokens=usage_acc["completion_tokens"],
+            )
             yield _trace(
                 phase="generation",
                 status="failed",
@@ -1448,6 +1485,13 @@ class AnswerService:
             else None
         )
         latency_ms = int((time.monotonic() - start) * 1000)
+        observe_aiqa_answer(
+            "tool",
+            latency_ms,
+            model=self._gateway.model_name,
+            prompt_tokens=usage_acc["prompt_tokens"],
+            completion_tokens=usage_acc["completion_tokens"],
+        )
         yield _trace(
             phase="result",
             status="completed",

@@ -74,6 +74,9 @@ class Settings(BaseModel):
     # semantic embedding — the local hash embedding has no semantic meaning, so a
     # positive threshold would wrongly reject hit cases there.
     kb_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    observability_enabled: bool = False
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_service_name: str = Field(default="jianli-api", min_length=1, max_length=80)
 
     @model_validator(mode="after")
     def validate_email_delivery_environment(self) -> Settings:
@@ -175,6 +178,9 @@ class Settings(BaseModel):
             "knowledge_storage_dir": "JIANLI_KNOWLEDGE_STORAGE_DIR",
             "llm_embedding_dim": "JIANLI_LLM_EMBEDDING_DIM",
             "kb_min_score": "JIANLI_KB_MIN_SCORE",
+            "observability_enabled": "JIANLI_OBSERVABILITY_ENABLED",
+            "otel_exporter_otlp_endpoint": "JIANLI_OTEL_EXPORTER_OTLP_ENDPOINT",
+            "otel_service_name": "JIANLI_OTEL_SERVICE_NAME",
         }
         values: dict[str, object] = {}
         for field_name, env_name in fields.items():

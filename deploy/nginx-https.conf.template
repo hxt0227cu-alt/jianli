@@ -6,6 +6,7 @@ server {
 
     location /.well-known/acme-challenge/ { root /var/www/certbot; }
     location = /nginx-health { access_log off; return 200 "ok\n"; }
+    location = /internal/metrics { return 404; }
     location / { return 301 https://$host$request_uri; }
 }
 
@@ -23,6 +24,7 @@ server {
     index index.html;
 
     location = /nginx-health { access_log off; return 200 "ok\n"; }
+    location = /internal/metrics { return 404; }
 
     location = /answers:stream {
         proxy_pass http://api:8000;

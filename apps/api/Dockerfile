@@ -35,7 +35,10 @@ RUN python -m pip install --upgrade pip && \
         redis==8.1.0 \
         SQLAlchemy==2.0.43 \
         uvicorn==0.52.1 \
-        pydantic==2.13.4
+        pydantic==2.13.4 \
+        prometheus-client==0.26.0 \
+        opentelemetry-sdk==1.44.0 \
+        opentelemetry-exporter-otlp-proto-http==1.44.0
 
 # Application code + migrations (alembic.ini copied above).
 COPY app ./app

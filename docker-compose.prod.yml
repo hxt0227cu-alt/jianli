@@ -65,6 +65,9 @@ services:
       JIANLI_REDIS_URL: redis://redis:6379/0
       JIANLI_ALLOWED_ORIGINS: ${JIANLI_ALLOWED_ORIGINS}
       JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
+      JIANLI_OBSERVABILITY_ENABLED: "true"
+      JIANLI_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      JIANLI_OTEL_SERVICE_NAME: jianli-api
     volumes:
       - jianli_knowledge:/srv/jianli/var/knowledge
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -81,6 +84,44 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.140.0
+    restart: always
+    command: ["--config=/etc/otelcol/config.yml"]
+    volumes:
+      - ./deploy/observability/otel-collector.yml:/etc/otelcol/config.yml:ro
+    expose:
+      - "4318"
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    restart: always
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - jianli_prometheus:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:12.3.0
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${JIANLI_GRAFANA_ADMIN_PASSWORD:?must be set in .env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - jianli_grafana:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
 
   worker:
     build: ./apps/api
@@ -136,3 +177,5 @@ volumes:
   jianli_pgdata:
   jianli_redisdata:
   jianli_knowledge:
+  jianli_prometheus:
+  jianli_grafana:

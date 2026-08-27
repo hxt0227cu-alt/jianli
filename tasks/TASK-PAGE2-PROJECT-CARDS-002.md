@@ -88,7 +88,7 @@
 - DB 迁移验证：无
 - 验收证据：本地 `http://localhost:5173/` 浏览器验收；jianli / Sleep / Litchi 三个 Tab 标题与证据边界均可见，控制台 error 为 0
 - 变更预算实际值：3/3 文件；生产代码 `+119/-149` 行，未修改测试；预算内
-- 未解决风险：TC-UI-003 历史文字仍只点名 jianli/sleep，但本任务按禁止路径未修改冻结验收；现有实现继续展示三个项目
+- 未解决风险：TC-UI-003 历史文字仍只点名 jianli/sleep，但本任务按禁止路径未修改冻结验收；浏览器验收时本地 API 8000 未运行，因此只验证了静态卡片、Tab 与控制台渲染，未重跑右侧问答端到端（该链路未被本任务修改）
 - 是否偏离 TASK：否；工作区另有 `apps/api/app/aiqa/service.py`、`apps/api/app/aiqa/sse.py` 与 `tasks/TASK-AIQA-AGENT-LAB-001.md` 修改，不属于本任务且未触碰
 - 规范影响结论：none
 - spec_sync：clean（实现仍符合已批准 PRD R1/R3/R6/R25、UC-02 与 UI U2）

@@ -76,10 +76,32 @@ AIQA_RERANK_DURATION = Histogram(
     buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5),
     registry=REGISTRY,
 )
+AIQA_SEMANTIC_CACHE = Counter(
+    "jianli_aiqa_semantic_cache",
+    "Semantic answer cache outcomes",
+    ("status",),
+    registry=REGISTRY,
+)
+AIQA_SEMANTIC_CACHE_DURATION = Histogram(
+    "jianli_aiqa_semantic_cache_duration_seconds",
+    "Semantic answer cache operation duration",
+    ("status",),
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1),
+    registry=REGISTRY,
+)
+AIQA_CIRCUIT_BREAKER = Counter(
+    "jianli_aiqa_circuit_breaker",
+    "AI provider circuit breaker transitions and rejections",
+    ("component", "event"),
+    registry=REGISTRY,
+)
 
 AnswerOutcome = Literal["grounded", "offtopic", "greeting", "tool", "error"]
 ToolStatus = Literal["completed", "blocked", "failed"]
 RerankStatus = Literal["completed", "fallback", "disabled"]
+SemanticCacheStatus = Literal["hit", "miss", "bypass", "error", "invalidated"]
+CircuitComponent = Literal["llm", "reranker"]
+CircuitEvent = Literal["opened", "rejected", "recovered"]
 _TOOLS = {
     "search_knowledge",
     "request_interview_booking",
@@ -220,5 +242,40 @@ def observe_rerank(
                 "jianli.rerank.candidates": max(candidates, 0),
                 "jianli.rerank.duration_ms": max(duration_ms, 0),
                 "jianli.rerank.model": model[:80],
+            },
+        )
+
+
+def observe_semantic_cache(status: SemanticCacheStatus, duration_ms: int) -> None:
+    """Record only bounded cache status and duration."""
+
+    if not _enabled:
+        return
+    AIQA_SEMANTIC_CACHE.labels(status).inc()
+    AIQA_SEMANTIC_CACHE_DURATION.labels(status).observe(max(duration_ms, 0) / 1000)
+    span = trace.get_current_span()
+    if span.is_recording():
+        span.add_event(
+            "aiqa.semantic_cache",
+            {
+                "jianli.semantic_cache.status": status,
+                "jianli.semantic_cache.duration_ms": max(duration_ms, 0),
+            },
+        )
+
+
+def observe_circuit_breaker(component: CircuitComponent, event: CircuitEvent) -> None:
+    """Record a fixed provider component and state event, never provider content."""
+
+    if not _enabled:
+        return
+    AIQA_CIRCUIT_BREAKER.labels(component, event).inc()
+    span = trace.get_current_span()
+    if span.is_recording():
+        span.add_event(
+            "aiqa.circuit_breaker",
+            {
+                "jianli.circuit.component": component,
+                "jianli.circuit.event": event,
             },
         )

@@ -9,7 +9,12 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.factory import create_app
-from app.observability import observe_agent_tool, observe_rerank
+from app.observability import (
+    observe_agent_tool,
+    observe_circuit_breaker,
+    observe_rerank,
+    observe_semantic_cache,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -33,6 +38,8 @@ def test_metrics_are_hidden_low_cardinality_and_content_free() -> None:
         assert answer.status_code == 200
         observe_agent_tool(marker, "blocked", 1)
         observe_rerank("completed", 8, 6, model=marker)
+        observe_semantic_cache("hit", 2)
+        observe_circuit_breaker("llm", "opened")
         metrics = client.get("/internal/metrics")
 
     assert metrics.status_code == 200
@@ -41,6 +48,8 @@ def test_metrics_are_hidden_low_cardinality_and_content_free() -> None:
     assert 'outcome="greeting"' in body
     assert 'status="blocked",tool="rejected_unknown"' in body
     assert 'jianli_aiqa_rerank_attempts_total{status="completed"}' in body
+    assert 'jianli_aiqa_semantic_cache_total{status="hit"}' in body
+    assert 'component="llm",event="opened"' in body
     assert marker not in body
     assert "resume/recommendations" not in body
     assert "/internal/metrics" not in app.openapi()["paths"]
@@ -52,11 +61,15 @@ def test_observability_environment_settings() -> None:
             "JIANLI_OBSERVABILITY_ENABLED": "true",
             "JIANLI_OTEL_EXPORTER_OTLP_ENDPOINT": "http://collector:4318/v1/traces",
             "JIANLI_OTEL_SERVICE_NAME": "portfolio-agent",
+            "JIANLI_SEMANTIC_CACHE_ENABLED": "true",
+            "JIANLI_CIRCUIT_BREAKER_FAILURE_THRESHOLD": "4",
         }
     )
     assert settings.observability_enabled is True
     assert settings.otel_exporter_otlp_endpoint == "http://collector:4318/v1/traces"
     assert settings.otel_service_name == "portfolio-agent"
+    assert settings.semantic_cache_enabled is True
+    assert settings.circuit_breaker_failure_threshold == 4
 
 
 def test_deployment_assets_keep_internal_surfaces_private() -> None:
@@ -77,10 +90,12 @@ def test_deployment_assets_keep_internal_surfaces_private() -> None:
     assert '"127.0.0.1:3000:3000"' in dev_compose
     assert '"127.0.0.1:3000:3000"' in prod_compose
     assert '"127.0.0.1:9090:9090"' in prod_compose
-    assert len(dashboard["panels"]) == 8
+    assert len(dashboard["panels"]) == 10
     expressions = " ".join(
         target["expr"] for panel in dashboard["panels"] for target in panel["targets"]
     )
     assert "jianli_aiqa_answers_total" in expressions
     assert "jianli_aiqa_tool_calls_total" in expressions
     assert "jianli_aiqa_rerank_attempts_total" in expressions
+    assert "jianli_aiqa_semantic_cache_total" in expressions
+    assert "jianli_aiqa_circuit_breaker_total" in expressions

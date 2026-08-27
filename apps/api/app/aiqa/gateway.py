@@ -26,6 +26,8 @@ import re
 from collections.abc import AsyncIterator
 from typing import Protocol, runtime_checkable
 
+from .resilience import CircuitBreaker, CircuitOpenError
+
 
 class GatewayError(Exception):
     """Raised when the model provider is unreachable or returns an error."""
@@ -117,12 +119,14 @@ class OpenAIGateway:
         model: str,
         timeout: float,
         max_retries: int = 3,
+        circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._model = model
         self._timeout = timeout
         self._max_retries = max(1, int(max_retries))
+        self._circuit_breaker = circuit_breaker
 
     @property
     def model_name(self) -> str:
@@ -137,6 +141,27 @@ class OpenAIGateway:
         return min(0.3 * (2 ** attempt), 3.0)
 
     async def answer(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
+        if self._circuit_breaker is not None:
+            try:
+                self._circuit_breaker.before_call()
+            except CircuitOpenError as error:
+                raise GatewayError("provider circuit is open") from error
+        try:
+            async for event in self._answer_with_retries(messages, tools):
+                yield event
+        except GatewayError:
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
+            raise
+        else:
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_success()
+
+    async def _answer_with_retries(
         self,
         messages: list[dict[str, str]],
         tools: list[dict[str, object]] | None = None,
@@ -287,9 +312,12 @@ def build_gateway(
     model: str | None,
     timeout: float,
     max_retries: int = 3,
+    circuit_breaker: CircuitBreaker | None = None,
 ) -> LLMGateway:
     """Pick the gateway implementation from configuration (OpenAI if configured)."""
 
     if base_url and api_key and model:
-        return OpenAIGateway(base_url, api_key, model, timeout, max_retries)
+        return OpenAIGateway(
+            base_url, api_key, model, timeout, max_retries, circuit_breaker
+        )
     return StubGateway()

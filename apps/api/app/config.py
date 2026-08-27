@@ -80,6 +80,14 @@ class Settings(BaseModel):
     rerank_model: str | None = None
     rerank_timeout_seconds: float = Field(default=3.0, gt=0, le=5)
     rerank_top_n: int = Field(default=6, ge=1, le=12)
+    # Anonymous public grounded-answer cache; disabled unless explicitly enabled.
+    semantic_cache_enabled: bool = False
+    semantic_cache_similarity: float = Field(default=0.94, ge=0.0, le=1.0)
+    semantic_cache_ttl_seconds: int = Field(default=600, ge=60, le=86400)
+    semantic_cache_max_entries: int = Field(default=100, ge=1, le=500)
+    # Independent provider circuit breakers share policy, never state.
+    circuit_breaker_failure_threshold: int = Field(default=3, ge=1, le=20)
+    circuit_breaker_recovery_seconds: float = Field(default=30.0, ge=1, le=300)
     observability_enabled: bool = False
     otel_exporter_otlp_endpoint: str | None = None
     otel_service_name: str = Field(default="jianli-api", min_length=1, max_length=80)
@@ -189,6 +197,12 @@ class Settings(BaseModel):
             "rerank_model": "JIANLI_RERANK_MODEL",
             "rerank_timeout_seconds": "JIANLI_RERANK_TIMEOUT_SECONDS",
             "rerank_top_n": "JIANLI_RERANK_TOP_N",
+            "semantic_cache_enabled": "JIANLI_SEMANTIC_CACHE_ENABLED",
+            "semantic_cache_similarity": "JIANLI_SEMANTIC_CACHE_SIMILARITY",
+            "semantic_cache_ttl_seconds": "JIANLI_SEMANTIC_CACHE_TTL_SECONDS",
+            "semantic_cache_max_entries": "JIANLI_SEMANTIC_CACHE_MAX_ENTRIES",
+            "circuit_breaker_failure_threshold": "JIANLI_CIRCUIT_BREAKER_FAILURE_THRESHOLD",
+            "circuit_breaker_recovery_seconds": "JIANLI_CIRCUIT_BREAKER_RECOVERY_SECONDS",
             "observability_enabled": "JIANLI_OBSERVABILITY_ENABLED",
             "otel_exporter_otlp_endpoint": "JIANLI_OTEL_EXPORTER_OTLP_ENDPOINT",
             "otel_service_name": "JIANLI_OTEL_SERVICE_NAME",

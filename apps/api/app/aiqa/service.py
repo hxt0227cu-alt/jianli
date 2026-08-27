@@ -41,6 +41,7 @@ from app.observability import (
     observe_agent_tool,
     observe_aiqa_answer,
     observe_rerank,
+    observe_semantic_cache,
 )
 
 from . import bm25
@@ -62,6 +63,7 @@ from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository, default_now
 from .reranker import RerankerError, RerankerGateway
 from .retrieval import Candidate, retrieve
+from .semantic_cache import SemanticAnswerCache, SemanticCache, SemanticCacheError
 from .sse import (
     booking_frame,
     citations_frame,
@@ -391,6 +393,7 @@ class AnswerService:
         reranker: RerankerGateway | None = None,
         rerank_top_n: int = 6,
         booking_service: BookingService | None = None,
+        semantic_cache: SemanticCache | None = None,
     ) -> None:
         self._gateway = gateway
         self._rate_limiter = rate_limiter
@@ -405,6 +408,7 @@ class AnswerService:
         # runtime so the agent can call BookingService.preview/create in-process. None
         # when booking is not configured -> booking tool yields a graceful "unavailable".
         self._booking_service = booking_service
+        self._semantic_cache = semantic_cache
 
     # -- synchronous helpers used by the router before streaming -------------------------
 
@@ -485,6 +489,7 @@ class AnswerService:
 
         repository, storage, embedder = self._require_knowledge()
         now = default_now()
+        indexed_any = False
         for file in files:
             filename = (file.filename or "document").rsplit("/", 1)[-1]
             suffix = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -552,6 +557,9 @@ class AnswerService:
                 repository.replace_chunks, document_id, chunks, embeddings, default_now()
             )
             await asyncio.to_thread(repository.mark_indexed, document_id)
+            indexed_any = True
+        if indexed_any:
+            await asyncio.to_thread(self._invalidate_semantic_cache)
 
     def delete_knowledge_document(self, document_id: UUID) -> None:
         repository, storage, _ = self._require_knowledge()
@@ -560,6 +568,18 @@ class AnswerService:
             raise AuthError("INVALID_REQUEST", 404, "Document not found", "Unknown document")
         repository.disable_retrieval(document_id, default_now())
         storage.delete(document_id)
+        self._invalidate_semantic_cache()
+
+    def _invalidate_semantic_cache(self) -> None:
+        if self._semantic_cache is None:
+            return
+        started = time.monotonic()
+        try:
+            self._semantic_cache.invalidate_all()
+        except SemanticCacheError:
+            observe_semantic_cache("error", int((time.monotonic() - started) * 1000))
+        else:
+            observe_semantic_cache("invalidated", int((time.monotonic() - started) * 1000))
 
     # -- streaming pipeline ---------------------------------------------------------------
 
@@ -1229,6 +1249,68 @@ class AnswerService:
         if search_query is not None or not tool_trace:
             # RAG branch (existing behavior preserved): search + grounded answer, or
             # off-topic refusal when there are no hits.
+            cache_embedding: list[float] | None = None
+            cache_namespace: str | None = None
+            semantic_cache = self._semantic_cache
+            embedder = self._embedder
+            cache_eligible = (
+                semantic_cache is not None
+                and embedder is not None
+                and principal is None
+                and conversation_id is None
+                and not tool_trace
+            )
+            if cache_eligible:
+                assert semantic_cache is not None and embedder is not None
+                cache_started = time.monotonic()
+                try:
+                    cache_embedding = (
+                        await asyncio.to_thread(embedder.embed, [question])
+                    )[0]
+                    cache_namespace = SemanticAnswerCache.namespace(page_key, project_key)
+                    cached = await asyncio.to_thread(
+                        semantic_cache.lookup, cache_namespace, cache_embedding
+                    )
+                except (EmbeddingError, SemanticCacheError, IndexError):
+                    observe_semantic_cache(
+                        "error", int((time.monotonic() - cache_started) * 1000)
+                    )
+                    cache_embedding = None
+                    cache_namespace = None
+                else:
+                    cache_ms = int((time.monotonic() - cache_started) * 1000)
+                    if cached is not None:
+                        observe_semantic_cache("hit", cache_ms)
+                        latency_ms = int((time.monotonic() - start) * 1000)
+                        observe_aiqa_answer("grounded", latency_ms, model=cached.model)
+                        yield _trace(
+                            phase="retrieval",
+                            status="completed",
+                            label="语义缓存命中",
+                            duration_ms=cache_ms,
+                            detail=f"复用匿名公共有依据回答 · similarity={cached.similarity:.3f}",
+                        )
+                        yield delta_frame(seq := seq + 1, cached.answer, trace_id)
+                        yield citations_frame(seq := seq + 1, cached.citations, trace_id)
+                        yield _trace(
+                            phase="result",
+                            status="completed",
+                            label="缓存回答完成",
+                            duration_ms=latency_ms,
+                            detail=f"grounded=true · citations={len(cached.citations)}",
+                        )
+                        yield completed_frame(
+                            seq := seq + 1,
+                            grounded=True,
+                            offtopic=False,
+                            model=cached.model,
+                            usage=None,
+                            trace_id=trace_id,
+                        )
+                        return
+                    observe_semantic_cache("miss", cache_ms)
+            elif semantic_cache is not None:
+                observe_semantic_cache("bypass", 0)
             retrieval_started = time.monotonic()
             candidates = await self._search_candidates(
                 search_query or question, question, page_key, project_key
@@ -1364,6 +1446,25 @@ class AnswerService:
                 [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
                 trace_id,
             )
+            if (
+                semantic_cache is not None
+                and cache_namespace is not None
+                and cache_embedding is not None
+            ):
+                cache_started = time.monotonic()
+                try:
+                    await asyncio.to_thread(
+                        semantic_cache.put,
+                        cache_namespace,
+                        cache_embedding,
+                        "".join(deltas),
+                        [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
+                        self._gateway.model_name,
+                    )
+                except SemanticCacheError:
+                    observe_semantic_cache(
+                        "error", int((time.monotonic() - cache_started) * 1000)
+                    )
             usage_payload = (
                 cast("dict[str, object] | None", usage_acc)
                 if usage_acc["total_tokens"] > 0

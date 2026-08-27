@@ -10,16 +10,20 @@ is supplied (the auth runtime's engine when auth is configured), conversation pe
 
 from __future__ import annotations
 
+import redis
 from sqlalchemy import Engine
 
 from app.appointments.service import BookingService
 from app.config import Settings
+from app.observability import observe_circuit_breaker
 
 from .embeddings import build_embedding_gateway
 from .gateway import build_gateway
 from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository
 from .reranker import build_reranker_gateway
+from .resilience import CircuitBreaker
+from .semantic_cache import SemanticAnswerCache
 from .service import AnswerService
 from .storage import KnowledgeStorage
 
@@ -36,6 +40,16 @@ def build_aiqa_runtime(
     optional: when None the booking tool yields a graceful "unavailable" outcome.
     """
 
+    llm_breaker = CircuitBreaker(
+        settings.circuit_breaker_failure_threshold,
+        settings.circuit_breaker_recovery_seconds,
+        on_event=lambda event: observe_circuit_breaker("llm", event),
+    )
+    reranker_breaker = CircuitBreaker(
+        settings.circuit_breaker_failure_threshold,
+        settings.circuit_breaker_recovery_seconds,
+        on_event=lambda event: observe_circuit_breaker("reranker", event),
+    )
     gateway = build_gateway(
         base_url=settings.llm_base_url,
         api_key=(
@@ -46,6 +60,7 @@ def build_aiqa_runtime(
         model=settings.llm_model,
         timeout=settings.llm_timeout_seconds,
         max_retries=settings.llm_max_retries,
+        circuit_breaker=llm_breaker,
     )
     embedder = build_embedding_gateway(
         base_url=settings.llm_embedding_base_url,
@@ -67,7 +82,17 @@ def build_aiqa_runtime(
         ),
         model=settings.rerank_model,
         timeout=settings.rerank_timeout_seconds,
+        circuit_breaker=reranker_breaker,
     )
+    semantic_cache = None
+    if settings.semantic_cache_enabled and settings.redis_url:
+        cache_redis = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+        semantic_cache = SemanticAnswerCache(
+            cache_redis,
+            similarity_threshold=settings.semantic_cache_similarity,
+            ttl_seconds=settings.semantic_cache_ttl_seconds,
+            max_entries=settings.semantic_cache_max_entries,
+        )
     repository = ConversationRepository(engine) if engine is not None else None
     knowledge_repository = KnowledgeRepository(engine) if engine is not None else None
     storage = KnowledgeStorage(settings.knowledge_storage_dir)
@@ -82,4 +107,5 @@ def build_aiqa_runtime(
         reranker=reranker,
         rerank_top_n=settings.rerank_top_n,
         booking_service=booking_service,
+        semantic_cache=semantic_cache,
     )

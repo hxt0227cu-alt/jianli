@@ -7,6 +7,8 @@ from typing import Protocol, runtime_checkable
 
 import httpx
 
+from .resilience import CircuitBreaker, CircuitOpenError
+
 
 class RerankerError(Exception):
     """A provider or protocol failure; callers must retain the original RRF order."""
@@ -29,11 +31,19 @@ class RerankerGateway(Protocol):
 class CrossEncoderReranker:
     """Call an OpenAI-style ``POST /rerank`` endpoint with strict response validation."""
 
-    def __init__(self, base_url: str, api_key: str, model: str, timeout: float) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model: str,
+        timeout: float,
+        circuit_breaker: CircuitBreaker | None = None,
+    ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._model = model
         self._timeout = min(timeout, 5.0)
+        self._circuit_breaker = circuit_breaker
 
     @property
     def model_name(self) -> str:
@@ -42,6 +52,24 @@ class CrossEncoderReranker:
     def rerank(self, query: str, documents: list[str], top_n: int) -> list[RerankResult]:
         if not documents:
             return []
+        if self._circuit_breaker is not None:
+            try:
+                self._circuit_breaker.before_call()
+            except CircuitOpenError as error:
+                raise RerankerError("provider_circuit_open") from error
+        try:
+            result = self._rerank_once(query, documents, top_n)
+        except RerankerError:
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
+            raise
+        if self._circuit_breaker is not None:
+            self._circuit_breaker.record_success()
+        return result
+
+    def _rerank_once(
+        self, query: str, documents: list[str], top_n: int
+    ) -> list[RerankResult]:
         payload = {
             "model": self._model,
             "query": query,
@@ -92,10 +120,15 @@ class CrossEncoderReranker:
 
 
 def build_reranker_gateway(
-    *, base_url: str | None, api_key: str | None, model: str | None, timeout: float
+    *,
+    base_url: str | None,
+    api_key: str | None,
+    model: str | None,
+    timeout: float,
+    circuit_breaker: CircuitBreaker | None = None,
 ) -> RerankerGateway | None:
     """Return no gateway unless every secret/config component is present."""
 
     if base_url and api_key and model:
-        return CrossEncoderReranker(base_url, api_key, model, timeout)
+        return CrossEncoderReranker(base_url, api_key, model, timeout, circuit_breaker)
     return None

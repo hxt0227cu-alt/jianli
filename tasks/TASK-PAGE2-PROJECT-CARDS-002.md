@@ -81,7 +81,7 @@
 - 超过 3 个文件或冻结验收失败时立即停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：实现提交待回填
+- commit / PR：`e1f0636`（页面二项目价值卡实现）
 - 修改文件清单：`apps/web/main.tsx`、`apps/web/styles.css`、本任务单
 - 测试命令及结果：WSL `npm test` → 1 file / 1 test passed；WSL `npm run build` → 1792 modules transformed，生产构建通过
 - lint / typecheck：WSL `npm run typecheck` → exit 0
@@ -92,7 +92,7 @@
 - 是否偏离 TASK：否；工作区另有 `apps/api/app/aiqa/service.py`、`apps/api/app/aiqa/sse.py` 与 `tasks/TASK-AIQA-AGENT-LAB-001.md` 修改，不属于本任务且未触碰
 - 规范影响结论：none
 - spec_sync：clean（实现仍符合已批准 PRD R1/R3/R6/R25、UC-02 与 UI U2）
-- verified_commit：待回填
+- verified_commit：`e1f0636`
 
 ## 关联
 - Change Request：无需；实现收敛至已批准 U2 项目卡片交互

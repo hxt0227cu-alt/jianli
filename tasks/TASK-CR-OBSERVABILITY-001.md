@@ -76,18 +76,18 @@
 - 若需 DB/公开 OpenAPI/认证策略变化、额外依赖或超 7 文件，停止拆分。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`b1dbad2`
+- 修改文件清单：本任务允许的 7 个路径
+- 测试命令及结果：`git diff --check` 通过
 - lint / typecheck：文档任务不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
+- 验收证据：ADR-OBS-001 accepted；architecture 0.3 / security 0.2 / test-plan 0.9 / baseline approved 同步
+- 变更预算实际值：7 文件 / 148 新增 / 11 删除，未超预算
+- 未解决风险：无
 - 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`b1dbad2`
 
 ## 关联
 - 下游：`TASK-OBSERVABILITY-001`

@@ -159,24 +159,24 @@
 ## C 组 · Litchi 毕设域（page_key=`projects`，project_key=`litchi`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-27 · litchi 毕设用了什么技术栈？
-- **期望事实**：Spring Boot 3.2 / Java 17 后端（100 文件 / 12,622 行）+ Vue3 + TS 前端（34 文件 / 11,076 行，22 业务页面三角色）+ Python YOLOv8 诊断服务 + MySQL 14 张表（platform_*），Controller 49 接口。
-- **溯源**：CORPUS `litchi.md`「规模与实现」/ content.py litchi chunk。
-- **判定要点**：命中 Spring Boot + Vue3 + YOLOv8 + MySQL 主体 ✅；说成 FastAPI/React 主栈 ❌（那是 jianli）。
+- **期望事实**：本人独立完成的 90.4 分毕设；Spring Boot 3.2 / Java 17 后端 + Vue3 / TypeScript 前端 + Python 诊断服务 + MySQL，AI 链路使用 Milvus、Neo4j、本地 Ollama；三者曾同时真实运行并在答辩现场演示。数据平台、可观测性和 Helm 是已实现的实验模板，不是生产部署。
+- **溯源**：CORPUS `litchi-overview.md` / content.py litchi chunk / 用户事实确认。
+- **判定要点**：命中“独立开发 + Spring Boot/Vue3 + Milvus/Neo4j/Ollama 现场演示 + 模板边界” ✅；说成 FastAPI/React 主栈或模板已生产化 ❌。
 
 ### FQ-28 · litchi 的四段受控 Agent 是怎么实现的？
-- **期望事实**：AgentService.java（458 行）：Planner 用 LLM 生成 JSON 计划（硬上限 4 步、失败走 fallbackPlan）→ Executor 顺序执行 → Synthesizer 仅依工具证据作答 + 模型不可用降级；Guard 无独立类、职责内嵌（白名单 availableTools.containsKey / maxSteps 截断 / RBAC AgentTool.supports / HITL requiresApproval+confirm）。
-- **溯源**：CORPUS `litchi.md`「受控 Agent 实现细节」。
-- **判定要点**：命中四段 + Guard 内嵌（白名单/预算/RBAC/HITL 至少两项）✅；说成"没实现/纯概念"❌。
+- **期望事实**：Planner 用 LLM 生成 JSON 计划（硬上限 4 步、失败走 fallbackPlan）→ 内嵌 Guard 过滤未知/重复工具并按 AgentTool.supports(user) 做角色收窄 → Executor 顺序执行 → Synthesizer 仅依工具证据作答；pending_remedy_plan 先进入 waiting_approval 再确认落库。当前同一技术员可发起并确认，不是双人复核。
+- **溯源**：CORPUS `litchi-agent-rag.md`。
+- **判定要点**：命中四段 + 白名单/预算/RBAC/HITL + 单人确认边界 ✅；说成“纯聊天壳”“独立 Guard 服务”或“双人复核已落地”❌。
 
 ### FQ-29 · litchi 的 LLM 和向量是怎么选的？
 - **期望事实**：本地 Ollama qwen2.5:0.5b（CPU 可跑，无 GPU 笔记本本地演示约束）+ Milvus 哈希向量 1024 维（SimpleEmbeddingService，非语义 embedding）。
-- **溯源**：CORPUS `litchi.md`「模型与降级」「检索与图谱」。
+- **溯源**：CORPUS `litchi-agent-rag.md`。
 - **判定要点**：命中"本地 Ollama 0.5b + 哈希向量 + 无 GPU 约束" ✅；说成"云端大模型 + BGE-M3 语义向量"❌（那是泰益智/jianli）。
 
 ### FQ-30 · litchi 的并发压测结果如何？
-- **期望事实**：200 并发仅 19% 成功、P95 15.18s；修复 4 项（旧接口路径 / PowerShell 5 兼容 / 外部依赖重复探测 / 文档检索对象级同步 CopyOnWriteArrayList）后仍不达标，按时间边界停止调优，报告如实保留（README / KNOWN_LIMITATIONS 列为未通过）。
-- **溯源**：CORPUS `litchi.md`「已知局限（诚实记录）」。
-- **判定要点**：命中"19% 成功 + 按时间边界停止 + 如实保留" ✅；说成"压测全过"❌。
+- **期望事实**：历史 50 并发/50 请求本地测试全部成功（平均约 6.9s、P95 约 11.2s）；后续 100 并发/200 请求多轮成功率约 50.5%/21%/19%，其中一轮 P95 约 15.2s。环境和脚本条件不同，不能据此证明容量回归的单一因果，只能确认高并发稳定性未达标；旧 API 路径、PowerShell JSON、重复依赖探测等已排查，但唯一根因未被证明。
+- **溯源**：CORPUS `litchi-evidence-retrospective.md`。
+- **判定要点**：同时命中“50 并发历史成功 + 200 请求多轮失败 + 条件不同不能强推因果 + 未证明唯一根因” ✅；只说“50 并发 100% 所以生产可用”或把 19% 说成“200 并发”❌。
 
 ## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
 

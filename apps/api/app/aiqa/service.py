@@ -147,7 +147,7 @@ def _is_malicious_question(question: str) -> bool:
 # answered Python+FastAPI for a Spring Boot project). Mapping:
 #   resume                  -> None (any experience topic may be asked on the resume page)
 #   projects / jianli       -> []  (jianli facts live in static pages only)
-#   projects / litchi       -> ["litchi.md"]
+#   projects / litchi       -> four layered Litchi interview documents
 #   projects / sleep202603_an -> ["taiyizhi.md"]
 #   projects / (none)       -> None (competition / behavioural questions)
 # None = unrestricted (legacy behaviour); [] = no KB docs for this domain.
@@ -156,7 +156,12 @@ def _kb_domain_docs(page_key: str, project_key: str | None) -> list[str] | None:
         if project_key == "jianli":
             return []
         if project_key == "litchi":
-            return ["litchi.md"]
+            return [
+                "litchi-overview.md",
+                "litchi-agent-rag.md",
+                "litchi-evidence-retrospective.md",
+                "litchi-evolution.md",
+            ]
         if project_key == "sleep202603_an":
             return ["taiyizhi.md"]
     return None

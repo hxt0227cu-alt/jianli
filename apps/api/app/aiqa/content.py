@@ -93,10 +93,10 @@ def build_pages() -> dict[str, PageContentData]:
             "设备写操作恶意绕过 0 次。",
             "我的毕业设计是《基于大模型 RAG 的荔枝智能问答平台设计与实现》"
             "（2026 届优秀毕业设计，得分 90.4），独立开发荔枝农技 AI Agent 协同平台"
-            "（Spring Boot 3.2 + Vue3 + TypeScript，22 个业务页面，Docker Compose 编排 9 服务并"
-            " Helm 化 K8s 部署）；基于 Milvus + Neo4j 双路 RAG 与 YOLOv8 三级诊断，"
-            "病害识别准确率由 20% 提升至 93.75%，Chat P95 由 5s 降至 124ms"
-            "（约 1/50），50 并发成功率 100%。",
+            "（Spring Boot 3.2 + Vue3 + TypeScript，22 个业务页面）；受控 Agent 通过工具白名单、"
+            "角色过滤、4 步预算和人工审批约束写操作，RAG 组合 Milvus 文档证据与 Neo4j 关系数据。"
+            "Milvus、Neo4j、Ollama 曾同时实际运行并在答辩现场演示；数据平台、可观测性与 Helm "
+            "是我实现的实验模板，不表述为生产部署。",
             "技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React、K8s / ArgoCD /"
             "LangGraph；熟悉 RAG 与人格层问答、受约束的 AI Agent 编排（工具白名单 + RBAC + 预算熔断"
             "+ HITL 审批），用过 Kafka / Flink / ClickHouse 数据平台。",
@@ -125,9 +125,9 @@ def build_pages() -> dict[str, PageContentData]:
         "heading": "荔枝问答平台（litchi，毕设）",
         "body": (
             "2026 届优秀毕业设计（90.4 分）：基于大模型 RAG 的荔枝智能问答平台，"
-            "一人独立完成（Spring Boot 3.2 后端 / Vue3 前端 / YOLOv8 诊断 / 数据平台 / "
-            "可观测 / Helm 部署 / 评测 / 语料）；Milvus + Neo4j 双路检索 + 本地 Ollama 小模型，"
-            "22 个业务页面，50 并发成功率 100%。"
+            "一人独立完成 Spring Boot 后端、Vue3 前端、诊断服务、语料与评测。核心价值是把 "
+            "Milvus + Neo4j 证据检索、本地 Ollama、工具白名单、角色过滤、步骤预算和人工审批"
+            "接成可控业务闭环；完整 AI 环境已现场演示，平台化设施按实验模板标注边界。"
         ),
     }
     projects_sections: list[dict[str, object]] = [projects_jianli, projects_sleep, projects_litchi]
@@ -202,26 +202,26 @@ def build_pages() -> dict[str, PageContentData]:
             [
                 (
                     "litchi 荔枝问答平台是我的 2026 届优秀毕业设计（90.4 分）：《基于大模型 RAG 的"
-                    "荔枝智能问答平台设计与实现》，一人独立完成（Spring Boot 3.2 后端 / "
-                    "Vue3 前端 / YOLOv8 诊断服务 / 数据平台 / 可观测 / Helm 部署 / 评测 / 语料），"
-                    "22 个业务页面，Docker Compose 编排 9 服务并 Helm 化 K8s 部署。"
+                    "荔枝智能问答平台设计与实现》。我一人独立完成 Spring Boot 3.2 后端、Vue3 "
+                    "前端、Python 诊断服务、知识语料与评测，共 22 个业务页面。Milvus、Neo4j、"
+                    "Ollama 曾同时实际运行并在答辩现场演示；数据平台、可观测性和 Helm "
+                    "是实验模板。"
                 ),
                 (
-                    "litchi 技术要点：受控 Agent（5 类 Tool、7 状态、4 步边界、写操作强审批），"
-                    "Milvus + Neo4j 双路 RAG（6 类文档摄入 / 480 字符分块 / 1024 维向量）与 "
-                    "YOLOv8 三级诊断，病害识别准确率由 20% 提升至 93.75%；Chat P95 由 5s 降至 "
-                    "124ms（约 1/50），50 并发成功率 100%；本地 Ollama qwen2.5:0.5b"
-                    "（无 GPU 笔记本可演示）。"
+                    "litchi 受控 Agent：Planner 生成最多 4 步计划，内嵌 Guard 过滤未知/重复工具并按"
+                    "角色收窄白名单，Executor 顺序执行，Synthesizer 只基于工具证据作答；写工具先"
+                    "进入 waiting_approval。当前同一技术员仍可发起并确认，不宣称双人复核。"
                 ),
                 (
-                    "litchi 论文版（毕设论文真源，90.4 分）：系统为「荔枝智能问答与协同诊断平台」，"
-                    "五层架构（Vue3 表现层 / Nginx+Spring Boot 接入层 / Spring Boot 3.2 业务层 / "
-                    "AI 服务层 / MySQL+Neo4j+Milvus 数据层，Docker Compose 10 服务）；RAG 链路 = "
-                    "查询→向量+图谱并行检索→候选筛选→Qwen2.5:0.5b 生成→证据约束与降级"
-                    "（分块 480/120）；病害识别 = YOLOv8 + 标签映射 + 三级降级"
-                    "（yolo→dataset-vision→"
-                    "demo-rule）；四大亮点 = 双增强架构 / 三级降级 / 多角色闭环 / 可进化评测；"
-                    "验证报告 = 30 分钟稳定性 119 轮全成功 + 50 并发问答全成功。"
+                    "litchi RAG：支持 txt/md/csv/json/docx/pdf，按 480/120 切块；1024 维确定性哈希"
+                    "向量用于 CPU 本地演示，并非语义 embedding。ChatService 合并 Milvus 文档候选"
+                    "与 Neo4j 图谱关系，再交给本地 Ollama qwen2.5:0.5b 生成有依据的回答。"
+                ),
+                (
+                    "litchi 的证据边界：历史 50 并发本地测试全部成功，但后续 100 并发、200 请求"
+                    "多轮成功率仅约 50.5%/21%/19%，环境条件不同，不能强推因果，只能确认高并发"
+                    "稳定性未达标。Redis Stream、租户级 RLS、专用 Agent 执行器、事务 Outbox 与"
+                    "Token/成本预算均是下一版计划，尚未落地。"
                 ),
             ],
         ),

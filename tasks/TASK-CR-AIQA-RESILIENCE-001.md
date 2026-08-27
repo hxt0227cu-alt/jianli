@@ -1,6 +1,6 @@
 # TASK-CR-AIQA-RESILIENCE-001 Semantic Cache + Circuit Breaker 变更请求
 
-> **状态：Approved / In Progress（2026-08-27，用户已显式全权批准）**
+> **状态：Approved / Closed（2026-08-27，verified_commit=`a73c5a8`）**
 
 ## 任务类型
 - architecture
@@ -71,14 +71,14 @@
 - 需要 DB/公开 API/新依赖/Prompt/权限变化或超 8 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`a73c5a8`
+- 修改文件清单：8 个（本任务、下游任务、ADR、architecture、security、test-plan、baseline、PROJECT_STATE）
+- 测试命令及结果：`git diff --cached --check` → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
-- spec_sync：待回填
-- verified_commit：待回填
+- 验收证据：ADR accepted；architecture 0.5 / security 0.4 / test-plan 1.1 approved；TC-AI-013 已冻结
+- 变更预算实际值：8 files，213 insertions / 9 deletions
+- 未解决风险：实现与真实 Redis 行为由下游任务验证
+- 是否偏离 TASK：否
+- spec_sync：clean
+- verified_commit：`a73c5a8`

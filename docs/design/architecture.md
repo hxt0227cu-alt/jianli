@@ -1,6 +1,6 @@
-# 架构设计与 ADR（v0.3）
+# 架构设计与 ADR（v0.4）
 
-> **文档状态**：v0.3 · `status = approved`（用户于 2026-08-27 批准 ADR-OBS-001：OpenTelemetry + Prometheus/Grafana 可观测闭环）。
+> **文档状态**：v0.4 · `status = approved`（用户于 2026-08-27 批准 ADR-RERANK-001：RRF 后置 Cross-Encoder 重排与失败回退）。
 > **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.6 / 用例规约 v1.7.4 / 领域模型 **v1.1.8** / SRS **v1.9** / UI 线框 **v1.0.3** / AI 治理 1.0.1。
 > **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态；**2026-08-09（续二）两项 Schema/并发收口**：⑥ §6.4.1 `Txn W` SQL 删除幻列 `version`、`provider_message_id` 写独立列、`channel_metadata` 改 JSONB 合并（bounce 键仍只由 §7 回写），并附逐字段核对表对齐领域模型 v1.1.5 §6.12；⑦ §4.7 补齐同一 override 的并发更新——新增锁层级 **L2.5**（UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取真实 `old_range`，先于 L3）、CREATE/UPDATE 范围须命中现存 Slot 否则拒绝。逐项差异见 §12.3 条目 20–23。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
@@ -671,6 +671,7 @@ SELECT d.* FROM NotificationDelivery d
 
 ### 8.3 RAG 检索质量（SRS §3.2）
 - 检索不到明确告知「资料未涵盖」不编造；冲突以最新/权威源为准；注入拦截率 = 100%；删除后相关缓存答案失效；合理推断须标注「推测」；模型不可用 → `MODEL_UNAVAILABLE`，不切换第二模型。
+- 检索排序采用 `vector top10 + BM25 top10 → RRF 候选集 → 可选 Cross-Encoder top6`（ADR-RERANK-001）。重排只处理已经过页面/项目域过滤且通过相关性门槛的候选；未配置时保持 RRF，网络/协议失败时回退原顺序，不改变 grounded/拒答判定。
 
 ---
 

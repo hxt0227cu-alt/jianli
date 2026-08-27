@@ -1,6 +1,6 @@
-# 安全设计与 ADR（v0.2 / approved）
+# 安全设计与 ADR（v0.3 / approved）
 
-> 状态：`approved`（2026-08-27 经 TASK-CR-OBSERVABILITY-001 批准可观测安全边界）。依据 PRD 2.3.6 / SRS 1.9 / domain-model 1.1.8 / architecture 0.3（均 approved）。
+> 状态：`approved`（2026-08-27 经 TASK-CR-RERANKER-001 批准 Reranker 数据最小化与失败回退边界）。依据 PRD 2.3.6 / SRS 1.9 / domain-model 1.1.8 / architecture 0.4（均 approved）。
 
 ## 1. 安全目标与信任边界
 
@@ -77,6 +77,7 @@
 - 输出经范围/引用检查；资料未覆盖时明确说明，模型不可用时返回既有 `MODEL_UNAVAILABLE`。
 - 上传采用扩展名、MIME 与文件签名联合校验；单文件≤10MB、单次≤20；文件名净化、对象存储随机 key、禁止路径穿越和可执行内容。解析/OCR 运行在资源受限进程，设置页数、解压大小、CPU 和超时上限。
 - 删除知识文档立即置 `retrieval_disabled_at`，检索路径先校验禁用状态；缓存答案同步失效。
+- Cross-Encoder Reranker 只接收当前问题与已通过页面/项目域过滤的候选片段；独立密钥与超时，不得发送用户/会话/预约数据。失败只按固定类别观测并回退 RRF，日志、指标和 Trace 禁止记录请求正文、候选正文或第三方异常正文。
 
 ## 10. 退信、通知与外部集成
 

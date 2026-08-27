@@ -1,6 +1,6 @@
 # TASK-CR-AGENT-LAB-001 Agent Lab 与结构化 Trace（Change Request）
 
-> **状态：Approved / In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27，verified_commit=`127b030`）**
 > 用户于 2026-08-27 授权以求职竞争力为目标连续推进，并明确要求主线聚焦代码、只保留必要审查。
 
 ## 任务类型
@@ -98,18 +98,18 @@
 - 超出 7 文件时拆任务。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：纯规范任务，不适用；待回填 `git diff --check`
+- commit / PR：`127b030`（批准规范快照）
+- 修改文件清单：本任务单、SRS、UI 线框、SSE、测试计划、baseline、PROJECT_STATE；7/7 均在允许路径。
+- 测试命令及结果：版本/based_on/TC-AI-010/`answer.trace` 文本一致性断言 → pass。
+- lint / typecheck：纯规范任务，不适用；`git diff --check` → pass。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：SRS 1.8、UI 1.0.2、OpenAPI-SSE 0.9、test-plan 0.7 均 approved；73 个 TC，新增 TC-AI-010。
+- 变更预算实际值：7/7 文件；生产代码 0 行；测试代码 0 行。
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：updated
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`127b030`
 
 ## 关联
 - 前置：`TASK-CR-AIQA-SSE-ALIGN-001`

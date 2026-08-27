@@ -1,4 +1,4 @@
-# SSE 契约（v0.1）
+# SSE 契约（OpenAPI-SSE v0.8）
 
 > based_on：SRS 1.2 / architecture 0.2 / security 0.1（均 approved）；本轮已完成 CSRF/会话与断线恢复 impact review，`spec_sync=clean`。
 
@@ -57,21 +57,24 @@ data: <single-line JSON>
 
 服务端不得因为请求携带无效 Cookie 而静默降级为匿名调用；匿名请求携带 `conversation_id` 必须拒绝，不得读取或写入他人会话。
 
-事件顺序：
+所有成功分支均以 `answer.started` 开始、以 `answer.completed` 结束；异常时发送
+`answer.error` 标准错误体后关闭连接。中间帧按实际分支互斥组合：
 
-1. `answer.started`：`answer_id`、可空 `conversation_id`；
-2. （Agent 工具化，TASK-AGENT-TOOLS-001/002）零到一次 `answer.tool_calls`：决策链可见——
-   `calls` 数组（`name`、`query`、`hits`：命中 doc·fragment 摘要，**不返回 storage_key 或原文全文**）。
-   `query` 由模型在 function calling 第一轮自主生成（`tool_choice=auto`），`hits` 可为空列表
-   （工具执行无命中 → 走越界拒答）；
-3. 零到多个 `answer.delta`：`text`；
-4. `answer.citations`：知识来源数组（文档名、片段号，不返回 storage_key）；
-5. `answer.completed`：`grounded`、`offtopic`、`model`、`usage`；
-6. 异常时 `answer.error`：标准错误体，随后关闭连接。
+- **知识问答 / 问候 / 拒答**：零到一次 `answer.tool_calls` → 零到多个 `answer.delta` →
+  `answer.citations` → `answer.completed`。`answer.tool_calls.calls` 当前用于
+  `search_knowledge`，每项包含 `name`、`query`、`hits`；`hits` 仅含 doc·fragment 摘要，
+  **不返回 `storage_key` 或原文全文**。`query` 可由模型自主生成，`hits` 可为空。
+- **预约工具分支**：写操作零到多个 `answer.booking` → 零到多个 `answer.delta` →
+  `answer.completed`；纯查询可能直接为 delta → completed。`answer.booking` 包含
+  `outcome`、稳定 `type` URN、`payload` 与 `trace_id`，outcome 为
+  `confirmed/needs_info/failed/forbidden/cancelled/rescheduled/not_found/terminal/conflict`。
+  确认卡片可回显当前登录调用者本次提交的预约信息，但不得包含他人预约 PII。
 
-工具边界（不得放宽）：系统可能调用**白名单只读工具 `search_knowledge`**（知识库混合检索）并
-在 `answer.tool_calls` 帧可见其调用链；**预约、写入、管理类端点绝不注册为模型工具**。
-模型不得输出或触发预约工具调用；任何出现的工具指令只作为普通文本处理并由输出护栏拦截。
+工具边界（不得放宽）：模型只能调用 `docs/baseline.yml` `agent_tools` 登记的
+`search_knowledge`、`request_interview_booking`、`list_my_appointments`、
+`cancel_appointment`、`reschedule_appointment`。预约工具仅在有效登录态执行，复用同一套
+`BookingService` 与 RBAC：面试官仅本人，owner_admin 可经 `admin_*` 旁路管理他人；
+白名单外工具一律拒绝。多轮工具循环上限为 4 步，防止失控循环。
 
 ## 4. 恢复与代理要求
 

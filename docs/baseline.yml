@@ -21,8 +21,8 @@ artifacts:
   ui_wireframe:     { version: "1.0.1", status: approved }   # U3/A4 同步15日窗口、铺满布局与精确时间段 override。
   architecture:     { version: "0.2",   status: approved } # 阶段 2 设计工件；用户于 2026-08-09 明确批准 architecture v0.2（评审内容快照 3a18b7f）；密码哈希算法、退信接入、会话存储与限频机制留《安全设计》，AUTH_EXPIRED 冲突留 OpenAPI 前裁定
   security:         { version: "0.1",   status: approved }  # 用户于 2026-08-10 明确批准 security v0.1；批准锚点为本状态推进提交；BCrypt/会话/Redis/IMAP/AES-GCM 等方案开始约束实现
-  openapi:          { version: "0.7",   status: approved }  # getSlotSnapshot week_offset 扩为0/1/2，响应结构不变。
-  test_plan:        { version: "0.5",   status: approved }  # 72个TC；新增完成事件只同步飞书表格验收。
+  openapi:          { version: "0.8",   status: approved }  # AIQA SSE契约对齐既有5工具/answer.booking实现；无新事件或运行行为。
+  test_plan:        { version: "0.6",   status: approved }  # based_on同步OpenAPI-SSE 0.8；72个冻结TC不变。
   ai_governance:    { version: "1.0.1", status: approved }  # 治理微补丁已落地（AGENTS §0 上下文读取句/§1 任务驱动表述、用例冻结句、TASK 模板 commit 指引均已对齐 baseline）；复核通过恢复 approved
 
 # ── AIQA agent 工具注册（TASK-AIQA-BOOKING-001；2026-08-20 经 TASK-CR-AIQA-BOOKING-001 批准推翻 PRD 决策#14 对该功能的禁止）──
@@ -36,6 +36,21 @@ agent_tools:
     status: enabled
     guard: "RBAC: principal.role == interviewer 方可触发；复用预约域 preview/create 强约束（3×30min 连续/同本地日/令牌/幂等），不改写其校验"
     decided_by: TASK-AIQA-BOOKING-001
+  list_my_appointments:
+    type: read
+    status: enabled
+    guard: "RBAC: interviewer 仅本人；owner_admin 可经 admin_list_appointments 管理视角读取"
+    decided_by: TASK-AIQA-AGENT-CRUD-001
+  cancel_appointment:
+    type: write
+    status: enabled
+    guard: "RBAC: interviewer 仅本人；owner_admin 可经 force_cancel 旁路管理他人；复用 BookingService 审计与状态约束"
+    decided_by: TASK-AIQA-AGENT-CRUD-001
+  reschedule_appointment:
+    type: write
+    status: enabled
+    guard: "RBAC: interviewer 仅本人；owner_admin 可经 admin_reschedule 旁路管理他人；复用 Slot 锁与预约域校验"
+    decided_by: TASK-AIQA-AGENT-CRUD-001
 
 # ── 规范优先级（冲突裁决，高者胜）──
 # 说明：设计阶段产物一旦 accepted/approved，其对实现的约束力高于分析阶段产物。
@@ -60,7 +75,7 @@ deferred:
 
 # ── MVP 硬规则（AI 不得违反，违反即停止并报告）──
 mvp_hard_rules:
-  - "大模型默认只负责问答、不自动写预约；例外：经 RBAC 守卫的面试官专用写工具 request_interview_booking（TASK-AIQA-BOOKING-001）可自主建预约，复用预约域强约束（3×30min 连续/同本地日/令牌/幂等）且不改写其校验；其余预约仍只经确定性 UI + 后端接口"
+  - "大模型默认只负责问答；例外仅限 agent_tools 登记的预约工具：登录态下可创建/查询/取消/改期，面试官仅本人、owner_admin 可经 admin_* 旁路管理他人；全部复用 BookingService、RBAC、Slot 锁、令牌、幂等与审计约束，不得调用白名单外工具或改写预约域校验"
   - "密码登录；验证码仅用于注册验证与密码找回（不用于登录）"
   - "敏感字段逐列 AES-256 加密；公司名 HMAC 指纹去重"
   - "并发抢占经 Slot 行锁 + 部分唯一索引，不预占"

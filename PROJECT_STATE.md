@@ -29,6 +29,8 @@
 
 ## 当前任务
 
+- **TASK-CR-AIQA-SSE-ALIGN-001**：**Approved / In Progress（2026-08-27）**——用户已授权先校正既有 AIQA 工具规范漂移：baseline/SSE 对齐 SRS 1.7、安全设计与当前 5 工具、多轮循环、`answer.booking` 实现；不新增运行行为、DB、依赖或权限。
+
 - **TASK-APPOINTMENT-WINDOW-001**：**Closed（2026-08-26，verified_commit=`bf82960`）**——过期 active 预约集合式幂等转 completed 并释放账号/公司唯一约束；同事务写唯一 `appointment_completed` Outbox，Worker 仅 upsert 飞书多维表格状态且不发完成邮件/IM，失败可重试。预约/改期/管理端统一为明日起 15 日窗口，owner_admin 可读隐私安全 Slot 快照并点击精确 30 分钟格子设置不可约/恢复可约；预约布局铺满并提升关键字号。0010 可逆迁移 up/down/up、真实 PG/Redis 22 passed、Worker/飞书 10 passed、Ruff/Mypy/前端 test+typecheck+build 全绿；开发库两条历史过期预约已收敛并真实同步飞书（2 succeeded / 0 failed）。
 
 - **TASK-RELEASE-REPAIR-001**：**Closed（2026-08-26，verified_commit=`7563965`）**——完成上线前完整修复：真实 PDF iframe/loading、认证重发入口、登录态同步与退出、非问答页收起聊天栏、管理端客观指标保持、Agent persona 白名单工具规则与诚实局限、CJK 相邻词门控修复“量子纠缠”误命中、全仓 57 条 Ruff 债、WSL CRLF 环境加载。门禁：Ruff 全绿、Mypy 47 files 0 error、DB-free 96 passed、真实栈多套件全绿、SMTP 真实投递通过、前端 test/typecheck/build 与 Chrome 本地烟测通过。开发库 0009 漂移已无损校正至 head。

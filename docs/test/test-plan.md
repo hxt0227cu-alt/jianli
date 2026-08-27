@@ -1,6 +1,6 @@
-# 测试计划 v0.5（approved）
+# 测试计划 v0.6（approved）
 
-> based_on：SRS 1.7 / domain-model 1.1.8 / UI 1.0.1 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.7（均 approved）。TC 总数为 72；新增 TC-NOTIFY-012，其他冻结 TC 不变。
+> based_on：SRS 1.7 / domain-model 1.1.8 / UI 1.0.1 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.8（均 approved）。TC 总数为 72；OpenAPI-SSE 0.8 仅校正既有白名单工具与 `answer.booking` 契约漂移，不新增运行行为，冻结 TC 不变。
 
 ## 1. 证据等级与门禁
 

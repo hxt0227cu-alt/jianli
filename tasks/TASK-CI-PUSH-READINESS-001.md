@@ -1,6 +1,6 @@
 # TASK-CI-PUSH-READINESS-001 GitHub Actions 容量友好型发布门禁
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Implemented / Awaiting GitHub repository target（2026-08-27，verified_commit=`ae612a6`）**
 
 ## 任务类型
 - ci
@@ -57,14 +57,14 @@
 - `git revert <本任务提交>`。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
-- DB 迁移验证：待回填
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- commit / PR：实现 `ae612a6`；本证据回填见后续提交；未 push
+- 修改文件清单：4 个（workflow、prepush 脚本、任务单、PROJECT_STATE）
+- 测试命令及结果：`bash scripts/prepush.sh` → pass；Agent/Trace/Resilience 40 passed；真实 PG/Redis RAG 4 passed / 1 expected xfail；Web 1 passed + typecheck/build pass；评测报告 79/79
+- lint / typecheck：Ruff pass；Mypy 52 source files / 0 errors；TypeScript pass
+- DB 迁移验证：隔离测试库 `alembic upgrade head` pass，无新迁移
+- 验收证据：YAML 解析确认 `backend-agent → rag-integration → web-delivery`；三个 job 通过 `needs` 严格串行，timeout 20/20/15 分钟；脚本最终输出 `pre-push quality gate passed; no push was performed`
+- 变更预算实际值：4 files，143 insertions / 1 deletion
+- 未解决风险：本地 Git 无 remote；GitHub 账号已登录，但现有仓库仅 `sleep` 与 `RAG-graduation`，无可无歧义匹配的 jianli 仓库。需用户指定现有 URL 或决定创建仓库的名称/可见性后才能配置 remote
+- 是否偏离 TASK：否
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`ae612a6`

@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-CI-PUSH-READINESS-001**：**In Progress（2026-08-27，baseline_commit=`e5263f8`）**——保留三个冻结检查名并以 `needs` 严格串行，使任意时刻最多占用一个 GitHub-hosted runner；补本地同构 pre-push 入口，明确不执行 push。
+- **TASK-CI-PUSH-READINESS-001**：**Implemented / Awaiting GitHub repository target（2026-08-27，verified_commit=`ae612a6`）**——保留三个冻结检查名并以 `needs` 严格串行，使任意时刻最多占用一个 GitHub-hosted runner；20/20/15 分钟超时，本地同构 pre-push 全绿。当前 Git 无 remote，已登录账号下无 jianli 仓库；待用户指定目标或仓库可见性。未执行 push。
 
 - **TASK-AIQA-DISTRIBUTED-RESILIENCE-001**：**Closed（2026-08-27，verified_commit=`b8e973d`）**——Provider 熔断已升级为 Redis Lua 原子共享状态，跨副本共享失败/open/单探针恢复；Redis 失败退回本地 breaker，LLM 路径异步非阻塞。绑定验收 37 passed、GitHub backend 本地等价 40 passed、真实 PG/Redis RAG 等价 4 passed / 1 expected xfail、Web test/typecheck/build 全绿，公开评测 79/79。未执行 push。
 

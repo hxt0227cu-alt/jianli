@@ -1,6 +1,6 @@
 # TASK-CR-AIQA-SSE-ALIGN-001 AIQA 白名单工具与 SSE 契约校正（Change Request）
 
-> **状态：Approved / In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27，verified_commit=`a087f2c`）**
 > 用户于 2026-08-27 明确授权本目标链全部必要规范与实现工作；本任务只校正既有批准行为的规范漂移，不新增产品能力。
 
 ## 任务类型
@@ -105,18 +105,18 @@
 - 超出 5 文件时拆任务。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：纯文档任务，不适用；待回填 `git diff --check`
+- commit / PR：`a087f2c`（规范校正快照）
+- 修改文件清单：`docs/baseline.yml`、`docs/api/sse.md`、`docs/test/test-plan.md`、`PROJECT_STATE.md`、本任务单；均在允许路径内。
+- 测试命令及结果：5 工具文本一致性断言 → pass；WSL Python `yaml.safe_load(docs/baseline.yml)` → exit 0。
+- lint / typecheck：纯文档任务，不适用；`git diff --check` → pass。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：baseline 精确登记 5 工具；SSE 记录 `answer.tool_calls`/`answer.booking` 实际分支且旧禁止句已移除；test-plan based_on=OpenAPI-SSE 0.8。
+- 变更预算实际值：5/5 文件；生产代码 0 行；测试代码 0 行；规范/治理净增 143 行。
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：updated（行为不变，契约校正）
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`a087f2c`
 
 ## 关联
 - 上游批准：`TASK-CR-AIQA-BOOKING-001`、`TASK-AIQA-AGENT-CRUD-001`

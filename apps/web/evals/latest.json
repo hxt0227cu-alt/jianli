@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "report_id": "agent-quality-2026-08-27",
+  "generated_at": "2026-08-27T16:55:00+08:00",
+  "verified_commit": "a0b2c9d",
+  "environment": "WSL · Python 3.12 · deterministic StubGateway / BGE-M3 evidence",
+  "overall": {
+    "passed": 61,
+    "total": 61
+  },
+  "ci": {
+    "provider": "GitHub Actions",
+    "workflow": "agent-quality-gate.yml",
+    "status": "configured_not_run"
+  },
+  "suites": [
+    {
+      "id": "agent-trace",
+      "label": "Agent / Trace 回归",
+      "passed": 22,
+      "total": 22,
+      "verified_commit": "a0b2c9d",
+      "evidence": "pytest: test_agent_lab + test_agent_tools + test_aiqa"
+    },
+    {
+      "id": "fact-consistency",
+      "label": "RAG 事实一致性",
+      "passed": 38,
+      "total": 38,
+      "verified_commit": "7f33cf2",
+      "evidence": "真实知识库与 BGE-M3 / pgvector 复验"
+    },
+    {
+      "id": "web-delivery",
+      "label": "Web 交付门禁",
+      "passed": 1,
+      "total": 1,
+      "verified_commit": "a0b2c9d",
+      "evidence": "Vitest + TypeScript + production build"
+    }
+  ],
+  "cases": [
+    {
+      "id": "permission-boundary",
+      "category": "expected_block",
+      "title": "匿名预约工具请求被登录与 RBAC 阻断",
+      "status": "verified",
+      "test_id": "TC-AI-010"
+    },
+    {
+      "id": "no-evidence",
+      "category": "expected_block",
+      "title": "知识库无依据时拒绝生成经历",
+      "status": "verified",
+      "test_id": "test_grounded_and_blocked_paths_emit_monotonic_safe_traces"
+    },
+    {
+      "id": "hash-threshold",
+      "category": "known_limitation",
+      "title": "本地哈希向量不启用语义相关性阈值",
+      "status": "open",
+      "test_id": "test_rag_reject_cases"
+    },
+    {
+      "id": "remote-run",
+      "category": "known_limitation",
+      "title": "远端 CI 状态需首次推送后生成",
+      "status": "open",
+      "test_id": "agent-quality-gate"
+    }
+  ]
+}

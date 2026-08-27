@@ -8,6 +8,7 @@ import {
 import './styles.css';
 import './appointment.css';
 import { MyAppointmentsView } from './my-appointments';
+import evalReportData from './evals/latest.json';
 
 type Page = 'dashboard' | 'resume' | 'projects' | 'interview' | 'mine' | 'admin';
 type ProjectId = 'jianli' | 'sleep' | 'litchi';
@@ -36,6 +37,17 @@ type AgentTrace = {
   duration_ms: number | null;
   tool_name: string | null;
   detail: string | null;
+};
+type EvalReport = {
+  schema_version: number;
+  report_id: string;
+  generated_at: string;
+  verified_commit: string;
+  environment: string;
+  overall: { passed: number; total: number };
+  ci: { provider: string; workflow: string; status: 'configured_not_run' | 'passing' | 'failing' };
+  suites: { id: string; label: string; passed: number; total: number; verified_commit: string; evidence: string }[];
+  cases: { id: string; category: 'expected_block' | 'known_limitation' | 'regression'; title: string; status: 'verified' | 'open' | 'resolved'; test_id: string }[];
 };
 type ChatMessage = {
   role: 'assistant' | 'user';
@@ -76,6 +88,8 @@ const AGENT_LAB_SCENARIOS = [
     question: '你是否参与过 NASA 火星项目？请给出具体职责和成果。',
   },
 ] as const;
+
+const EVAL_REPORT = evalReportData as EvalReport;
 
 // 豆包式追问池：每次回答完成后从池中随机抽 3 条显示为气泡（点击直接发）。
 const FOLLOWUP_POOL = [
@@ -478,9 +492,16 @@ function ResumeView({ onInterview }: { onInterview: () => void }) {
   return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF（放置于 apps/web/public/resume.pdf）；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><span className="placeholder-badge">PDF 简历</span><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历.pdf</span><span className="muted">素材放于 public/resume.pdf</span></div><PdfView /></div></div></main>;
 }
 
+function EvaluationEvidence() {
+  const report = EVAL_REPORT;
+  const ciLabel = report.ci.status === 'passing' ? '远端门禁通过' : report.ci.status === 'failing' ? '远端门禁失败' : '工作流已配置 · 待首次远端运行';
+  const categoryLabel = { expected_block: '预期阻断', known_limitation: '已知局限', regression: '回归' } as const;
+  return <section className="eval-center" aria-labelledby="eval-center-title"><div className="eval-center-head"><div><span className="eyebrow">EVALUATION / VERSIONED</span><h2 id="eval-center-title">结果、门禁和失败，都留证据。</h2><p>{report.environment}</p></div><div className="eval-score"><strong>{report.overall.passed}/{report.overall.total}</strong><span>版本化检查通过</span></div></div><div className="eval-meta"><span>验证 commit <code>{report.verified_commit}</code></span><span>{new Date(report.generated_at).toLocaleDateString('zh-CN')}</span><span className={`ci-state ${report.ci.status}`}>{ciLabel}</span></div><div className="eval-suite-grid">{report.suites.map((suite) => <article key={suite.id}><span>{suite.label}</span><strong>{suite.passed}/{suite.total}</strong><p>{suite.evidence}</p><code>{suite.verified_commit}</code></article>)}</div><details className="eval-cases"><summary>失败与边界案例 <span>{report.cases.length} 项</span></summary><div>{report.cases.map((item) => <article key={item.id} className={item.category}><span>{categoryLabel[item.category]}</span><b>{item.title}</b><small>{item.test_id} · {item.status === 'verified' ? '已验证' : item.status === 'resolved' ? '已解决' : '待处理'}</small></article>)}</div></details><footer>只公开聚合指标和脱敏案例；不包含问题原文、完整回答、Prompt、知识原文或个人信息。</footer></section>;
+}
+
 function ProjectView({ selected, onSelect, onInterview, onRunScenario }: { selected: ProjectId; onSelect: (id: ProjectId) => void; onInterview: () => void; onRunScenario: (question: string) => void }) {
   const project = projects[selected];
-  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT VALUE / 02</span><h1>把不确定的模型，放进确定的工程边界。</h1><p>三个项目分别验证 Agent 治理、可靠落地与独立交付能力；实现细节可直接在右侧继续追问。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button><button className={selected === 'litchi' ? 'active' : ''} onClick={() => onSelect('litchi')}>项目 03 · litchi</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><section className={`project-card ${project.accent}`} aria-labelledby={`project-${selected}-title`}><div className="project-card-top"><span>{project.label}</span><span>核心价值 / 可验证证据</span></div><div className="project-hero"><div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><p className="project-name">{project.name}</p><h2 id={`project-${selected}-title`}>{project.headline}</h2><p className="project-problem">{project.problem}</p></div><div className="evidence-grid">{project.evidence.map((item) => <article className="evidence-card" key={item.label}><span>{item.label}</span><strong>{item.value}</strong><p>{item.detail}</p></article>)}</div><div className="evidence-boundary"><span>证据边界</span><p>{project.boundary}</p></div></section>{selected === 'jianli' && <section className="agent-lab"><div className="agent-lab-head"><div><span className="eyebrow">AGENT LAB / LIVE</span><h2>别只看架构，直接挑战它。</h2><p>场景会发送到右侧真实问答流，并展示服务端结构化执行轨迹。</p></div><span className="live-badge"><span className="live-dot" /> 实时执行</span></div><div className="agent-scenarios">{AGENT_LAB_SCENARIOS.map((scenario, index) => <button key={scenario.key} onClick={() => onRunScenario(scenario.question)}><span>0{index + 1}</span><b>{scenario.title}</b><small>{scenario.description}</small><em>运行场景 →</em></button>)}</div></section>}<div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>页面只呈现最有价值的结论；架构、代码、取舍、失败与测试口径请直接追问数字分身。</p></div></main>;
+  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT VALUE / 02</span><h1>把不确定的模型，放进确定的工程边界。</h1><p>三个项目分别验证 Agent 治理、可靠落地与独立交付能力；实现细节可直接在右侧继续追问。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button><button className={selected === 'litchi' ? 'active' : ''} onClick={() => onSelect('litchi')}>项目 03 · litchi</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><section className={`project-card ${project.accent}`} aria-labelledby={`project-${selected}-title`}><div className="project-card-top"><span>{project.label}</span><span>核心价值 / 可验证证据</span></div><div className="project-hero"><div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><p className="project-name">{project.name}</p><h2 id={`project-${selected}-title`}>{project.headline}</h2><p className="project-problem">{project.problem}</p></div><div className="evidence-grid">{project.evidence.map((item) => <article className="evidence-card" key={item.label}><span>{item.label}</span><strong>{item.value}</strong><p>{item.detail}</p></article>)}</div><div className="evidence-boundary"><span>证据边界</span><p>{project.boundary}</p></div></section>{selected === 'jianli' && <section className="agent-lab"><div className="agent-lab-head"><div><span className="eyebrow">AGENT LAB / LIVE</span><h2>别只看架构，直接挑战它。</h2><p>场景会发送到右侧真实问答流，并展示服务端结构化执行轨迹。</p></div><span className="live-badge"><span className="live-dot" /> 实时执行</span></div><div className="agent-scenarios">{AGENT_LAB_SCENARIOS.map((scenario, index) => <button key={scenario.key} onClick={() => onRunScenario(scenario.question)}><span>0{index + 1}</span><b>{scenario.title}</b><small>{scenario.description}</small><em>运行场景 →</em></button>)}</div></section>}{selected === 'jianli' && <EvaluationEvidence />}<div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>页面只呈现最有价值的结论；架构、代码、取舍、失败与测试口径请直接追问数字分身。</p></div></main>;
 }
 
 function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {

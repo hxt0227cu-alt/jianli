@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 const source = readFileSync(resolve(process.cwd(), 'apps/web/main.tsx'), 'utf8');
 const myAppointments = readFileSync(resolve(process.cwd(), 'apps/web/my-appointments.tsx'), 'utf8');
 const appointmentCss = readFileSync(resolve(process.cwd(), 'apps/web/appointment.css'), 'utf8');
+const evalReport = JSON.parse(readFileSync(resolve(process.cwd(), 'apps/web/evals/latest.json'), 'utf8'));
+const qualityWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/agent-quality-gate.yml'), 'utf8');
 describe('web shell acceptance surface', () => {
   it('keeps the three static destinations and evidence boundaries', () => {
     expect(source).toContain("'resume' | 'projects'");
@@ -41,6 +43,18 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('安全攻击');
     expect(source).toContain('无依据拒答');
     expect(source).toContain('仅展示服务端结构化事件，不包含模型思维链、Prompt 或敏感参数');
+    // TC-AI-011: versioned evaluation evidence, honest CI state and failure boundaries.
+    expect(source).toContain('EVALUATION / VERSIONED');
+    expect(source).toContain('结果、门禁和失败，都留证据');
+    expect(source).toContain('工作流已配置 · 待首次远端运行');
+    expect(evalReport.overall).toEqual({ passed: 61, total: 61 });
+    expect(evalReport.cases.map((item: { category: string }) => item.category)).toContain('known_limitation');
+    expect(JSON.stringify(evalReport)).not.toMatch(/answer_text|system_prompt|appointment_id|api_key/i);
+    expect(qualityWorkflow).toContain('backend-agent:');
+    expect(qualityWorkflow).toContain('rag-integration:');
+    expect(qualityWorkflow).toContain('web-delivery:');
+    expect(qualityWorkflow).toContain('tests/aiqa/test_rag_eval.py::test_rag_literal_hit_cases');
+    expect(qualityWorkflow).toContain('tests/aiqa/test_rag_eval.py::test_rag_reject_cases');
     // TASK-KB-PDF-001: knowledge-base admin view + resume PDF embed.
     expect(source).toContain("'/admin/knowledge-documents'");
     expect(source).toContain('resume.pdf');

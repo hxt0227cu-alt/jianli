@@ -38,7 +38,7 @@
 - `apps/web/evals/latest.json`
 - `apps/web/main.tsx`
 - `apps/web/styles.css`
-- `apps/web/tests/shell.test.tsx`
+- `tests/web-shell/shell.test.ts`
 - `scripts/validate_eval_report.py`
 - `PROJECT_STATE.md`
 

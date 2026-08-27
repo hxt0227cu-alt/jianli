@@ -36,7 +36,12 @@ from app.appointments.models import AppointmentDraft, AppointmentUpdate, Slot
 from app.appointments.service import LOCAL_TIME, BookingService
 from app.auth.errors import AuthError
 from app.auth.models import Principal
-from app.observability import ToolStatus, observe_agent_tool, observe_aiqa_answer
+from app.observability import (
+    ToolStatus,
+    observe_agent_tool,
+    observe_aiqa_answer,
+    observe_rerank,
+)
 
 from . import bm25
 from .chunking import chunk_text as _chunk_text
@@ -55,6 +60,7 @@ from .models import (
 from .persona import GREETING_REPLY, OFFTOPIC_REPLY, build_system_prompt, is_greeting
 from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository, default_now
+from .reranker import RerankerError, RerankerGateway
 from .retrieval import Candidate, retrieve
 from .sse import (
     booking_frame,
@@ -377,6 +383,8 @@ class AnswerService:
         knowledge_repository: KnowledgeRepository | None = None,
         storage: KnowledgeStorage | None = None,
         min_score: float = 0.0,
+        reranker: RerankerGateway | None = None,
+        rerank_top_n: int = 6,
         booking_service: BookingService | None = None,
     ) -> None:
         self._gateway = gateway
@@ -386,6 +394,8 @@ class AnswerService:
         self._knowledge_repository = knowledge_repository
         self._storage = storage
         self._min_score = min_score
+        self._reranker = reranker
+        self._rerank_top_n = rerank_top_n
         # Autonomous booking (TASK-AIQA-BOOKING-001): injected from the appointments
         # runtime so the agent can call BookingService.preview/create in-process. None
         # when booking is not configured -> booking tool yields a graceful "unavailable".
@@ -1588,7 +1598,7 @@ class AnswerService:
                 [(chunk_id, 0.0) for chunk_id in vector_ids],
                 [(chunk_id, 0.0) for chunk_id in bm25_ids],
             ],
-            top_k=6,
+            top_k=12,
         )
         if not fused:
             return []
@@ -1608,7 +1618,44 @@ class AnswerService:
                     score=1.0,
                 )
             )
-        return candidates
+        if self._reranker is None or len(candidates) < 2:
+            observe_rerank("disabled", 0, len(candidates), model="none")
+            return candidates[: self._rerank_top_n]
+        rerank_started = time.monotonic()
+        try:
+            ranked = await asyncio.to_thread(
+                self._reranker.rerank,
+                question,
+                [candidate.text for candidate in candidates],
+                self._rerank_top_n,
+            )
+        except RerankerError:
+            observe_rerank(
+                "fallback",
+                int((time.monotonic() - rerank_started) * 1000),
+                len(candidates),
+                model=self._reranker.model_name,
+            )
+            logger.warning(
+                "rerank_fallback",
+                extra={"candidate_count": len(candidates), "model": self._reranker.model_name},
+            )
+            return candidates[: self._rerank_top_n]
+        observe_rerank(
+            "completed",
+            int((time.monotonic() - rerank_started) * 1000),
+            len(candidates),
+            model=self._reranker.model_name,
+        )
+        return [
+            Candidate(
+                doc=candidates[item.index].doc,
+                fragment=candidates[item.index].fragment,
+                text=candidates[item.index].text,
+                score=item.score,
+            )
+            for item in ranked
+        ]
 
     async def _persist_assistant(
         self,

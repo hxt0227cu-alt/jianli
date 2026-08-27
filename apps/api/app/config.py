@@ -74,6 +74,12 @@ class Settings(BaseModel):
     # semantic embedding — the local hash embedding has no semantic meaning, so a
     # positive threshold would wrongly reject hit cases there.
     kb_min_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Optional Cross-Encoder after RRF. Unset credentials keep the original RRF order.
+    rerank_base_url: str | None = None
+    rerank_api_key: SecretStr | None = None
+    rerank_model: str | None = None
+    rerank_timeout_seconds: float = Field(default=3.0, gt=0, le=5)
+    rerank_top_n: int = Field(default=6, ge=1, le=12)
     observability_enabled: bool = False
     otel_exporter_otlp_endpoint: str | None = None
     otel_service_name: str = Field(default="jianli-api", min_length=1, max_length=80)
@@ -178,6 +184,11 @@ class Settings(BaseModel):
             "knowledge_storage_dir": "JIANLI_KNOWLEDGE_STORAGE_DIR",
             "llm_embedding_dim": "JIANLI_LLM_EMBEDDING_DIM",
             "kb_min_score": "JIANLI_KB_MIN_SCORE",
+            "rerank_base_url": "JIANLI_RERANK_BASE_URL",
+            "rerank_api_key": "JIANLI_RERANK_API_KEY",
+            "rerank_model": "JIANLI_RERANK_MODEL",
+            "rerank_timeout_seconds": "JIANLI_RERANK_TIMEOUT_SECONDS",
+            "rerank_top_n": "JIANLI_RERANK_TOP_N",
             "observability_enabled": "JIANLI_OBSERVABILITY_ENABLED",
             "otel_exporter_otlp_endpoint": "JIANLI_OTEL_EXPORTER_OTLP_ENDPOINT",
             "otel_service_name": "JIANLI_OTEL_SERVICE_NAME",

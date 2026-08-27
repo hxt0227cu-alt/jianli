@@ -19,6 +19,7 @@ from .embeddings import build_embedding_gateway
 from .gateway import build_gateway
 from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository
+from .reranker import build_reranker_gateway
 from .service import AnswerService
 from .storage import KnowledgeStorage
 
@@ -57,6 +58,16 @@ def build_aiqa_runtime(
         dimension=settings.llm_embedding_dim,
         timeout=settings.llm_timeout_seconds,
     )
+    reranker = build_reranker_gateway(
+        base_url=settings.rerank_base_url,
+        api_key=(
+            settings.rerank_api_key.get_secret_value()
+            if settings.rerank_api_key is not None
+            else None
+        ),
+        model=settings.rerank_model,
+        timeout=settings.rerank_timeout_seconds,
+    )
     repository = ConversationRepository(engine) if engine is not None else None
     knowledge_repository = KnowledgeRepository(engine) if engine is not None else None
     storage = KnowledgeStorage(settings.knowledge_storage_dir)
@@ -68,5 +79,7 @@ def build_aiqa_runtime(
         knowledge_repository,
         storage,
         min_score=settings.kb_min_score or 0.0,
+        reranker=reranker,
+        rerank_top_n=settings.rerank_top_n,
         booking_service=booking_service,
     )

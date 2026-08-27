@@ -53,6 +53,23 @@
       "targets": [{"expr": "sum by (tool, status) (rate(jianli_aiqa_tool_calls_total[5m]))", "legendFormat": "{{tool}} · {{status}}", "refId": "A"}],
       "title": "Allowlisted tool calls",
       "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "id": 7,
+      "targets": [{"expr": "sum by (status) (rate(jianli_aiqa_rerank_attempts_total[5m]))", "legendFormat": "{{status}}", "refId": "A"}],
+      "title": "Cross-Encoder rerank outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "id": 8,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, status) (rate(jianli_aiqa_rerank_duration_seconds_bucket[5m])))", "legendFormat": "{{status}}", "refId": "A"}],
+      "title": "Cross-Encoder rerank latency P95",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",

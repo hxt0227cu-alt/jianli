@@ -63,9 +63,23 @@ AIQA_TOOL_CALLS = Counter(
     ("tool", "status"),
     registry=REGISTRY,
 )
+AIQA_RERANK = Counter(
+    "jianli_aiqa_rerank_attempts",
+    "Cross-Encoder rerank outcomes",
+    ("status",),
+    registry=REGISTRY,
+)
+AIQA_RERANK_DURATION = Histogram(
+    "jianli_aiqa_rerank_duration_seconds",
+    "Cross-Encoder rerank duration",
+    ("status",),
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5),
+    registry=REGISTRY,
+)
 
 AnswerOutcome = Literal["grounded", "offtopic", "greeting", "tool", "error"]
 ToolStatus = Literal["completed", "blocked", "failed"]
+RerankStatus = Literal["completed", "fallback", "disabled"]
 _TOOLS = {
     "search_knowledge",
     "request_interview_booking",
@@ -184,5 +198,27 @@ def observe_agent_tool(tool_name: str, status: ToolStatus, duration_ms: int) -> 
                 "jianli.agent.tool": tool,
                 "jianli.agent.status": status,
                 "jianli.agent.duration_ms": max(duration_ms, 0),
+            },
+        )
+
+
+def observe_rerank(
+    status: RerankStatus, duration_ms: int, candidates: int, *, model: str
+) -> None:
+    """Record bounded rerank metadata without query or candidate content."""
+
+    if not _enabled:
+        return
+    AIQA_RERANK.labels(status).inc()
+    AIQA_RERANK_DURATION.labels(status).observe(max(duration_ms, 0) / 1000)
+    span = trace.get_current_span()
+    if span.is_recording():
+        span.add_event(
+            "aiqa.rerank",
+            {
+                "jianli.rerank.status": status,
+                "jianli.rerank.candidates": max(candidates, 0),
+                "jianli.rerank.duration_ms": max(duration_ms, 0),
+                "jianli.rerank.model": model[:80],
             },
         )

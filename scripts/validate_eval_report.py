@@ -51,11 +51,12 @@ def validate(report: dict[str, Any]) -> None:
         "overall",
         "ci",
         "suites",
+        "comparisons",
         "cases",
     }
     if set(report) != required:
         raise ValueError(f"top-level schema mismatch: {sorted(set(report) ^ required)}")
-    if report["schema_version"] != 1 or not COMMIT.fullmatch(report["verified_commit"]):
+    if report["schema_version"] != 2 or not COMMIT.fullmatch(report["verified_commit"]):
         raise ValueError("invalid schema_version or verified_commit")
 
     suites = report["suites"]
@@ -74,6 +75,29 @@ def validate(report: dict[str, Any]) -> None:
         total += suite["total"]
     if report["overall"] != {"passed": passed, "total": total}:
         raise ValueError("overall totals do not equal suite totals")
+
+    comparisons = report["comparisons"]
+    if not isinstance(comparisons, list) or not comparisons:
+        raise ValueError("comparisons must be a non-empty list")
+    comparison_keys = {
+        "id",
+        "label",
+        "evidence_level",
+        "provider_model",
+        "sample_size",
+        "baseline",
+        "reranked",
+        "verified_commit",
+    }
+    for comparison in comparisons:
+        if set(comparison) != comparison_keys:
+            raise ValueError(f"comparison schema mismatch: {comparison.get('id', '<unknown>')}")
+        if comparison["evidence_level"] != "real_provider_component_benchmark":
+            raise ValueError(f"invalid comparison evidence: {comparison['id']}")
+        if comparison["sample_size"] < 1 or not COMMIT.fullmatch(
+            comparison["verified_commit"]
+        ):
+            raise ValueError(f"invalid comparison evidence: {comparison['id']}")
 
     cases = report["cases"]
     if not isinstance(cases, list) or not cases:

@@ -1,12 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "report_id": "agent-quality-2026-08-27",
-  "generated_at": "2026-08-27T16:55:00+08:00",
-  "verified_commit": "a0b2c9d",
-  "environment": "WSL · Python 3.12 · deterministic StubGateway / BGE-M3 evidence",
+  "generated_at": "2026-08-27T18:28:43+08:00",
+  "verified_commit": "64b5799",
+  "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
-    "passed": 61,
-    "total": 61
+    "passed": 65,
+    "total": 65
   },
   "ci": {
     "provider": "GitHub Actions",
@@ -37,6 +37,26 @@
       "total": 1,
       "verified_commit": "a0b2c9d",
       "evidence": "Vitest + TypeScript + production build"
+    },
+    {
+      "id": "cross-encoder-protocol",
+      "label": "Cross-Encoder 协议与降级",
+      "passed": 4,
+      "total": 4,
+      "verified_commit": "64b5799",
+      "evidence": "真实候选重排、失败回退、最小请求与越界响应校验"
+    }
+  ],
+  "comparisons": [
+    {
+      "id": "rrf-vs-cross-encoder",
+      "label": "RRF → Cross-Encoder",
+      "evidence_level": "real_provider_component_benchmark",
+      "provider_model": "Qwen/Qwen3-Reranker-8B",
+      "sample_size": 5,
+      "baseline": "MRR 0.3333 · Hit@1 0/5",
+      "reranked": "MRR 1.0000 · Hit@1 5/5",
+      "verified_commit": "64b5799"
     }
   ],
   "cases": [
@@ -67,6 +87,13 @@
       "title": "远端 CI 状态需首次推送后生成",
       "status": "open",
       "test_id": "agent-quality-gate"
+    },
+    {
+      "id": "reranker-fallback",
+      "category": "expected_block",
+      "title": "Cross-Encoder 故障时完整回退 RRF 原顺序",
+      "status": "verified",
+      "test_id": "TC-AI-012"
     }
   ]
 }

@@ -47,7 +47,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('EVALUATION / VERSIONED');
     expect(source).toContain('结果、门禁和失败，都留证据');
     expect(source).toContain('工作流已配置 · 待首次远端运行');
-    expect(evalReport.overall).toEqual({ passed: 61, total: 61 });
+    expect(evalReport.overall).toEqual({ passed: 65, total: 65 });
+    expect(evalReport.comparisons[0].label).toBe('RRF → Cross-Encoder');
+    expect(source).toContain('REAL PROVIDER');
+    expect(evalReport.comparisons[0]).toMatchObject({
+      evidence_level: 'real_provider_component_benchmark',
+      baseline: 'MRR 0.3333 · Hit@1 0/5',
+      reranked: 'MRR 1.0000 · Hit@1 5/5',
+    });
     expect(evalReport.cases.map((item: { category: string }) => item.category)).toContain('known_limitation');
     expect(JSON.stringify(evalReport)).not.toMatch(/answer_text|system_prompt|appointment_id|api_key/i);
     expect(qualityWorkflow).toContain('backend-agent:');

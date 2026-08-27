@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-CR-AIQA-EVAL-CI-001**：**Approved / Closed（2026-08-27）**——批准 U2 版本化评测证据板、脱敏失败分类与 GitHub Actions push/PR 硬门禁；SRS 1.9 / UI 1.0.3 / test-plan 0.8 已对齐，下游由 `TASK-AIQA-EVAL-CI-001` 实现。
+- **TASK-CR-AIQA-EVAL-CI-001**：**Approved / Closed（2026-08-27，verified_commit=`465968c`）**——批准 U2 版本化评测证据板、脱敏失败分类与 GitHub Actions push/PR 硬门禁；SRS 1.9 / UI 1.0.3 / test-plan 0.8 已对齐，下游由 `TASK-AIQA-EVAL-CI-001` 实现。
 
 编码准入已开放；前端展示壳与 FastAPI 后端骨架已交付，后续实现仍受独立审查、冻结 TC 与人工审批边界约束。
 

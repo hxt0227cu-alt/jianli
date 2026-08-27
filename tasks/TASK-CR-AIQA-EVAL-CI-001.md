@@ -75,18 +75,18 @@
 - 若需要新增 API/DB/依赖、暴露敏感数据或超 6 文件，停止并拆分。
 
 ## 交付证据
-- commit / PR：待回填
+- commit / PR：`465968c`
 - 修改文件清单：本任务允许的 6 个路径
-- 测试命令及结果：`git diff --check` 待回填
+- 测试命令及结果：`git diff --check` 通过；版本锚点与 TC-AI-011 检索一致
 - lint / typecheck：文档任务不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：SRS 1.9 / UI 1.0.3 / test-plan 0.8 / baseline approved 同步完成
+- 变更预算实际值：6 文件，约 116 行，未超预算
 - 未解决风险：GitHub 远端尚未配置，workflow 只能本地静态校验，首次 push 后才产生远端 run
 - 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`465968c`
 
 ## 关联
 - 上游：`TASK-RAG-EVAL-001`、`TASK-HARNESS-001`、`TASK-AIQA-AGENT-LAB-001`

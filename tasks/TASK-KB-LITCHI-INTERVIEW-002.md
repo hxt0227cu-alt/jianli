@@ -84,18 +84,18 @@
 - 遵循 `AGENTS.md §2`；出现 DB/API/依赖/权限/Prompt/检索算法变化、冻结阈值变化或超过 6 文件即停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`8ef6e4c`（实现提交）
+- 修改文件清单：`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`、`apps/api/app/aiqa/service.py`、`apps/api/scripts/seed_kb.py`、`docs/fact-consistency/fact-bank.md`、本任务单；全部位于允许路径。
+- 测试命令及结果：隔离真实 PostgreSQL/Redis 运行 `pytest tests/aiqa/test_rag_eval.py -q` → `6 passed, 1 xfailed`；xfail 为测试明示的本地哈希 embedding 拒答基线。定向 literal + semantic 复验 → `2 passed`。对照未叠加本任务语料的 `34fbe0e` 基线曾有 extreme-semantic `1 failed / 1 passed`，本任务压缩为每篇单块后全套反而恢复通过。
+- lint / typecheck：scoped Ruff → `All checks passed!`；`mypy app` → `Success: no issues found in 50 source files`；`git diff --check` → pass。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：语料契约脚本确认 `14` 篇总语料、Litchi 项目域精确映射 `4` 篇、旧 `litchi.md` 不存在；四篇长度分别 `345/447/355/380` 字，均小于 480 字单块阈值；语料不含无支撑的 `93.75%` / `124ms`，演进篇包含“尚未落地”显式边界。隔离测试库从空库执行 Alembic `0001→0010` 成功。
+- 变更预算实际值：6/6 文件；实现与静态语料 31+/26-，canonical corpus/测试 41+/122-，事实与任务文档 112+/10-；未超预算。
+- 未解决风险：生产或本地现有知识库需在目标环境执行 `scripts/seed_kb.py` 才会替换已索引旧文档；本次未使用外部 BGE-M3 网络服务重灌，避免在网络不稳定时先清库后上传失败。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`8ef6e4c`
 
 ## 关联
 - Change Request：无（R22/R24 既有内容维护能力）

@@ -15,7 +15,9 @@
 
 ## 当前阶段
 
-- **TASK-CR-RERANKER-001**：**Approved / In Progress（2026-08-27）**——批准 RRF 后置可选 Cross-Encoder、失败回退、数据最小化与版本化对照证据；下游为 TASK-AIQA-RERANKER-001。
+- **TASK-AIQA-RERANKER-001**：**In Progress（2026-08-27）**——实现 RRF 后置可选 Cross-Encoder、失败回退、低基数观测与版本化对照证据。
+
+- **TASK-CR-RERANKER-001**：**Approved / Closed（2026-08-27，verified_commit=`5d2f934`）**——批准 RRF 后置可选 Cross-Encoder、失败回退、数据最小化与版本化对照证据；architecture 0.4 / security 0.3 / test-plan 1.0 已同步。
 
 - **TASK-OBSERVABILITY-001**：**Closed（2026-08-27，verified_commit=`79ed06c`）**——已实现可关闭的低基数 HTTP/AIQA/token/tool 指标、隐私安全 OTel Trace、内部 `/internal/metrics`、Collector/Prometheus/Grafana Compose 与 6 面板 Agent Overview；21 passed，Ruff/Mypy/pip check、开发/生产 Compose 渲染和 diff check 全绿。未改 DB、公开 API、Prompt 或工具权限；首次部署仍需拉镜像执行整栈容器 smoke。
 

@@ -1,6 +1,6 @@
 # TASK-CR-RERANKER-001 Cross-Encoder Reranker 变更请求
 
-> **状态：Approved / In Progress（2026-08-27，用户已显式全权批准）**
+> **状态：Approved / Closed（2026-08-27，用户已显式全权批准）**
 
 ## 任务类型
 - architecture
@@ -73,14 +73,14 @@
 - 需要 DB/公开 API/新依赖/Prompt 或工具权限变化，或超 8 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`5d2f934`
+- 修改文件清单：本任务允许的 8 个路径
+- 测试命令及结果：`git diff --check` → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
-- spec_sync：待回填
-- verified_commit：待回填
+- 验收证据：ADR-RERANK-001 accepted；architecture 0.4 / security 0.3 / test-plan 1.0 / baseline approved 同步
+- 变更预算实际值：8/8 文件，216 新增、9 删除
+- 未解决风险：无
+- 是否偏离 TASK：否
+- spec_sync：clean
+- verified_commit：`5d2f934`

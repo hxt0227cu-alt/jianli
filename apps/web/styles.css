@@ -100,3 +100,25 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .account span:nth-child(2){min-width:0;overflow:hidden}
 .account b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .chat-panel>.chat-body{display:flex;flex-direction:column;align-items:stretch;align-content:start}
+
+/* 页面二：单屏项目价值卡。详情由右侧项目隔离问答承接。 */
+.project-card{--project-bg:#203e2f;--project-panel:#294b39;--project-line:#5c8269;--project-accent:#c7ef75;--project-muted:#bed1c3;min-height:540px;border:1px solid #d6e1d7;border-radius:12px;background:var(--project-bg);color:#f3f8f2;padding:30px;box-shadow:0 14px 34px rgba(31,53,42,.12);display:flex;flex-direction:column;gap:26px;overflow:hidden;position:relative}
+.project-card::after{content:'';position:absolute;width:320px;height:320px;border-radius:50%;right:-150px;top:-180px;background:color-mix(in srgb,var(--project-accent) 18%,transparent);filter:blur(2px);pointer-events:none}
+.project-card.blue{--project-bg:#20334b;--project-panel:#293f5b;--project-line:#58789b;--project-accent:#9dc4ed;--project-muted:#bdccdd;border-color:#d4dfed}
+.project-card.purple{--project-bg:#372653;--project-panel:#443263;--project-line:#8168a0;--project-accent:#c4a0ed;--project-muted:#cfc3df;border-color:#ddd0ec}
+.project-card-top{display:flex;justify-content:space-between;gap:16px;color:var(--project-muted);font-size:11px;letter-spacing:.11em;text-transform:uppercase;position:relative;z-index:1}
+.project-hero{max-width:760px;position:relative;z-index:1}
+.project-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.project-tags span{padding:6px 10px;border:1px solid var(--project-line);border-radius:999px;color:var(--project-accent);background:rgba(255,255,255,.04);font-size:11px;font-weight:700;letter-spacing:.03em}
+.project-name{margin:0 0 8px;color:var(--project-muted);font-size:13px;font-weight:700}
+.project-hero h2{max-width:720px;margin:0;font-size:32px;line-height:1.25;letter-spacing:-.025em;text-wrap:balance}
+.project-problem{max-width:720px;margin:14px 0 0;color:var(--project-muted);font-size:14px;line-height:1.75}
+.evidence-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;position:relative;z-index:1}
+.evidence-card{min-height:165px;padding:18px;border:1px solid var(--project-line);border-radius:9px;background:var(--project-panel);display:flex;flex-direction:column}
+.evidence-card>span{color:var(--project-muted);font-size:11px;letter-spacing:.08em}
+.evidence-card strong{display:block;margin:14px 0 10px;color:var(--project-accent);font-size:21px;line-height:1.2;letter-spacing:-.015em}
+.evidence-card p{margin:auto 0 0;color:#e0e9e2;font-size:12px;line-height:1.65}
+.evidence-boundary{margin-top:auto;padding-top:17px;border-top:1px solid var(--project-line);display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:start;position:relative;z-index:1}
+.evidence-boundary span{padding:4px 7px;border-radius:4px;background:var(--project-accent);color:var(--project-bg);font-size:10px;font-weight:800;white-space:nowrap}
+.evidence-boundary p{margin:0;color:var(--project-muted);font-size:11px;line-height:1.6}
+@media(max-width:1280px){.project-card{padding:24px}.project-hero h2{font-size:27px}.evidence-grid{gap:10px}.evidence-card{padding:15px}.evidence-card strong{font-size:18px}}

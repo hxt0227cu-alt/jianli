@@ -147,7 +147,7 @@ class OpenAIGateway:
     ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
         if self._circuit_breaker is not None:
             try:
-                self._circuit_breaker.before_call()
+                await asyncio.to_thread(self._circuit_breaker.before_call)
             except CircuitOpenError as error:
                 raise GatewayError("provider circuit is open") from error
         try:
@@ -155,11 +155,11 @@ class OpenAIGateway:
                 yield event
         except GatewayError:
             if self._circuit_breaker is not None:
-                self._circuit_breaker.record_failure()
+                await asyncio.to_thread(self._circuit_breaker.record_failure)
             raise
         else:
             if self._circuit_breaker is not None:
-                self._circuit_breaker.record_success()
+                await asyncio.to_thread(self._circuit_breaker.record_success)
 
     async def _answer_with_retries(
         self,

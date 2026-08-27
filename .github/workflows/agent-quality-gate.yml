@@ -33,7 +33,11 @@ jobs:
       - name: Agent and trace regression
         env:
           PYTHONPATH: .
-        run: pytest tests/aiqa/test_agent_lab.py tests/aiqa/test_agent_tools.py tests/aiqa/test_aiqa.py -q
+        run: >-
+          pytest tests/aiqa/test_agent_lab.py tests/aiqa/test_agent_tools.py
+          tests/aiqa/test_aiqa.py tests/aiqa/test_resilience.py
+          tests/aiqa/test_distributed_resilience.py tests/aiqa/test_semantic_cache.py
+          tests/test_observability.py -q
       - name: Python quality gates
         run: ruff check app tests/aiqa/test_agent_lab.py && mypy app
 
@@ -92,6 +96,7 @@ jobs:
           tests/aiqa/test_rag_eval.py::test_rag_reject_cases
           tests/aiqa/test_rag_eval.py::test_privacy_questions_refused
           tests/aiqa/test_rag_eval.py::test_rag_false_reject_cases
+          tests/aiqa/test_distributed_resilience.py::test_real_redis_cross_instance_atomic_probe
           -q
 
   web-delivery:

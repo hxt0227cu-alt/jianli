@@ -10,6 +10,8 @@ is supplied (the auth runtime's engine when auth is configured), conversation pe
 
 from __future__ import annotations
 
+from typing import Literal
+
 import redis
 from sqlalchemy import Engine
 
@@ -22,7 +24,7 @@ from .gateway import build_gateway
 from .rate_limit import AnswerRateLimiter
 from .repository import ConversationRepository, KnowledgeRepository
 from .reranker import build_reranker_gateway
-from .resilience import CircuitBreaker
+from .resilience import CircuitBreaker, CircuitEvent, RedisCircuitBreaker
 from .semantic_cache import SemanticAnswerCache
 from .service import AnswerService
 from .storage import KnowledgeStorage
@@ -40,16 +42,32 @@ def build_aiqa_runtime(
     optional: when None the booking tool yields a graceful "unavailable" outcome.
     """
 
-    llm_breaker = CircuitBreaker(
-        settings.circuit_breaker_failure_threshold,
-        settings.circuit_breaker_recovery_seconds,
-        on_event=lambda event: observe_circuit_breaker("llm", event),
+    breaker_redis = (
+        redis.Redis.from_url(settings.redis_url, decode_responses=True)
+        if settings.redis_url
+        else None
     )
-    reranker_breaker = CircuitBreaker(
-        settings.circuit_breaker_failure_threshold,
-        settings.circuit_breaker_recovery_seconds,
-        on_event=lambda event: observe_circuit_breaker("reranker", event),
-    )
+
+    def _breaker(component: Literal["llm", "reranker"]) -> CircuitBreaker:
+        def callback(event: CircuitEvent) -> None:
+            observe_circuit_breaker(component, event)
+
+        if breaker_redis is not None:
+            return RedisCircuitBreaker(
+                breaker_redis,
+                component,
+                settings.circuit_breaker_failure_threshold,
+                settings.circuit_breaker_recovery_seconds,
+                on_event=callback,
+            )
+        return CircuitBreaker(
+            settings.circuit_breaker_failure_threshold,
+            settings.circuit_breaker_recovery_seconds,
+            on_event=callback,
+        )
+
+    llm_breaker = _breaker("llm")
+    reranker_breaker = _breaker("reranker")
     gateway = build_gateway(
         base_url=settings.llm_base_url,
         api_key=(
@@ -86,7 +104,8 @@ def build_aiqa_runtime(
     )
     semantic_cache = None
     if settings.semantic_cache_enabled and settings.redis_url:
-        cache_redis = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+        cache_redis = breaker_redis
+        assert cache_redis is not None
         semantic_cache = SemanticAnswerCache(
             cache_redis,
             similarity_threshold=settings.semantic_cache_similarity,

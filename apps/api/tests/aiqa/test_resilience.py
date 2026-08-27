@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
 from collections.abc import AsyncIterator
 
 import httpx
@@ -70,6 +72,33 @@ async def test_open_llm_gateway_skips_upstream(monkeypatch: pytest.MonkeyPatch) 
     with pytest.raises(GatewayError, match="circuit"):
         await _collect(gateway.answer([]))
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_llm_breaker_io_does_not_block_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class SlowBreaker(CircuitBreaker):
+        def before_call(self) -> None:
+            time.sleep(0.1)
+
+    async def succeed(
+        self: OpenAIGateway,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
+        yield ("delta", "ok")
+
+    monkeypatch.setattr(OpenAIGateway, "_answer_with_retries", succeed)
+    gateway = OpenAIGateway(
+        "https://provider", "secret", "model", 1, 1, SlowBreaker()
+    )
+    started = time.monotonic()
+    task = asyncio.create_task(_collect(gateway.answer([])))
+    await asyncio.sleep(0.01)
+
+    assert time.monotonic() - started < 0.08
+    assert await task == [("delta", "ok")]
 
 
 def test_open_reranker_skips_upstream(monkeypatch: pytest.MonkeyPatch) -> None:

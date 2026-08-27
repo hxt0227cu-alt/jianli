@@ -14,6 +14,14 @@ MAX_BYTES = 50 * 1024
 COMMIT = re.compile(r"^[0-9a-f]{7,40}$")
 CASE_CATEGORIES = {"expected_block", "known_limitation", "regression"}
 CASE_STATUSES = {"verified", "open", "resolved"}
+REQUIRED_SUITES = {
+    "agent-trace",
+    "fact-consistency",
+    "web-delivery",
+    "cross-encoder-protocol",
+    "semantic-cache-resilience",
+    "distributed-resilience",
+}
 FORBIDDEN_KEYS = {
     "question",
     "answer",
@@ -73,6 +81,9 @@ def validate(report: dict[str, Any]) -> None:
             raise ValueError(f"invalid suite totals: {suite['id']}")
         passed += suite["passed"]
         total += suite["total"]
+    suite_ids = {suite["id"] for suite in suites}
+    if not REQUIRED_SUITES.issubset(suite_ids):
+        raise ValueError(f"missing required suites: {sorted(REQUIRED_SUITES - suite_ids)}")
     if report["overall"] != {"passed": passed, "total": total}:
         raise ValueError("overall totals do not equal suite totals")
 

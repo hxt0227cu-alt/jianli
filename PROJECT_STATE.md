@@ -29,6 +29,8 @@
 
 ## 当前任务
 
+- **TASK-AIQA-AGENT-LAB-001**：**In Progress（2026-08-27）**——实现已批准的 4 个真实挑战场景、脱敏 `answer.trace` 与可展开时间线；不新增工具、权限、DB 或依赖。
+
 - **TASK-CR-AGENT-LAB-001**：**Closed（2026-08-27，verified_commit=`127b030`）**——现有 U2/jianli 4 个真实挑战场景与脱敏 `answer.trace` 已获批准；SRS 1.8 / UI 1.0.2 / OpenAPI-SSE 0.9 / test-plan 0.7 已对齐，下游由 `TASK-AIQA-AGENT-LAB-001` 实现。
 
 - **TASK-CR-AIQA-SSE-ALIGN-001**：**Closed（2026-08-27，verified_commit=`a087f2c`）**——baseline/SSE 已对齐 SRS 1.7、安全设计与当前 5 工具、多轮循环、`answer.booking` 实现；OpenAPI-SSE 0.8 / test-plan 0.6 approved，72 个冻结 TC 不变，无运行行为、DB、依赖或权限变化。

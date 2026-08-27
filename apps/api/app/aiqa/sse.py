@@ -5,10 +5,11 @@ monotonic per connection), ``event`` and a single-line JSON ``data`` with the co
 ``stream_seq``/``emitted_at``/``trace_id``. Answer events, in order:
 
 1. ``answer.started``   — ``answer_id`` + nullable ``conversation_id``
-2. zero+ ``answer.delta`` — ``text``
-3. ``answer.citations``  — knowledge sources (doc label + fragment, never a storage_key)
-4. ``answer.completed``  — ``grounded``/``offtopic``/``model``/``usage``
-5. on failure ``answer.error`` — the standard Problem body, then the stream closes.
+2. zero+ ``answer.trace`` — privacy-safe execution phases (never chain-of-thought)
+3. zero+ ``answer.delta`` — ``text``
+4. optional branch frames (tool calls / booking / citations)
+5. ``answer.completed``  — ``grounded``/``offtopic``/``model``/``usage``
+6. on failure ``answer.error`` — the standard Problem body, then the stream closes.
 """
 
 from __future__ import annotations
@@ -42,6 +43,66 @@ def started_frame(
 
 def delta_frame(seq: int, text: str, trace_id: str) -> str:
     return _sse_frame(seq, "answer.delta", {"text": text, "trace_id": trace_id})
+
+
+_TRACE_PHASES = {"policy", "routing", "retrieval", "tool", "generation", "result"}
+_TRACE_STATUSES = {"started", "completed", "blocked", "failed"}
+_TRACE_TOOLS = {
+    "search_knowledge",
+    "request_interview_booking",
+    "list_my_appointments",
+    "cancel_appointment",
+    "reschedule_appointment",
+}
+
+
+def trace_frame(
+    seq: int,
+    *,
+    step: int,
+    phase: str,
+    status: str,
+    label: str,
+    trace_id: str,
+    duration_ms: int | None = None,
+    tool_name: str | None = None,
+    detail: str | None = None,
+) -> str:
+    """Emit an allowlisted, privacy-safe Agent Lab trace event.
+
+    Callers provide only fixed server-authored labels/details. Validation here keeps the
+    public contract bounded even if a future call site accidentally passes an unknown
+    phase, status, tool, negative duration, or an unbounded string.
+    """
+
+    if step < 1:
+        raise ValueError("trace step must be positive")
+    if phase not in _TRACE_PHASES:
+        raise ValueError("unknown trace phase")
+    if status not in _TRACE_STATUSES:
+        raise ValueError("unknown trace status")
+    if not label or len(label) > 160:
+        raise ValueError("trace label must contain 1-160 characters")
+    if detail is not None and len(detail) > 160:
+        raise ValueError("trace detail exceeds 160 characters")
+    if duration_ms is not None and duration_ms < 0:
+        raise ValueError("trace duration must be non-negative")
+    if tool_name is not None and tool_name not in _TRACE_TOOLS:
+        raise ValueError("trace tool is not allowlisted")
+    return _sse_frame(
+        seq,
+        "answer.trace",
+        {
+            "step": step,
+            "phase": phase,
+            "status": status,
+            "label": label,
+            "duration_ms": duration_ms,
+            "tool_name": tool_name,
+            "detail": detail,
+            "trace_id": trace_id,
+        },
+    )
 
 
 def tool_calls_frame(

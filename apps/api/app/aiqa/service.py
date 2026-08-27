@@ -63,6 +63,7 @@ from .sse import (
     error_frame,
     started_frame,
     tool_calls_frame,
+    trace_frame,
 )
 from .storage import KnowledgeStorage
 
@@ -159,10 +160,8 @@ _SUPPORTED_TYPES = {"md", "txt", "pdf"}
 # transcripts would need summarisation, which is deliberately out of scope for now.
 _MAX_HISTORY_MESSAGES = 6
 
-# Agent tooling (TASK-AGENT-TOOLS-002): the single whitelisted read-only tool. The model
-# decides whether to call it and generates its own `query` (tool_choice=auto); the service
-# executes it with the existing hybrid retrieval. Booking/write/admin endpoints are never
-# registered here (PRD decision #14) — see docs/api/sse.md §3.
+# Agent tooling: knowledge search is always available; authenticated booking tools are
+# appended from the approved allowlist later in this module and remain guarded by RBAC.
 _SEARCH_TOOLS: list[dict[str, object]] = [
     {
         "type": "function",
@@ -315,6 +314,13 @@ _AGENT_TOOLS: list[dict[str, object]] = [
     _CANCEL_TOOL,
     _RESCHEDULE_TOOL,
 ]
+_TRACE_TOOL_NAMES = {
+    "search_knowledge",
+    "request_interview_booking",
+    "list_my_appointments",
+    "cancel_appointment",
+    "reschedule_appointment",
+}
 
 
 def _extract_pdf_text(raw: bytes) -> str:
@@ -889,12 +895,44 @@ class AnswerService:
         start = time.monotonic()
         history: list[dict[str, str]] = []
         seq = 0
+        trace_step = 0
+
+        def _trace(
+            *,
+            phase: str,
+            status: str,
+            label: str,
+            duration_ms: int | None = None,
+            tool_name: str | None = None,
+            detail: str | None = None,
+        ) -> str:
+            nonlocal seq, trace_step
+            seq += 1
+            trace_step += 1
+            return trace_frame(
+                seq,
+                step=trace_step,
+                phase=phase,
+                status=status,
+                label=label,
+                duration_ms=duration_ms,
+                tool_name=tool_name,
+                detail=detail,
+                trace_id=trace_id,
+            )
+
         answer_id = str(uuid4())
         yield started_frame(
             seq := seq + 1,
             answer_id,
             str(conversation_id) if persist else None,
             trace_id,
+        )
+        yield _trace(
+            phase="policy",
+            status="completed",
+            label="请求边界校验完成",
+            detail="匿名只读问答" if principal is None else "已认证会话，按角色执行白名单工具",
         )
 
         if persist:
@@ -918,6 +956,18 @@ class AnswerService:
         # Greeting first (no model round-trip, unchanged policy).
         if is_greeting(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            yield _trace(
+                phase="routing",
+                status="completed",
+                label="识别为问候语",
+                detail="确定性回复，不调用模型或工具",
+            )
+            yield _trace(
+                phase="result",
+                status="completed",
+                label="问候回复完成",
+                duration_ms=latency_ms,
+            )
             logger.info(
                 "answer_greeting",
                 extra={
@@ -952,6 +1002,18 @@ class AnswerService:
         # make privacy queries score just above the 0.47 threshold.
         if _is_privacy_question(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            yield _trace(
+                phase="routing",
+                status="blocked",
+                label="隐私策略已拦截",
+                detail="未进入检索、模型或工具执行",
+            )
+            yield _trace(
+                phase="result",
+                status="blocked",
+                label="安全拒答完成",
+                duration_ms=latency_ms,
+            )
             logger.info(
                 "answer_privacy",
                 extra={
@@ -984,6 +1046,18 @@ class AnswerService:
         # requests before any model round-trip, same deterministic layer as privacy.
         if _is_malicious_question(question):
             latency_ms = int((time.monotonic() - start) * 1000)
+            yield _trace(
+                phase="routing",
+                status="blocked",
+                label="安全策略已拦截",
+                detail="攻击性或违法请求未进入模型与工具",
+            )
+            yield _trace(
+                phase="result",
+                status="blocked",
+                label="安全拒答完成",
+                duration_ms=latency_ms,
+            )
             logger.info(
                 "answer_malicious",
                 extra={
@@ -1040,6 +1114,12 @@ class AnswerService:
         search_query: str | None = None
         usage_acc = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         MAX_STEPS = 4
+        yield _trace(
+            phase="routing",
+            status="started",
+            label="Agent 路由判定开始",
+            detail="模型仅可选择已登记白名单工具",
+        )
         try:
             for _ in range(MAX_STEPS):
                 tool_request = None
@@ -1059,9 +1139,37 @@ class AnswerService:
                     args = {}
                 if name == "search_knowledge":
                     search_query = str(args.get("query") or question).strip() or question
+                    yield _trace(
+                        phase="routing",
+                        status="completed",
+                        label="选择知识检索路径",
+                        tool_name="search_knowledge",
+                    )
                     break  # → RAG branch
+                tool_started = time.monotonic()
                 result = await self._run_agent_tool(name, args, principal)
                 tool_trace.append({"name": name, "result": result})
+                outcome = str(result.get("outcome") or "failed")
+                trace_status = (
+                    "blocked"
+                    if outcome == "forbidden"
+                    else "failed"
+                    if outcome in {"failed", "not_found", "terminal", "conflict"}
+                    else "completed"
+                )
+                trace_tool_name = name if name in _TRACE_TOOL_NAMES else None
+                yield _trace(
+                    phase="tool",
+                    status=trace_status,
+                    label=(
+                        "白名单工具执行完成"
+                        if trace_tool_name is not None
+                        else "白名单外工具已拒绝"
+                    ),
+                    duration_ms=int((time.monotonic() - tool_started) * 1000),
+                    tool_name=trace_tool_name,
+                    detail=f"结构化结果：{outcome}",
+                )
                 agent_messages.append(
                     {
                         "role": "assistant",
@@ -1071,8 +1179,21 @@ class AnswerService:
                         ),
                     }
                 )
+            if search_query is None and not tool_trace:
+                yield _trace(
+                    phase="routing",
+                    status="completed",
+                    label="选择知识问答路径",
+                    detail="未执行写工具",
+                )
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
+            yield _trace(
+                phase="routing",
+                status="failed",
+                label="Agent 路由失败",
+                detail="模型服务暂不可用",
+            )
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
 
@@ -1080,12 +1201,29 @@ class AnswerService:
         if search_query is not None or not tool_trace:
             # RAG branch (existing behavior preserved): search + grounded answer, or
             # off-topic refusal when there are no hits.
+            retrieval_started = time.monotonic()
             candidates = await self._search_candidates(
                 search_query or question, question, page_key, project_key
             )
+            retrieval_ms = int((time.monotonic() - retrieval_started) * 1000)
             if not candidates:
                 self._log_offtopic(trace_id, conversation_id if persist else None, start)
                 latency_ms = int((time.monotonic() - start) * 1000)
+                yield _trace(
+                    phase="retrieval",
+                    status="blocked",
+                    label="知识检索无可用依据",
+                    duration_ms=retrieval_ms,
+                    tool_name="search_knowledge",
+                    detail="命中 0 个可引用片段",
+                )
+                yield _trace(
+                    phase="result",
+                    status="blocked",
+                    label="无依据拒答完成",
+                    duration_ms=latency_ms,
+                    detail="grounded=false · offtopic=true",
+                )
                 yield tool_calls_frame(
                     seq := seq + 1,
                     [
@@ -1114,6 +1252,14 @@ class AnswerService:
                     )
                 return
 
+            yield _trace(
+                phase="retrieval",
+                status="completed",
+                label="知识检索完成",
+                duration_ms=retrieval_ms,
+                tool_name="search_knowledge",
+                detail=f"命中 {len(candidates)} 个可引用片段",
+            )
             yield tool_calls_frame(
                 seq := seq + 1,
                 [
@@ -1141,6 +1287,13 @@ class AnswerService:
                     ),
                 },
             ]
+            generation_started = time.monotonic()
+            yield _trace(
+                phase="generation",
+                status="started",
+                label="基于检索证据生成回答",
+                detail="回答受引用约束与人格层共同控制",
+            )
             try:
                 async for kind, payload in self._gateway.answer(messages2):
                     if kind == "usage" and isinstance(payload, dict):
@@ -1152,8 +1305,22 @@ class AnswerService:
                     yield delta_frame(seq := seq + 1, payload, trace_id)
             except GatewayError as error:
                 self._log_error(trace_id, conversation_id if persist else None, error)
+                yield _trace(
+                    phase="generation",
+                    status="failed",
+                    label="回答生成失败",
+                    duration_ms=int((time.monotonic() - generation_started) * 1000),
+                    detail="模型服务暂不可用",
+                )
                 yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
                 return
+            yield _trace(
+                phase="generation",
+                status="completed",
+                label="回答生成完成",
+                duration_ms=int((time.monotonic() - generation_started) * 1000),
+                detail="回答已绑定检索引用",
+            )
             yield citations_frame(
                 seq := seq + 1,
                 [{"doc": c.doc, "fragment": c.fragment} for c in candidates],
@@ -1178,6 +1345,13 @@ class AnswerService:
                     "completion_tokens": usage_acc["completion_tokens"],
                 },
             )
+            yield _trace(
+                phase="result",
+                status="completed",
+                label="有依据回答完成",
+                duration_ms=latency_ms,
+                detail=f"grounded=true · citations={len(candidates)}",
+            )
             yield completed_frame(
                 seq := seq + 1,
                 grounded=True,
@@ -1201,6 +1375,12 @@ class AnswerService:
         # ===== tool branch (booking / list / cancel / reschedule) =====
         # Emit a booking frame for each write-like outcome so the UI shows the
         # confirmation/cancel/reschedule card, then phrase the combined result naturally.
+        yield _trace(
+            phase="routing",
+            status="completed",
+            label="选择预约工具路径",
+            detail=f"执行 {len(tool_trace)} 个受 RBAC 约束的工具步骤",
+        )
         for t in tool_trace:
             if t["name"] in (
                 "request_interview_booking",
@@ -1229,6 +1409,13 @@ class AnswerService:
                 ),
             },
         ]
+        generation_started = time.monotonic()
+        yield _trace(
+            phase="generation",
+            status="started",
+            label="生成工具结果说明",
+            detail="仅使用结构化工具返回，不补写未知信息",
+        )
         try:
             async for kind, payload in self._gateway.answer(messages2):
                 if kind == "usage" and isinstance(payload, dict):
@@ -1240,14 +1427,34 @@ class AnswerService:
                 yield delta_frame(seq := seq + 1, payload, trace_id)
         except GatewayError as error:
             self._log_error(trace_id, conversation_id if persist else None, error)
+            yield _trace(
+                phase="generation",
+                status="failed",
+                label="工具结果说明生成失败",
+                duration_ms=int((time.monotonic() - generation_started) * 1000),
+                detail="模型服务暂不可用",
+            )
             yield error_frame(seq := seq + 1, _MODEL_ERROR_FRAME, trace_id)
             return
+        yield _trace(
+            phase="generation",
+            status="completed",
+            label="工具结果说明生成完成",
+            duration_ms=int((time.monotonic() - generation_started) * 1000),
+        )
         usage_payload = (
             cast("dict[str, object] | None", usage_acc)
             if usage_acc["total_tokens"] > 0
             else None
         )
         latency_ms = int((time.monotonic() - start) * 1000)
+        yield _trace(
+            phase="result",
+            status="completed",
+            label="Agent 工具任务完成",
+            duration_ms=latency_ms,
+            detail=f"完成 {len(tool_trace)} 个受控工具步骤",
+        )
         yield completed_frame(
             seq := seq + 1,
             grounded=False,

@@ -33,6 +33,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain("event === 'answer.tool_calls'");
     expect(source).toContain('已检索知识库');
     expect(source).toContain('tool-chain');
+    // TC-AI-010: live Agent Lab scenarios + privacy-safe structured trace timeline.
+    expect(source).toContain("event === 'answer.trace'");
+    expect(source).toContain('AGENT LAB / LIVE');
+    expect(source).toContain('依据问答');
+    expect(source).toContain('多步预约');
+    expect(source).toContain('安全攻击');
+    expect(source).toContain('无依据拒答');
+    expect(source).toContain('仅展示服务端结构化事件，不包含模型思维链、Prompt 或敏感参数');
     // TASK-KB-PDF-001: knowledge-base admin view + resume PDF embed.
     expect(source).toContain("'/admin/knowledge-documents'");
     expect(source).toContain('resume.pdf');

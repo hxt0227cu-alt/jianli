@@ -15,6 +15,7 @@ concurrency:
 jobs:
   backend-agent:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/api
@@ -39,10 +40,15 @@ jobs:
           tests/aiqa/test_distributed_resilience.py tests/aiqa/test_semantic_cache.py
           tests/test_observability.py -q
       - name: Python quality gates
-        run: ruff check app tests/aiqa/test_agent_lab.py && mypy app
+        run: >-
+          ruff check app tests/aiqa/test_agent_lab.py tests/aiqa/test_resilience.py
+          tests/aiqa/test_distributed_resilience.py tests/aiqa/test_semantic_cache.py
+          tests/test_observability.py && mypy app
 
   rag-integration:
+    needs: backend-agent
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -100,7 +106,9 @@ jobs:
           -q
 
   web-delivery:
+    needs: rag-integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

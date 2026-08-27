@@ -47,7 +47,7 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('EVALUATION / VERSIONED');
     expect(source).toContain('结果、门禁和失败，都留证据');
     expect(source).toContain('工作流已配置 · 待首次远端运行');
-    expect(evalReport.overall).toEqual({ passed: 65, total: 65 });
+    expect(evalReport.overall).toEqual({ passed: 73, total: 73 });
     expect(evalReport.comparisons[0].label).toBe('RRF → Cross-Encoder');
     expect(source).toContain('REAL PROVIDER');
     expect(evalReport.comparisons[0]).toMatchObject({

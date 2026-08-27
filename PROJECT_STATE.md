@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-AIQA-RESILIENCE-001**：**In Progress（2026-08-27，baseline_commit=`a73c5a8`）**——实现匿名 grounded Semantic Cache、LLM/Reranker Circuit Breaker、故障旁路与低基数可观测。
+- **TASK-AIQA-RESILIENCE-001**：**Closed（2026-08-27，verified_commit=`cf1231c`）**——已实现匿名 grounded Redis Semantic Cache（同域阈值、TTL/容量、知识变更失效、故障旁路）、LLM/Reranker 独立 Circuit Breaker（单探针恢复）及 Prometheus/Grafana 低基数观测；绑定测试 31 passed，补充 Gateway/Reranker 回归 13 passed，Web test/typecheck/build 全绿，公开评测 73/73。
 
 - **TASK-CR-AIQA-RESILIENCE-001**：**Approved / Closed（2026-08-27，verified_commit=`a73c5a8`）**——批准匿名 grounded Semantic Cache、LLM/Reranker Circuit Breaker、数据最小化与低基数观测；下游为 TASK-AIQA-RESILIENCE-001。
 

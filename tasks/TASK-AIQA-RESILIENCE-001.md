@@ -1,6 +1,6 @@
 # TASK-AIQA-RESILIENCE-001 Semantic Cache + Circuit Breaker 实现
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27，verified_commit=`cf1231c`）**
 
 ## 任务类型
 - implementation
@@ -76,14 +76,14 @@
 - 需要 DB/API/新依赖/Prompt/权限变化、缓存敏感内容或超 17 文件时停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：核心实现 `cf1231c`；证据收口见后续提交
+- 修改文件清单：17 个，严格等于允许修改路径
+- 测试命令及结果：绑定验收/回归 31 passed；Gateway/Reranker 补充回归 13 passed；Web 1 passed；typecheck/build pass
+- lint / typecheck：`ruff check ...` → pass；`mypy app` → 52 source files / 0 errors；Web `tsc --noEmit` → pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：TC-AI-013 新增 8/8；公开评测总计 73/73；缓存命中跳过回答生成、域隔离/TTL/容量/失效/旁路与双 Provider 熔断均有自动化覆盖
+- 变更预算实际值：17 files；820 insertions / 22 deletions，新增行数等于合计预估 820 行
+- 未解决风险：进程内熔断状态不跨多副本共享，符合本 ADR；远端 CI 待首次 push 产生运行记录
+- 是否偏离 TASK：否
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`cf1231c`

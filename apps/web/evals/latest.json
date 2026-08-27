@@ -1,12 +1,12 @@
 {
   "schema_version": 2,
   "report_id": "agent-quality-2026-08-27",
-  "generated_at": "2026-08-27T18:28:43+08:00",
-  "verified_commit": "64b5799",
+  "generated_at": "2026-08-27T20:45:00+08:00",
+  "verified_commit": "cf1231c",
   "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
-    "passed": 65,
-    "total": 65
+    "passed": 73,
+    "total": 73
   },
   "ci": {
     "provider": "GitHub Actions",
@@ -45,6 +45,14 @@
       "total": 4,
       "verified_commit": "64b5799",
       "evidence": "真实候选重排、失败回退、最小请求与越界响应校验"
+    },
+    {
+      "id": "semantic-cache-resilience",
+      "label": "语义缓存与 Provider 韧性",
+      "passed": 8,
+      "total": 8,
+      "verified_commit": "cf1231c",
+      "evidence": "匿名 grounded 缓存、域隔离/失效/旁路与双 Provider 熔断状态机"
     }
   ],
   "comparisons": [
@@ -94,6 +102,13 @@
       "title": "Cross-Encoder 故障时完整回退 RRF 原顺序",
       "status": "verified",
       "test_id": "TC-AI-012"
+    },
+    {
+      "id": "provider-circuit-breaker",
+      "category": "expected_block",
+      "title": "故障 Provider 熔断后快速拒绝，恢复窗口仅放行单探针",
+      "status": "verified",
+      "test_id": "TC-AI-013"
     }
   ]
 }

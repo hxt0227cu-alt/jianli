@@ -1,6 +1,6 @@
-# 测试计划 v0.7（approved）
+# 测试计划 v0.8（approved）
 
-> based_on：SRS 1.8 / domain-model 1.1.8 / UI 1.0.2 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 73；新增 TC-AI-010，既有冻结 TC 不变。
+> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 74；新增 TC-AI-011，既有冻结 TC 不变。
 
 ## 1. 证据等级与门禁
 
@@ -40,6 +40,7 @@
 | TC-AI-008 | R24 | 文档更新原子切索引；删除≤5s禁检索；索引失败旧版本继续服务 |
 | TC-AI-009 | SRS §3.2 | DeepSeek 不可用返回 MODEL_UNAVAILABLE，不切第二模型、不生成无依据回答 |
 | TC-AI-010 | SRS §3.1/§3.2 / UI U2 | jianli Agent Lab 四类场景调用真实问答；`answer.trace.step` 单调、字段严格白名单、无用户原文/Prompt/知识原文/工具完整结果/预约 PII；历史消息无 Trace 正常展示 |
+| TC-AI-011 | SRS §3.1/§3.2 / UI U2 | jianli 评测证据板读取版本化报告，展示各套件通过数/样本数、验证时间/commit、CI 门禁与脱敏失败分类；报告≤50KB 且不含问题原文、完整回答、Prompt、知识原文、PII/密钥；GitHub Actions push/PR 硬门禁失败返回非零 |
 
 ### 2.3 认证、会话与限频
 

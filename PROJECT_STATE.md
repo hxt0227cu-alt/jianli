@@ -15,6 +15,8 @@
 
 ## 当前阶段
 
+- **TASK-CR-AIQA-EVAL-CI-001**：**Approved / Closed（2026-08-27）**——批准 U2 版本化评测证据板、脱敏失败分类与 GitHub Actions push/PR 硬门禁；SRS 1.9 / UI 1.0.3 / test-plan 0.8 已对齐，下游由 `TASK-AIQA-EVAL-CI-001` 实现。
+
 编码准入已开放；前端展示壳与 FastAPI 后端骨架已交付，后续实现仍受独立审查、冻结 TC 与人工审批边界约束。
 
 - **领域模型 v1.1.5 / status=approved**（TASK-DM-003 已关闭，2026-08-08 末用户批准，独立批准锚点 `f412c7d`）：已完成 SRS、UI、architecture 下游同步；architecture v0.2 当前已 approved，正文 based_on 已同步 SRS v1.2。

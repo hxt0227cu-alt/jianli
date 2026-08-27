@@ -1,6 +1,6 @@
-# 安全设计与 ADR（v0.1 / approved）
+# 安全设计与 ADR（v0.2 / approved）
 
-> 状态：`approved`（TASK-SEC-001 已关闭，approval_commit=`c2f08f2`）。依据 PRD 2.3.4 / SRS 1.4 / domain-model 1.1.5 / architecture 0.2（均 approved）；SRS v1.4 §2.4 已据 `TASK-CR-AIQA-BOOKING-001` 登记 agent 预约工具白名单（推翻 PRD#14），本文 §9 已同步。
+> 状态：`approved`（2026-08-27 经 TASK-CR-OBSERVABILITY-001 批准可观测安全边界）。依据 PRD 2.3.6 / SRS 1.9 / domain-model 1.1.8 / architecture 0.3（均 approved）。
 
 ## 1. 安全目标与信任边界
 
@@ -89,6 +89,8 @@
 - 监控：认证失败突增、限频拒绝、权限拒绝、解密失败、退信未知匹配、迟到 Worker、死信、Prompt Injection、上传解析失败。
 - 安全日志与业务日志分离访问；禁止记录 Cookie、Authorization、token、密码、验证码、AES/HMAC key、SMTP/飞书/LLM secret 和敏感正文。
 - 告警分级：密钥泄露/越权/批量解密失败为 P0，立即吊销凭证并隔离；认证攻击/退信异常为 P1；普通外部超时为 P2。
+- Prometheus 标签和 OpenTelemetry Span 属性禁止包含 user_id、conversation_id、trace_id、IP、文档名、问题/回答/Prompt/知识原文、工具参数/结果、预约 PII、异常正文或任何密钥；只允许规范化 route 与固定枚举。
+- `/internal/metrics` 仅容器私网抓取，Nginx 公网路径返回 404；Grafana 不嵌入公开页面。Collector/Prometheus/Grafana 不接收生产业务密钥。
 
 ## 12. 下游强制验收
 

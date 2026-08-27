@@ -15,6 +15,8 @@
 
 ## 当前阶段
 
+- **TASK-CR-OBSERVABILITY-001**：**Approved / Closed（2026-08-27）**——批准 ADR-OBS-001：内部 `/internal/metrics`、OTLP Trace、Prometheus/Grafana/Collector Compose 闭环及三项锁定直接依赖；architecture 0.3 / security 0.2 / test-plan 0.9 已对齐，下游由 `TASK-OBSERVABILITY-001` 实现。
+
 - **TASK-AIQA-EVAL-CI-001**：**Closed（2026-08-27，verified_commit=`d8d1fde`）**——已交付版本化 61/61 评测证据、4 个脱敏边界案例和 GitHub Actions Agent/RAG/Web 三作业硬门禁；报告校验、API 22 passed、Web test/typecheck/build 与真实 UI 冒烟通过。远端尚未配置，首次 push 后产生 GitHub run；本机 Docker Redis 未运行，`rag-integration` 将由 Actions 服务容器完成首跑。
 
 - **TASK-CR-AIQA-EVAL-CI-001**：**Approved / Closed（2026-08-27，verified_commit=`465968c`）**——批准 U2 版本化评测证据板、脱敏失败分类与 GitHub Actions push/PR 硬门禁；SRS 1.9 / UI 1.0.3 / test-plan 0.8 已对齐，下游由 `TASK-AIQA-EVAL-CI-001` 实现。

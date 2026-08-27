@@ -1,6 +1,6 @@
-# 测试计划 v0.8（approved）
+# 测试计划 v0.9（approved）
 
-> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.2 / security 0.1 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 74；新增 TC-AI-011，既有冻结 TC 不变。
+> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.3 / security 0.2 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 75；新增 TC-OPS-010，既有冻结 TC 不变。
 
 ## 1. 证据等级与门禁
 
@@ -133,6 +133,7 @@
 | TC-OPS-002 | migration | 全部 migration up/down 在空库与基线库通过；约束/索引与 domain-model 一致 |
 | TC-OPS-003 | deploy | 健康检查、自动重启、SSE/LLM/邮件/飞书/Redis 降级 smoke 通过 |
 | TC-OPS-004 | release | 同一不可变制品晋级；健康失败、错误率>2%、P95>2×目标或隐私信号触发回滚 |
+| TC-OPS-010 | ADR-OBS-001 / security §11 | `/internal/metrics` 仅启用时存在且 Nginx 公网 404；HTTP/AIQA/token/tool 指标可抓取，标签固定低基数且无 TC-SEC-004 禁止字段；OTLP 未配置 no-op、导出失败不影响回答；Prometheus/Grafana/Collector 配置可解析 |
 
 ## 3. 需求覆盖门禁
 

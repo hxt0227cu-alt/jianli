@@ -1,7 +1,7 @@
-# 架构设计与 ADR（v0.2）
+# 架构设计与 ADR（v0.3）
 
-> **文档状态**：v0.2 · `status = approved`（用户于 2026-08-09 明确批准；批准锚点 `da3f6fc`，内容快照 `3a18b7f`）。
-> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.3 / 用例规约 v1.7.2 / 领域模型 **v1.1.5** / SRS **v1.2** / UI 线框 **v1.0** / AI 治理 1.0.1。
+> **文档状态**：v0.3 · `status = approved`（用户于 2026-08-27 批准 ADR-OBS-001：OpenTelemetry + Prometheus/Grafana 可观测闭环）。
+> **依据基线（based_on，引用 `docs/baseline.yml`）**：PRD v2.3.6 / 用例规约 v1.7.4 / 领域模型 **v1.1.8** / SRS **v1.9** / UI 线框 **v1.0.3** / AI 治理 1.0.1。
 > **v0.2 修正范围（TASK-ARCH-002）**：SSE 可靠传播（消除双写丢事件窗口）、预约四条流程的事务与统一锁顺序、Outbox Worker 领取/超时/投递语义/幂等、退信回调入口边界、核心 ADR 明确推荐；**2026-08-09 补充三项实现正确性修正**：① `NotificationDelivery` 投递级原子领取（queued→sending，事务内 RETURNING、提交后才调外部）；② Slot 释放统一改为按 `AvailabilityOverride` 与日历规则**重新物化**（不再无条件写 available），含 `AvailabilityOverride` 变更的 Slot 行锁串行化；③ Sweeper 区分 `queued`（未发送）/`sending`（结果未知）两类超时，不同 `last_error` 口径；**2026-08-09（续）两项并发竞态修正**：④ `AvailabilityOverride` 变更事务重写为「先读旧范围、统一锁全部 Slot（含 booked）、锁后复检冲突、无冲突才写」；⑤ 投递 `created_at` 仅表创建时间（非领取时刻）、`Txn D` 仅领剩余租约充足的 `queued` 行、`Txn W` 回执 CAS 写回 + 迟到 Worker 不覆盖回收状态；**2026-08-09（续二）两项 Schema/并发收口**：⑥ §6.4.1 `Txn W` SQL 删除幻列 `version`、`provider_message_id` 写独立列、`channel_metadata` 改 JSONB 合并（bounce 键仍只由 §7 回写），并附逐字段核对表对齐领域模型 v1.1.5 §6.12；⑦ §4.7 补齐同一 override 的并发更新——新增锁层级 **L2.5**（UPDATE/DELETE 先 `SELECT ... FOR UPDATE` 锁自身行取真实 `old_range`，先于 L3）、CREATE/UPDATE 范围须命中现存 Slot 否则拒绝。逐项差异见 §12.3 条目 20–23。
 > **范围边界（硬约束）**：本文档定义系统边界、模块划分、部署与调用关系、关键事务边界、SSE 与通知可靠性机制、知识库索引切换、部署运维与 ADR。**不定义** REST URL、请求/响应 Schema、SSE 事件载荷字段、物理表结构（以领域模型 §6 为准）、密码哈希算法（留《安全设计》ADR）、错误码增删（SRS §8 为唯一权威）。
 > **留待《安全设计》裁定、本文不得提前假定具体实现的三项**：① 退信（Bounce）接入方式（回调 or 定时拉取）；② 会话存储介质；③ 限频实现机制。本文对这三项只写"与实现无关的边界约束"。
@@ -71,7 +71,11 @@
                      ┌───────────────┴────────────────┐
      [SMTP]◀──投递───┤ Notifications                  ├──同步/提醒──▶[飞书 API]
      [SMTP]──退信回执─▶[退信处理 §7]──幂等回写 channel_metadata
-     [托管 LLM API]◀──生成──[RAG]
+[托管 LLM API]◀──生成──[RAG]
+
+[API / AIQA]──OTLP/HTTP──▶[OTel Collector]
+     │                         │
+     └──/internal/metrics──▶[Prometheus]──▶[Grafana]
 ```
 > **SSE 路径上没有消息中间件**：每个实例独立从 PostgreSQL 派生状态（§5.1），不存在跨实例事件投递环节，也就不存在该环节的丢失/乱序问题。
 
@@ -686,6 +690,8 @@ SELECT d.* FROM NotificationDelivery d
 - 集中日志，写入前脱敏（会议号/电话等）；健康检查端点。
 - 关键指标：SSE 派生延迟与推送延迟、强制重拉快照频次（衡量 §5.4 触发是否异常）、Outbox 领取延迟与积压量、租约回收次数、通知成功率 / 死信率 / 退信率、限频触发次数、RAG 首字延迟。
 - 凭证（SMTP / 飞书 / LLM / 回调密钥）存 Secret Manager，不进代码、前端与日志。
+- ADR-OBS-001：API 以 OpenTelemetry SDK 产生 HTTP/AIQA/tool Span，经 OTLP/HTTP 异步导出；Prometheus 从容器私网 `/internal/metrics` 抓取固定低基数指标，Grafana 读取 Prometheus 展示请求量、P95、AIQA outcome、token 与工具调用。未配置 OTLP 时 no-op；采集失败不影响业务。
+- `/internal/metrics` 不进入公开 OpenAPI，Nginx 对公网请求显式返回 404；Prometheus 必须绕过 Nginx 直连 API 容器。
 
 ### 9.4 故障降级（SRS §5.4）
 - SSE 不可用 → 轮询降级（§5.7）；数据库短暂不可用 → 读路径返回上次快照并标注「数据可能延迟」，写路径直接失败不做本地排队（避免产生无法回滚的影子状态）。

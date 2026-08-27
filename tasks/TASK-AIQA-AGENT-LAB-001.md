@@ -1,6 +1,6 @@
 # TASK-AIQA-AGENT-LAB-001 Agent Lab 与结构化 Trace 实现
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27）**
 
 ## 任务类型
 - implementation
@@ -87,18 +87,18 @@
 - 冻结 TC 失败不得修改其断言。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`e1f0636`（页面二并行集成中的 Agent Lab 前端基础）+ `a0b2c9d`（Trace 后端、前端收口与验收）
+- 修改文件清单：本任务允许的 8 个路径，未修改 DB、依赖、鉴权、Prompt 或工具白名单
+- 测试命令及结果：API 冻结回归 `22 passed`；Web shell `1 passed`；生产构建成功（1792 modules）
+- lint / typecheck：`ruff` 通过；`mypy app` 48 source files / 0 errors；`pnpm typecheck` 通过；`git diff --check` 通过
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：本地真实 UI 冒烟通过——4 个挑战入口可见；依据问答返回 7 步 Trace；默认收起、点击展开；控制台 0 error；Trace 不含原始问题或工具敏感参数
+- 变更预算实际值：8 个允许路径；生产代码约 300 行、测试 168 行，文件数未超预算
+- 未解决风险：匿名态多步预约场景按设计只展示登录/权限阻断；登录态完整预约读取仍由既有真实栈测试覆盖
+- 是否偏离 TASK：否
 - 规范影响结论：updated（上游 CR 已批准）
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`a0b2c9d`
 
 ## 关联
 - Change Request：`TASK-CR-AGENT-LAB-001`

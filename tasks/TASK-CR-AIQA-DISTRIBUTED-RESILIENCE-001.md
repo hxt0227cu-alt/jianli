@@ -1,6 +1,6 @@
 # TASK-CR-AIQA-DISTRIBUTED-RESILIENCE-001 多副本熔断变更请求
 
-> **状态：Approved / In Progress（2026-08-27，用户要求 push 前解决全部已知问题）**
+> **状态：Approved / Closed（2026-08-27，verified_commit=`e6b1a1c`）**
 
 ## 任务类型
 - architecture
@@ -58,14 +58,14 @@
 - `git revert <本任务提交>`。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
+- commit / PR：`e6b1a1c`
+- 修改文件清单：8 个，严格等于允许修改路径
+- 测试命令及结果：`git diff --cached --check` → pass
 - lint / typecheck：不适用
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
-- spec_sync：待回填
-- verified_commit：待回填
+- 验收证据：architecture 0.6 / security 0.5 / test-plan 1.2 approved；TC-AI-014 冻结
+- 变更预算实际值：8 files，171 insertions / 12 deletions
+- 未解决风险：实现与真实 Redis 原子行为由下游任务验证
+- 是否偏离 TASK：否
+- spec_sync：clean
+- verified_commit：`e6b1a1c`

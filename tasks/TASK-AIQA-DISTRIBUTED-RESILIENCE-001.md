@@ -1,6 +1,6 @@
 # TASK-AIQA-DISTRIBUTED-RESILIENCE-001 Redis 多副本熔断实现
 
-> **状态：Ready（2026-08-27）**
+> **状态：In Progress（2026-08-27）**
 
 ## 任务类型
 - implementation
@@ -9,7 +9,7 @@
 
 ## 基线版本与基线 commit
 - baseline：PRD 2.3.6 / 用例规约 1.7.4 / 领域模型 1.1.8 / SRS 1.9 / architecture 0.6 / security 0.5 / test-plan 1.2
-- 基线 commit：待 CR 提交
+- 基线 commit：`e6b1a1c`
 
 ## 精确规范引用
 - `docs/adr/ADR-RESILIENCE-001.md`

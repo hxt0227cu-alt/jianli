@@ -15,7 +15,7 @@
 
 ## 当前阶段
 
-- **TASK-AIQA-EVAL-CI-001**：**In Progress（2026-08-27）**——实现版本化评测报告、公开证据板、脱敏失败案例与 GitHub Actions Agent/RAG/Web 硬门禁；不新增 API、DB 或依赖。
+- **TASK-AIQA-EVAL-CI-001**：**Closed（2026-08-27，verified_commit=`d8d1fde`）**——已交付版本化 61/61 评测证据、4 个脱敏边界案例和 GitHub Actions Agent/RAG/Web 三作业硬门禁；报告校验、API 22 passed、Web test/typecheck/build 与真实 UI 冒烟通过。远端尚未配置，首次 push 后产生 GitHub run。
 
 - **TASK-CR-AIQA-EVAL-CI-001**：**Approved / Closed（2026-08-27，verified_commit=`465968c`）**——批准 U2 版本化评测证据板、脱敏失败分类与 GitHub Actions push/PR 硬门禁；SRS 1.9 / UI 1.0.3 / test-plan 0.8 已对齐，下游由 `TASK-AIQA-EVAL-CI-001` 实现。
 

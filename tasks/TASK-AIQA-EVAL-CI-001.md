@@ -1,6 +1,6 @@
 # TASK-AIQA-EVAL-CI-001 评测证据板与 GitHub Actions 门禁实现
 
-> **状态：In Progress（2026-08-27）**
+> **状态：Closed（2026-08-27）**
 
 ## 任务类型
 - implementation
@@ -81,18 +81,18 @@
 - 需要新增依赖/API/DB/权限或超 8 文件时停止拆分；冻结测试失败不得改宽断言。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`d8d1fde`
+- 修改文件清单：本任务允许的 8 个路径，未修改 API/DB/依赖/权限/Prompt
+- 测试命令及结果：报告校验 `61/61 checks, 4 boundary cases, 1966 bytes`；API Agent 回归 `22 passed`；Web shell `1 passed`；production build 1793 modules 成功
+- lint / typecheck：`ruff`（app + 报告校验器）通过；`mypy app` 48 files / 0 errors；`pnpm typecheck` 通过；`git diff --check` 通过
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
+- 验收证据：本地 UI 冒烟通过——61/61、三个套件、commit/日期和诚实 CI 状态可见；4 个边界案例可展开；控制台 0 error
+- 变更预算实际值：8 文件 / 424 新增行 / 1 删除行，文件数未超预算
 - 未解决风险：GitHub remote 未配置，首次远端 run 需仓库推送后产生
-- 是否偏离 TASK：待回填
+- 是否偏离 TASK：否
 - 规范影响结论：updated
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`d8d1fde`
 
 ## 关联
 - Change Request：`TASK-CR-AIQA-EVAL-CI-001`

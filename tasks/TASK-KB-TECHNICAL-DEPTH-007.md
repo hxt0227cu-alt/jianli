@@ -85,18 +85,18 @@
 - 任一冻结断言下降、需要修改任务外文件、需要 API/DB/依赖/权限/阈值变化或超过预算时立即停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`a47dbcf feat(kb): add litchi and sleep technical depth`
+- 修改文件清单：`tasks/TASK-KB-TECHNICAL-DEPTH-007.md`、`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`、`docs/fact-consistency/fact-bank.md`
+- 测试命令及结果：真实 PG/Redis/BGE-M3 环境运行 `PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q -s` → `7 passed in 109.92s`；literal `20/20`、semantic `11/12`、extreme semantic `6/6`、pure vector `6/6`、拒答 `10/10`、误拒 `8/8`；新增 14 条 Litchi/Sleep 技术追问全部命中目标文档。
+- lint / typecheck：`ruff check app/aiqa/content.py tests/aiqa/test_rag_eval.py` → passed；`mypy app/aiqa/content.py` → `Success: no issues found in 1 source file`；`python -m compileall -q app/aiqa/content.py tests/aiqa/test_rag_eval.py` → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：正式灌库返回 `active=20, indexed=20, non-indexed=0`，canonical `20/20`；真实 DeepSeek 模型抽测 Litchi 事务 Outbox/RAG 链路与 Sleep 评测红队/设备权限/202 接纳五类问法均 `grounded=true, offtopic=false`，回答包含正确证据边界；公开语料未写入绝对路径、内部标识、日志原文、设备标识或客户数据。
+- 变更预算实际值：4 个允许文件；生产内容新增 66 行；测试与事实文档新增 183 行（任务单本身不计实现预算），未超过 `max_files=4 / expected_prod_lines=120 / expected_test_lines=320`。
+- 未解决风险：既有语义问法“平时的工程部署和环境管理用什么”未引用 `profile.md`，因此 semantic 为 `11/12`；该用例在变更前门禁同样按 75% 阈值验收，且此次 Litchi/Sleep 新增技术追问为 `14/14`。未修改阈值或用例掩盖该边界。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`a47dbcf`
 
 ## 关联
 - Change Request：无

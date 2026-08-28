@@ -83,18 +83,18 @@
 - 冻结验收测试失败、需要修改任务外文件或超过 6 个文件时停止并报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`c534552`（实现与验证快照）
+- 修改文件清单：`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`、`apps/api/app/aiqa/service.py`、`apps/api/scripts/seed_kb.py`、`docs/fact-consistency/fact-bank.md`、本任务单；全部位于允许路径。
+- 测试命令及结果：真实 PG/Redis 下 `pytest tests/aiqa/test_rag_eval.py -q` → 6 passed / 1 expected xfail；正式问答 FQ-31～FQ-33 → 3/3 grounded、0 error、0 offtopic，七类口径、51 条异常重复和三端事实均正确。
+- lint / typecheck：`ruff check ...` → all passed；`mypy app/aiqa/content.py app/aiqa/service.py` → 2 files / 0 issues；`compileall` → passed。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：六篇 Sleep 文档长度 251～322 字符，均保持单 chunk；正式 `seed_kb.py` → HTTP 202，canonical corpus 19/19 active + indexed，旧 `taiyizhi.md` 非 active；DeepSeek 正式问答复验通过。
+- 变更预算实际值：6/6 files；生产代码新增 68 行 ≤ 90；测试/语料/文档新增 146 行 ≤ 220。
+- 未解决风险：公司内部 RC 证据受 NDA 约束，公开作品集不能提供源码、日志或截图；部署/本地常驻 API 需重启后才会加载新的静态兜底和 Sleep 域映射。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`c534552`
 
 ## 关联
 - Change Request：无

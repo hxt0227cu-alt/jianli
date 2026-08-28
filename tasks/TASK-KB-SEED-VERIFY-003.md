@@ -69,18 +69,18 @@
 - 遵循 `AGENTS.md §2`；如需 DB/API/依赖/权限/知识内容变化则停止。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`50ae9c6`（实现提交）
+- 修改文件清单：`apps/api/scripts/seed_kb.py`、`apps/api/tests/scripts/test_seed_kb.py`、本任务单；均在允许路径内。
+- 测试命令及结果：`pytest tests/scripts/test_seed_kb.py -q` → `3 passed`；覆盖精确成功、provider 402/failed、缺失/额外/重复 active 文档。
+- lint / typecheck：scoped Ruff → `All checks passed!`；`mypy app` → `Success: no issues found in 52 source files`；`git diff --check` → pass。
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：用户充值后真实运行 `seed_kb.py` → `HTTP 202`、`KB active 14 / indexed 14 / non-indexed 0 / historical 40`、`verified canonical corpus 14/14`、`exit=0`。随后数据库直查确认 active=14、indexed=14、Litchi=4；`litchi-overview.md`、`litchi-agent-rag.md`、`litchi-evidence-retrospective.md`、`litchi-evolution.md` 均 indexed 且各 1 chunk，旧 `litchi.md` 无 active 记录。
+- 变更预算实际值：3/3 文件；生产脚本 39+/11-，测试 44 行，任务文档 87 行；未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`50ae9c6`
 
 ## 关联
 - Change Request：无

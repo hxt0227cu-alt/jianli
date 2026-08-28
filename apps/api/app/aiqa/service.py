@@ -150,7 +150,7 @@ def _is_malicious_question(question: str) -> bool:
 #   resume                  -> None (any experience topic may be asked on the resume page)
 #   projects / jianli       -> []  (jianli facts live in static pages only)
 #   projects / litchi       -> four layered Litchi interview documents
-#   projects / sleep202603_an -> ["taiyizhi.md"]
+#   projects / sleep202603_an -> six layered Sleep interview documents
 #   projects / (none)       -> None (competition / behavioural questions)
 # None = unrestricted (legacy behaviour); [] = no KB docs for this domain.
 def _kb_domain_docs(page_key: str, project_key: str | None) -> list[str] | None:
@@ -165,7 +165,14 @@ def _kb_domain_docs(page_key: str, project_key: str | None) -> list[str] | None:
                 "litchi-evolution.md",
             ]
         if project_key == "sleep202603_an":
-            return ["taiyizhi.md"]
+            return [
+                "sleep-overview.md",
+                "sleep-agent-runtime.md",
+                "sleep-rag-governance.md",
+                "sleep-data-reliability.md",
+                "sleep-evidence-retrospective.md",
+                "sleep-evolution.md",
+            ]
     return None
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # openapi KnowledgeDocument.size maximum 10485760
 _SUPPORTED_TYPES = {"md", "txt", "pdf"}

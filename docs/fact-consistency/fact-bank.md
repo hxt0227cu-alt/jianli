@@ -181,18 +181,18 @@
 ## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-31 · 泰益智的 84 例评测怎么分类？
-- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20（10 正常问答 + 10 注入）/ device_control 20（10 审批通过 + 5 未审批 + 5 模拟超时）/ algorithm_optimization 9（5 优化 + 4 隐私拒绝）/ sleep_report 5 / sleep_improvement 5 / voice_companion 5；曾因继承 `AGENT_MODEL_PROVIDER=openai_compatible` 只过 67/84，评测入口钉死 deterministic provider（不读环境变量）后 84/84，17 条失败刻意保留当漂移证据；RC 阶段压测吞吐提升 393.9%（近 4 倍）、P95 延迟由 1.35s 压降至 229ms，封装 6 个受治理工具及 15 个 Agent REST API。
-- **溯源**：CORPUS `taiyizhi.md`「评测细分与漂移记录」。
-- **判定要点**：命中 7 类细分或 67/84 漂移与钉死 ✅；说"没有细分/没有漂移"❌。
+- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20 / device_control 20 / algorithm_optimization 9 / sleep_report 5 / sleep_improvement 5 / voice_companion 5，共 84/84；健康合规子项 71.43%。该工程集不调用外部 LLM，公开测试 Harness 中的设备 ACK 为模拟，不能把 84/84 说成真实设备或生产安全 100%。
+- **溯源**：CORPUS `sleep-evidence-retrospective.md`。
+- **判定要点**：命中 7 类细分 + 84/84，并同时说明 deterministic/模拟 ACK/健康合规边界 ✅；只报 100% 而省略口径 ❌。
 
 ### FQ-32 · 泰益智 51 条重复的根因是什么？
 - **期望事实**：故障注入重平衡首轮被杀 Worker 的原 6 分区出 51 条重复，根因 ClickHouse `Array(UUID)` 参数查重返回空集却不报错，换 string→UUID 子查询修复；3 轮 × 6,240 事件验证（12 分区 lag 全 0、恢复 median 12.605s、300 次显式重放全抑制）。
-- **溯源**：CORPUS `taiyizhi.md`「可靠性工程细节」。
+- **溯源**：CORPUS `sleep-data-reliability.md`。
 - **判定要点**：命中"Array(UUID) 返回空集不报错 → UUID 子查询" ✅；说"重复是网络问题"❌。
 
 ### FQ-33 · 泰益智同一套代码出了几个端？
 - **期望事实**：三端——Taro 小程序（16 页，rpx 单位 / TARO_ENV 分支 / 统一 API 封装做跨端规避）+ Web（dist）+ Android（Capacitor 壳 appId=com.sleep202603.app，MainActivity 一行 extends BridgeActivity、零自定义原生代码）。
-- **溯源**：CORPUS `taiyizhi.md`「端形态与固件」。
+- **溯源**：CORPUS `sleep-overview.md`。
 - **判定要点**：命中"三端 + Capacitor 壳零原生代码" ✅；说"写过 Java/Kotlin 业务代码"❌（诚实边界）。
 
 ## E 组 · 行为/动机/竞赛（interview-story，TASK-AIQA-KB-EXPAND-014 新增）

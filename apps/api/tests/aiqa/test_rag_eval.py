@@ -194,66 +194,84 @@ CORPUS: dict[str, str] = {
         "负向隔离、跨 Pod 真机闭环、队列年龄/拒绝率告警和不可变镜像回滚。"
     ),
     "jianli-overview.md": (
-        "# Jianli AI 面试协作站｜项目定位\n"
-        "这是我独立开发并准备以正式域名上线的求职作品：把简历与项目 RAG 问答、登录注册、"
-        "对话留存、动态面试时段、预约管理、邮件与飞书通知串成完整产品链。技术栈为 FastAPI、"
-        "SQLAlchemy/Alembic（迁移已到 0010）、PostgreSQL 16 + pgvector、Redis 7、React 19、"
-        "DeepSeek V4 Flash 与 BGE-M3。它的核心不是聊天页面，而是让代表我发言的 Agent 有依据"
-        "才回答、有权限才操作，并让并发、隐私、通知和失败路径可验证。"
+        "# Jianli AI 面试协作站｜从聊天入口到可靠业务闭环\n"
+        "这是我独立开发、准备挂正式域名上线的求职产品。浏览器通过 React 19 页面调用 FastAPI："
+        "公开问题走 SSE，登录用户可持久化本人会话；知识库先按 page/project 域检索，模型只有在"
+        "有依据时生成并返回引用。预约链路把邮箱验证码登录、动态 Slot、预览确认、并发创建、"
+        "本人管理、管理员看板、邮件与飞书同步连在一起。数据层使用 SQLAlchemy/Alembic 0010、"
+        "PostgreSQL 16 + pgvector 和 Redis 7，模型链路为 DeepSeek V4 Flash、BGE-M3 与可选"
+        "Qwen3-Reranker-8B。核心设计是把概率模型限制在确定性边界内：证据门决定能否回答，"
+        "服务端白名单与 RBAC 决定能否操作，数据库事务和 Outbox 决定副作用如何落地。"
     ),
     "jianli-agent-rag.md": (
-        "# Jianli 受控 Agent 与 RAG\n"
-        "知识检索采用向量 top10 + BM25 top10，经 RRF 融合取最多 12 个候选，再由可选 "
-        "Cross-Encoder 取 top6；0.47 向量阈值与 CJK 静态门槛共同约束无依据拒答（越界集 "
-        "10/10）。生产 embedding 是 1024 维 BGE-M3，纯向量 avg-rank 1.3，对照无语义的本地"
-        "哈希为 1.8。Agent 通过 "
-        "function calling 自主决定是否 search_knowledge，登录后还可在 RBAC 下创建、查询、取消和"
-        "改期本人预约；owner_admin 才能管理他人。所有写操作复用 BookingService，MAX_STEPS=4 "
-        "防止循环失控，不允许白名单外工具或直接写数据库。检索效果不理想时，会分别检查域过滤、"
-        "分块、向量/BM25 召回、RRF 排序、阈值和评测集，而不是只改 Prompt。"
+        "# Jianli 受控 Agent 与混合 RAG｜检索词失败也不丢证据\n"
+        "模型以 function calling 自主选择 search_knowledge 并生成检索词，但模型输出不被直接"
+        "信任：服务端同时检索模型词和用户原问题，按文档与片段去重合并，避免模型改写失真把原始"
+        "证据裁掉。每一路先做 1024 维 BGE-M3 向量 top10；若没有达到 0.47 的向量候选，即使"
+        "BM25 有中文单字重叠也拒绝据此硬答。通过证据门后，BM25 top10 与向量结果用 RRF(k=60)"
+        "融合为最多 12 条，再由可选 Cross-Encoder 排到 top6，并保持 page/project 域隔离。"
+        "本地哈希 embedding 只是确定性离线 fallback；对照中 BGE-M3 纯向量 avg-rank 1.3，哈希"
+        "为 1.8。回答流遵守 started→trace/delta→citations→completed；无依据返回 offtopic，"
+        "不会让模型凭常识补齐个人经历。"
     ),
     "jianli-agent-lab.md": (
-        "# Jianli Agent Lab｜真实挑战与脱敏轨迹\n"
-        "页面内置依据问答、多步只读预约、安全越权攻击、无依据拒答四类挑战；点击后调用右侧真实 "
-        "SSE 问答，不展示预制答案。服务端按 policy、routing、retrieval/tool、generation、result "
-        "发出 step 单调递增的 answer.trace，前端可展开时间线。轨迹只允许固定 phase/status、"
-        "白名单工具名、耗时和短标签，不包含用户原文、Prompt、知识原文、工具参数/完整结果或预约 "
-        "PII；它是结构化执行事实，不是模型思维链。"
+        "# Jianli Agent Lab｜模型负责规划，代码负责授权\n"
+        "避免智能体乱调用不能只靠 Prompt：Agent 最多循环 4 步，只注册 search_knowledge、创建"
+        "预约、查询本人预约、取消本人预约、"
+        "改期本人预约五个工具；未知工具确定性拒绝。预约工具必须登录，面试官只能操作本人记录，"
+        "所有写操作复用 BookingService 的校验、事务和审计，模型不能直接写库；管理员管理他人的"
+        "能力走独立管理端服务边界，不因模型声称自己是管理员而放权。每轮工具结果作为结构化证据"
+        "交回模型生成自然语言，检索工具则进入 RAG 引用链。页面预置依据问答、多步只读预约、"
+        "越权攻击、无依据拒答四类真实挑战，调用同一 SSE 接口而非展示预制答案。answer.trace "
+        "只公开单调 step、固定 phase/status、白名单工具名、耗时和短标签；不含 Prompt、用户/知识"
+        "原文、工具参数、完整结果或预约 PII，因此是可审计执行事实，不是模型思维链。"
     ),
     "jianli-evaluation-ci.md": (
         "# Jianli 评测中心与 CI 门禁\n"
-        "评测中心是项目页公开证据，无需登录；页面读取版本化报告并展示样本数、时间、"
-        "verified commit、套件结果与脱敏失败/边界案例。"
+        "评测中心读取版本化 JSON 报告，公开样本数、生成时间、verified commit、套件结果与脱敏"
+        "边界案例，而不是运行时临时拼一个满分。"
         "当前报告为 79/79：Agent/Trace 22、RAG 事实一致性 38、Web 交付 1、Cross-Encoder 协议 4、"
-        "语义缓存与 Provider 韧性 8、多副本共享熔断 6。GitHub Actions 定义 backend-agent → "
-        "rag-integration → web-delivery 三个串行硬门禁；本地等价门禁已通过，但仓库尚未授权 push，"
-        "所以回答‘GitHub CI 真跑过了吗’时必须说：没有远端 Actions run，不能说云端 CI 已实际跑过。"
+        "语义缓存与 Provider 韧性 8、多副本共享熔断 6；真实 RAG 测试会上传 canonical corpus、"
+        "分块、BGE-M3 embedding 入 pgvector，再验证命中、拒答、隐私和误拒。Agent Quality Gate "
+        "定义 backend-agent→rag-integration→web-delivery 三个串行 job，后两段分别带真实 PG/Redis"
+        "和前端测试/typecheck/build。当前只有本地等价门禁证据，尚无远端 Actions run；79/79 也"
+        "只是这组冻结检查全过，不等于生产准确率或线上可用性，所以不能说云端流水线已经跑绿。"
     ),
     "jianli-observability.md": (
         "# Jianli OpenTelemetry + Prometheus/Grafana\n"
-        "API 以 OpenTelemetry 记录 HTTP、AIQA、工具、重排、语义缓存和熔断阶段，配置 OTLP 后由 "
-        "Collector 导出；未配置时 no-op，导出失败不改变回答。Prometheus 从容器私网 "
-        "/internal/metrics 抓取低基数指标，Nginx 对公网明确返回 404，Grafana Agent Overview 当前有 "
-        "10 个面板。标签和 Span 禁止问题/回答/Prompt/知识原文、PII、密钥、高基数 ID 与异常正文。"
-        "配置和自动化测试已验证，完整观测容器栈首次部署 smoke 仍待执行。"
+        "显式开启后，ASGI 中间件从请求头提取 Trace 上下文，覆盖完整流式响应时长，并只记录"
+        "method、规范化 route、status。AIQA 另有回答结果/耗时/token、工具结果、重排、语义缓存和"
+        "LLM/Reranker 熔断指标与 Span event；工具名和状态均为有界标签，未知工具折叠为固定值。"
+        "Prometheus 通过私网 /internal/metrics 暴露，Nginx 对公网返回 404；配置 OTLP 时批量导出"
+        "OpenTelemetry，未配置则不外发。Grafana Agent Overview 有 10 个面板。问题、回答、Prompt、"
+        "知识原文、PII、密钥、高基数 ID 和异常正文不进入观测属性。代码与自动化测试已验证，"
+        "完整 Collector/Prometheus/Grafana 容器栈 smoke 尚未完成。"
     ),
     "jianli-reranker.md": (
         "# Jianli Reranker 对照实验\n"
-        "高召回层先做 vector + BM25 + RRF top12，页面/项目域过滤与相关性门槛之后，才把问题和"
-        "候选片段交给可选 Qwen3-Reranker-8B Cross-Encoder，最终取 top6。超时、429/5xx、畸形"
-        "响应、重复或越界索引都 fail-open 回退原 RRF 顺序，每次检索最多外调一次且超时上限 5 秒。"
+        "Cross-Encoder 只接收已经通过域过滤和相关性门槛的 RRF top12，不能扩大召回、跨项目取证"
+        "或绕过拒答；Qwen3-Reranker-8B 返回排序索引与分数后，服务端再次校验数量、类型、重复和"
+        "越界索引，最终取 top6。每次检索最多外调一次且超时上限 5 秒；超时、429/5xx、协议畸形"
+        "或熔断都会 fail-open，完整保留原 RRF 顺序，而不是让问答一起失败。"
         "真实 provider 的 5 题组件对照为 MRR 0.3333→1.0000、Hit@1 0/5→5/5；样本很小，"
         "只能证明组件排序改善，不能外推端到端生产质量；79/79 版本化检查同样不是生产准确率。"
     ),
     "jianli-reliability.md": (
         "# Jianli 可靠业务闭环｜不是只会聊天的 Demo\n"
-        "预约先生成 3 分钟预览令牌且不预占，创建时复核连续三个 30 分钟 Slot，并用行锁和数据库"
-        "唯一约束防超卖；敏感字段使用 AES-256-GCM，Outbox 将事务提交与邮件/飞书异步投递解耦。"
-        "匿名 grounded 回答可进入同域语义缓存，知识变更使缓存失效；LLM 与 Reranker 使用 Redis Lua "
-        "共享熔断状态，Redis 故障退回本地 breaker。工具失败重试依靠幂等键与业务唯一约束避免"
-        "重复副作用。当前证据来自真实 PG/Redis 测试和本地等价门禁，"
-        "一次 Agent 检索回归曾从 8/8 降到 6/8，根因是问候判断把 litchi 中的 hi 当成整词，"
-        "改为整词匹配后恢复。正式域名部署、远端 CI 与完整观测栈 smoke 仍是上线验收项。"
+        "预约预览令牌绑定登录人和规范化表单、有效 3 分钟且不占 Slot；确认时在一个事务中锁公司"
+        "与三个连续 30 分钟 Slot，检查状态后写 appointment、更新 Slot、Outbox 和审计；并发冲突"
+        "映射为业务错误。改期同样先锁记录和新 Slot，再释放旧 Slot。Slot 竞争靠行锁和事务内复核；"
+        "活动用户/公司部分唯一索引独立约束重复业务预约，"
+        "不是所谓‘行锁失效兜底’。敏感字段用带表/列/记录 AAD 的 AES-256-GCM，去重只存 HMAC "
+        "指纹。过期 active 状态的预约由幂等 CTE 自动完成并取消旧提醒。Worker 用 FOR UPDATE "
+        "SKIP LOCKED 抢 Outbox，"
+        "投递是 at-least-once；delivery 唯一键防重复尝试行，但不能宣称外部邮件/飞书 "
+        "exactly-once。\n"
+        "匿名、无会话且无工具轨迹的 grounded 回答才可进入按页面/项目隔离的语义缓存，阈值 0.94、"
+        "TTL 600 秒、最多 100 条且不存问题明文；知识增删会整体失效。LLM 与 Reranker 用 Redis Lua"
+        "共享 closed/open/half-open 状态和单恢复探针，Redis 失联退回本地 breaker。真实 PG/Redis"
+        "测试覆盖十轮抢 Slot、改期竞争、自动过期和跨实例熔断；正式域名、远端 CI 与完整观测栈"
+        "smoke 仍是上线验收项。"
     ),
     "behavior-stories.md": (
         "# 行为故事、协作与职业动机\n"
@@ -313,7 +331,15 @@ SEMANTIC_CASES: list[tuple[str, str]] = [
     ("设备可操作范围应该由谁提供才可信？", "sleep-rag-governance.md"),
     ("红队八成通过能不能说明系统已经安全？", "sleep-evidence-retrospective.md"),
     ("检索效果不理想时你一般从哪几个方面调？", "jianli-agent-rag.md"),
-    ("智能体怎么做才不会乱调用东西？", "jianli-agent-rag.md"),
+    ("智能体怎么做才不会乱调用东西？", "jianli-agent-lab.md"),
+    ("模型把搜索词改偏以后，原始问题的证据会不会丢？", "jianli-agent-rag.md"),
+    ("只有中文单字碰巧重合时，系统会不会强行组织答案？", "jianli-agent-rag.md"),
+    ("为什么模型声称自己是管理员也不能操作别人的预约？", "jianli-agent-lab.md"),
+    ("你展示的执行时间线是不是把模型思考过程暴露出来了？", "jianli-agent-lab.md"),
+    ("两个请求同时抢同一时间段时，靠什么保证只成功一个？", "jianli-reliability.md"),
+    ("知识文档更新以后，缓存中的旧回答怎么处理？", "jianli-reliability.md"),
+    ("多台接口服务怎么共享上游故障和恢复探针？", "jianli-reliability.md"),
+    ("为什么现在还不能说云端流水线已经跑绿？", "jianli-evaluation-ci.md"),
 ]
 
 # EXTREME_SEMANTIC_CASES (EVAL-002 direction A): paraphrases with ZERO low-frequency

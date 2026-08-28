@@ -1,4 +1,4 @@
-# 简历事实一致率 · 题库（FQ-01 … FQ-38）
+# 简历事实一致率 · 题库（FQ-01 … FQ-58）
 
 > **事实源（ground truth）**：线上优先使用 `test_rag_eval.py` 的 canonical corpus；个人域由
 > `profile.md`、`credentials.md`、`behavior-stories.md` 承载，项目域使用各项目分层文档。
@@ -152,6 +152,46 @@
 - **溯源**：CORPUS `jianli-reliability.md`。
 - **判定要点**：命中"greeting 'hi'⊂'litchi' 子串误匹配、改整词匹配" ✅；说成"没有任何坑"❌（与诚实记录相悖）。
 
+### FQ-51 · 模型生成的检索词偏离原问题时，Jianli 怎么避免丢证据？
+- **期望事实**：服务端同时检索模型生成词与用户原问题，按文档和片段去重合并；不会先截断模型词结果后把原问题证据挤掉。
+- **溯源**：CORPUS `jianli-agent-rag.md` / `AnswerService._search_candidates`。
+- **判定要点**：命中“双路检索 + 去重合并 + 保留原问题 fallback” ✅；说完全信任模型改写或只查一次 ❌。
+
+### FQ-52 · 为什么 BM25 有中文重叠时仍可能拒答？
+- **期望事实**：知识库路径先要求至少一个 BGE-M3 向量候选达到 0.47；若向量证据门未通过，BM25 的中文单字重叠不能单独触发 grounded 回答，以降低偶然重叠误答。
+- **溯源**：CORPUS `jianli-agent-rag.md` / `AnswerService._knowledge_candidates`。
+- **判定要点**：命中“向量证据门先行、BM25 不能单独兜底硬答” ✅；说只要 BM25 命中就回答 ❌。
+
+### FQ-53 · Jianli 的 Agent 为什么不能靠 Prompt 保证不越权？
+- **期望事实**：模型只负责提出 function call；服务端限制五个工具、MAX_STEPS=4、登录态和本人 RBAC，未知工具拒绝，预约写操作复用 BookingService。管理员管理他人走独立管理端边界，不接受模型自报角色。
+- **溯源**：CORPUS `jianli-agent-lab.md` / `AnswerService._run_agent_tool`。
+- **判定要点**：命中“模型计划非可信 + 代码白名单/RBAC/业务服务” ✅；说 Prompt 或模型角色声明可以授权 ❌。
+
+### FQ-54 · answer.trace 是不是模型思维链？
+- **期望事实**：不是。它是服务端生成的脱敏执行事实，只含单调 step、固定 phase/status、白名单工具、耗时和短标签，不含 Prompt、用户/知识原文、参数、完整结果或预约 PII。
+- **溯源**：CORPUS `jianli-agent-lab.md`。
+- **判定要点**：命中“结构化运行轨迹，不是 chain-of-thought”及隐私边界 ✅；宣称公开模型完整推理过程 ❌。
+
+### FQ-55 · 两个请求同时抢同一预约时段，Jianli 如何处理？
+- **期望事实**：确认预约时在同一数据库事务中锁公司和三个连续 30 分钟 Slot，复核状态后写预约、占 Slot、Outbox 与审计；Slot 竞争由行锁和事务内状态复核处理。活动用户/公司部分唯一索引独立约束重复业务预约，不应解释成“行锁失效兜底”。冲突转成业务错误，真实测试含十轮双事务抢 Slot。
+- **溯源**：CORPUS `jianli-reliability.md` / `BookingService.create` / `test_two_transactions_race_for_slots_ten_rounds`。
+- **判定要点**：命中“行锁 + 同事务 + 唯一索引 + 并发测试” ✅；只说前端按钮防重复或 Redis 锁 ❌。
+
+### FQ-56 · Jianli 的 Outbox 能保证邮件和飞书 exactly-once 吗？
+- **期望事实**：不能这样宣称。Worker 以 `FOR UPDATE SKIP LOCKED` 抢占事件并按失败窗口重试，delivery 唯一键防重复尝试行，整体是 at-least-once；外部发送与数据库状态不是一个原子事务，仍需容忍提供方侧重复。
+- **溯源**：CORPUS `jianli-reliability.md` / `notifications/worker.py`。
+- **判定要点**：命中“at-least-once + 尝试行幂等边界 + 外部副作用非 exactly-once” ✅；说有 Outbox 就绝不重复 ❌。
+
+### FQ-57 · Jianli 的语义缓存如何避免跨域旧答案？
+- **期望事实**：只缓存匿名、无会话、无工具轨迹的 grounded 回答；namespace 由 page/project 生成，阈值 0.94、TTL 600 秒、最多 100 条，不存问题明文；知识上传或删除会失效全部登记 namespace，异常时旁路而非影响问答。
+- **溯源**：CORPUS `jianli-reliability.md` / `semantic_cache.py` / `AnswerService._invalidate_semantic_cache`。
+- **判定要点**：命中“资格限制 + 域隔离 + TTL/容量 + 知识变更失效” ✅；说登录会话或工具副作用也缓存 ❌。
+
+### FQ-58 · 多个 API 实例如何共享 Provider 熔断状态？
+- **期望事实**：LLM 与 Reranker 使用独立固定组件键，Redis Lua 原子维护 closed/open/half-open、失败计数和恢复窗口；恢复时跨实例只放一个探针。Redis 失联时退回各实例本地 breaker，不能再宣称跨实例一致。
+- **溯源**：CORPUS `jianli-reliability.md` / `RedisCircuitBreaker` / `test_real_redis_cross_instance_atomic_probe`。
+- **判定要点**：命中“Redis Lua 共享状态 + 单探针 + 断连本地降级边界” ✅；说内存 breaker 天生跨实例共享 ❌。
+
 ---
 
 ## C 组 · Litchi 毕设域（page_key=`projects`，project_key=`litchi`；TASK-AIQA-KB-EXPAND-014 新增）
@@ -283,6 +323,6 @@
 ---
 
 ## 备注
-- **覆盖项**：个人教育、能力、证书、行为故事进入三篇 canonical profile 文档；C 组 litchi 基础 FQ-27~30 + 技术追问 FQ-39~43；D 组 sleep 基础 FQ-31~33 + 技术追问 FQ-44~50；E 组行为/动机/竞赛 FQ-34~38。canonical 文档仍为 20 篇。
+- **覆盖项**：个人教育、能力、证书、行为故事进入三篇 canonical profile 文档；B 组 Jianli 基础 FQ-11~26 + 源码级追问 FQ-51~58；C 组 litchi 基础 FQ-27~30 + 技术追问 FQ-39~43；D 组 sleep 基础 FQ-31~33 + 技术追问 FQ-44~50；E 组行为/动机/竞赛 FQ-34~38。canonical 文档仍为 20 篇。
 - **漂移风险**：若 `content.py` chunk 文本变更，本题库期望事实须同步修订，否则一致率失真。修订须走内容变更流程，不可静默改期望值凑分。
 - **题库口径变更（2026-08-18）**：分母 26 → 38（FQ-27+ 扩展，rubric.md §3 同步）；SLO ≥94% 不变，38 题下需 ✅ ≥ 36。

@@ -138,50 +138,57 @@ def build_pages() -> dict[str, PageContentData]:
             "jianli",
             [
                 (
-                    "Jianli 是我独立开发并准备正式上线的 AI 面试协作站：把简历与项目 RAG 问答、"
-                    "登录注册、会话、动态时段、预约管理、邮件与飞书通知串成产品链。技术栈是 "
-                    "FastAPI、SQLAlchemy/Alembic 0010、PG16 + pgvector、Redis7、React19、"
-                    "DeepSeek V4 Flash 与 BGE-M3。"
+                    "Jianli 是我独立开发并准备正式上线的 AI 面试协作站。React 19 调用 FastAPI，"
+                    "把简历与项目 RAG、邮箱验证码登录、本人会话、动态 Slot、预约管理、管理员看板、"
+                    "邮件和飞书同步串成产品链；数据层是 SQLAlchemy/Alembic 0010、PG16 + pgvector"
+                    "与 Redis7，模型链路使用 DeepSeek V4 Flash、BGE-M3 和可选 Qwen3-Reranker-8B。"
+                    "证据门、服务端 RBAC、数据库事务分别约束回答、工具和副作用。"
                 ),
                 (
-                    "Jianli 检索采用向量 top10 + BM25 top10，经 RRF 融合最多 12 个候选，再由可选 "
-                    "Cross-Encoder 取 top6；0.47 阈值和 CJK 门槛使越界集 10/10 拒答。BGE-M3 "
-                    "纯向量 avg-rank 1.3，对照本地哈希 1.8。Agent 有五个"
-                    "白名单工具：知识检索，以及在 RBAC 下创建、查询、取消、改期预约；"
-                    "MAX_STEPS=4，写操作复用 BookingService。"
+                    "模型可自主生成检索词，但服务端同时检索模型词和用户原问题并去重合并，避免"
+                    "改写失真丢证据。BGE-M3 向量 top10 必须先过 0.47；没有向量候选时不会仅凭"
+                    "BM25 中文单字重叠硬答。通过后与 BM25 top10 做 RRF(k=60) 融合 top12，可选"
+                    "Cross-Encoder 再取 top6，并保持页面/项目域隔离。回答以 SSE 返回引用；无依据"
+                    "明确拒答。BGE-M3 纯向量 avg-rank 1.3，本地哈希 fallback 为 1.8。"
                 ),
                 (
-                    "Jianli Agent Lab 提供依据问答、多步只读预约、安全越权攻击、无依据拒答四个"
-                    "真实挑战，点击后调用右侧 SSE 问答。answer.trace 展示策略、路由、检索/工具、"
-                    "生成与结果的脱敏时间线，只含白名单字段，不含原文、Prompt、知识内容、"
-                    "工具参数/完整结果或预约 PII，也不是模型思维链。"
+                    "避免智能体乱调用不能只靠 Prompt：Jianli Agent 最多循环 4 步，只注册检索、"
+                    "创建预约、查询/取消/改期本人预约五个"
+                    "工具；未知工具拒绝，预约工具必须登录且复用 BookingService，模型不能直写"
+                    "数据库，"
+                    "管理员管理他人走独立管理端边界。Agent Lab 的四类挑战调用同一 SSE 真链路。"
+                    "answer.trace 只公开单调步骤、固定阶段/状态、白名单工具、耗时和短标签，不含"
+                    "Prompt、原文、参数、完整结果或 PII；它是执行事实，不是模型思维链。"
                 ),
                 (
-                    "Jianli 评测中心是项目页公开证据、无需登录，读取版本化报告；当前 79/79："
-                    "Agent/Trace 22、事实一致性 38、"
-                    "Web 1、Reranker 协议 4、缓存与 Provider 韧性 8、多副本熔断 6。GitHub Actions "
-                    "已有 backend→RAG→Web 串行硬门禁，本地等价流程通过；尚未授权 push，"
-                    "没有远端 Actions run，不能说云端 CI 已实际运行。"
+                    "Jianli 评测中心读取带时间和 verified commit 的版本化报告；当前 79/79 分为"
+                    "Agent/Trace 22、RAG 事实 38、Web 1、Reranker 协议 4、缓存/Provider 韧性 8、"
+                    "跨实例熔断 6。真实 RAG 门禁上传语料并走 BGE-M3、pgvector、命中/拒答/隐私。"
+                    "GitHub workflow 定义 backend→RAG→Web 三个串行 job，但现有证据是本地等价"
+                    "门禁通过，没有远端 Actions run，不能说云端流水线已跑绿；79/79 也不等于"
+                    "生产准确率。"
                 ),
                 (
-                    "Jianli 可观测闭环用 OpenTelemetry 记录 "
-                    "HTTP/AIQA/tool/rerank/cache/breaker 阶段，"
-                    "Prometheus 私网抓取低基数指标，Grafana 当前 10 个面板；Nginx 对公网 metrics "
-                    "返回 404。未配置 OTLP 时 no-op，采集失败不影响业务；禁止原文、PII、密钥和"
-                    "高基数 ID。配置与测试已验证，完整容器栈首次部署 smoke 仍待执行。"
+                    "Jianli 显式启用 OpenTelemetry 后覆盖完整 HTTP 流式响应，并观测 AIQA 结果/耗时/"
+                    "token、工具、重排、缓存和熔断；标签只用规范化 route 与有界状态。Prometheus "
+                    "私网 /internal/metrics 对公网 404，Grafana 有 10 个面板。问题、回答、Prompt、"
+                    "知识原文、PII、密钥、高基数 ID 和异常正文不进属性。代码和测试已验证，完整"
+                    "Collector/Prometheus/Grafana 容器栈 smoke 尚未完成。"
                 ),
                 (
-                    "Jianli 的 Qwen3-Reranker-8B 只重排已授权候选，失败回退 RRF；5 题真实 provider "
-                    "组件对照 MRR 0.3333→1.0000、Hit@1 0/5→5/5。它证明了这组候选的排序改善，"
-                    "但样本很小，不能外推为端到端生产质量；79/79 同样不是生产准确率，"
-                    "重排也不能扩大召回或绕过拒答。"
+                    "Qwen3-Reranker-8B 只重排已经通过域过滤和证据门的 RRF top12；服务端校验返回"
+                    "数量、类型、重复和越界索引后取 top6。超时 5 秒、429/5xx、畸形协议或熔断都"
+                    "完整回退 RRF 原顺序。5 题真实 provider 组件对照 MRR 0.3333→1.0000、Hit@1 "
+                    "0/5→5/5，只能证明这组候选排序改善，不能外推生产质量，也不能绕过拒答。"
                 ),
                 (
-                    "Jianli 预约用 3 分钟预览令牌且不预占，创建时复核连续 Slot，并以行锁和数据库"
-                    "唯一约束防超卖；AES-256-GCM 保护敏感字段，Outbox 异步投递邮件/飞书。匿名"
-                    "grounded 回答可进同域语义缓存，LLM/Reranker 使用 Redis Lua 共享熔断；"
-                    "一次检索回归 8/8→6/8 的根因是 litchi 中 hi 被问候判断误匹配，改整词后恢复。"
-                    "正式域名部署、远端 CI 和完整观测栈 smoke 仍属于上线验收。"
+                    "预约预览令牌绑定用户和表单、3 分钟有效且不占 Slot；确认时同一事务锁公司和"
+                    "三个连续 30 分钟 Slot，写预约、更新 Slot、Outbox 与审计。Slot 竞争靠行锁和"
+                    "事务复核；活动用户/公司部分唯一索引独立约束重复预约，不是行锁失效兜底。"
+                    "字段以带 AAD 的 AES-256-GCM 加密，去重存 HMAC 指纹；过期预约自动完成。"
+                    "Outbox Worker 用 SKIP LOCKED，属于 at-least-once 而非外部 exactly-once。匿名无"
+                    "会话的 grounded 回答才进 0.94/600 秒语义缓存，知识变更失效；LLM/Reranker 用"
+                    "Redis Lua 共享熔断和单恢复探针。正式域名与完整观测 smoke 仍待验收。"
                 ),
             ],
         ),

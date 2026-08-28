@@ -10,7 +10,7 @@ secure-cookie / HTTP 限制。
 
 用法（WSL，uvicorn 已在跑）：
     cd /mnt/c/Users/hxt02/Desktop/jianli/apps/api
-    python3 scripts/seed_kb.py            # 清理现存 docs（含 failed）+ 上传 CORPUS（19 篇）
+    python3 scripts/seed_kb.py            # 清理现存 docs（含 failed）+ 上传 CORPUS（20 篇）
     python3 scripts/seed_kb.py --no-clear # 只上传（新 checksum 新建 doc，旧 doc 保留）
 
 说明：KB 与静态页（content.py）是两个独立检索源——本脚本只更新 KB（pgvector，线上简历域

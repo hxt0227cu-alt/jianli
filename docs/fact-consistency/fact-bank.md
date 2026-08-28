@@ -1,11 +1,9 @@
 # 简历事实一致率 · 题库（FQ-01 … FQ-38）
 
-> **事实源（ground truth）**：`apps/api/app/aiqa/content.py` 的 `build_pages()` 中
-> `resume` 页 chunks（`doc="简历"`，R0–R4）与 `projects` 页 `projects_jianli` chunks
->（`doc="jianli"`，J0–J7）。**仅这些 chunk 文本进入 RAG 检索语料**，所以题库只问
-> chunk 内能溯源的事实，不考教育背景等仅在 `sections`（页面展示用、不进检索）里的字段。
-> 注：简历域线上检索 KB(pgvector) 优先、content.py `resume_chunks` 兜底；FQ-03/04/08/09
-> 的事实经 TASK-AIQA-FACTCOVERAGE-013 已补入 content.py 的可检索 chunk（R6 工作经历 + R3 人格层）。
+> **事实源（ground truth）**：线上优先使用 `test_rag_eval.py` 的 canonical corpus；个人域由
+> `profile.md`、`credentials.md`、`behavior-stories.md` 承载，项目域使用各项目分层文档。
+> `content.py` 页面 chunks 是同源静态兜底。题库期望必须同时与 corpus 和静态兜底一致，
+> 不允许用旧文档名或旧统计维持表面通过。
 >
 > **检索域（scope）**：每题标注 `page_key` / `project_key`，与 `measure_fact_consistency.py`
 > 一一对应。检索按 page 隔离，域标错会误拒（详见脚本说明）。
@@ -75,8 +73,8 @@
 ## B 组 · jianli 项目域（page_key=`projects`，project_key=`jianli`）
 
 ### FQ-11 · jianli 这个项目是做什么的？
-- **期望事实**：个人 AI 问答网站（本项目自身）；把简历问答、项目追问、面试预约做成一条可验证的产品链。
-- **溯源**：J0「jianli 是个人 AI 问答网站（本项目自身）：把简历问答、项目追问与面试预约做成一条可验证的产品链。」
+- **期望事实**：面向正式上线的 AI 面试协作站；把简历/项目 RAG 问答、登录注册、会话、动态时段、预约管理、邮件与飞书通知做成一条可验证产品链。
+- **溯源**：CORPUS `jianli-overview.md`。
 - **判定要点**：点出"个人 AI 问答网站 + 三件套产品链" ✅；只答"问答网站"不冲突 ⚠️；答成"别人的产品"❌。
 
 ### FQ-12 · jianli 处理越界或无依据问题的原则是什么？
@@ -85,73 +83,73 @@
 - **判定要点**：命中"真实性优先 / 一律拒答 / 不编造" ✅；答成"会尽量编一个"❌。
 
 ### FQ-13 · jianli 的后端技术栈是什么？
-- **期望事实**：FastAPI + SQLAlchemy + Alembic（0001–0007 迁移共 15 张表，up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7。
-- **溯源**：J1。
-- **判定要点**：命中 FastAPI + Alembic(15 张表/可逆) + PG16 + pgvector + Redis7 主体 ✅；把表数说错（如 11 张）⚠️→若坚持错误数值 ❌；说成 MySQL ❌。
+- **期望事实**：FastAPI + SQLAlchemy + Alembic（迁移已到 0010）+ PostgreSQL 16 + pgvector + Redis 7；前端 React 19，LLM/embedding 为 DeepSeek V4 Flash + BGE-M3。
+- **溯源**：CORPUS `jianli-overview.md`。
+- **判定要点**：命中 FastAPI + Alembic 0010 + PG16/pgvector + Redis7 主体 ✅；说成 MySQL 或仍停在 0007 ❌。
 
 ### FQ-14 · jianli 用什么模型和 embedding？
 - **期望事实**：LLM 用 DeepSeek V4 Flash（chat）；embedding 用硅基流动 BGE-M3（1024 维）。
-- **溯源**：J1。
+- **溯源**：CORPUS `jianli-overview.md` / `jianli-agent-rag.md`。
 - **判定要点**：命中 DeepSeek V4 Flash + BGE-M3(1024 维) ✅；说成 GPT/Claude 主模型 ❌。
 
 ### FQ-15 · jianli 的检索是怎么做的？
-- **期望事实**：向量 top10 + BM25 top10 经 RRF 融合取 top6 作为引用。
-- **溯源**：J2。
-- **判定要点**：命中"向量 + BM25 + RRF 融合 top6" ✅；只说"向量检索"⚠️；说成"只靠关键词"❌。
+- **期望事实**：向量 top10 + BM25 top10 经 RRF 融合最多 12 个候选，可选 Cross-Encoder 重排后取 top6。
+- **溯源**：CORPUS `jianli-agent-rag.md` / `jianli-reranker.md`。
+- **判定要点**：命中"向量 + BM25 + RRF top12 + 可选重排 top6" ✅；只说向量检索或把 Cross-Encoder 说成召回层 ❌。
 
 ### FQ-16 · jianli 把 embedding 换成 BGE-M3 后检索质量有什么变化？
 - **期望事实**：纯向量层 avg-rank 从本地哈希的 1.8 降到 BGE-M3 的 1.3。
-- **溯源**：J2「BGE-M3 avg-rank 1.3 vs 本地哈希 1.8」。
+- **溯源**：CORPUS `jianli-agent-rag.md`。
 - **判定要点**：命中"1.3（BGE-M3）vs 1.8（本地哈希）且 BGE-M3 更优" ✅；数值颠倒或说反 ❌。
 
 ### FQ-17 · jianli 怎么判断一个问题该拒答？
 - **期望事实**：双层门槛：① 知识库向量相关性阈值 0.47；② 静态检索加 CJK 停用词过滤（功能字不参与重叠计数）。
-- **溯源**：J3。
+- **溯源**：CORPUS `jianli-agent-rag.md`。
 - **判定要点**：命中"0.47 阈值 + CJK 停用词双层" ✅；只说阈值 ⚠️；说成"完全不拒答"❌。
 
 ### FQ-18 · jianli 的拒答率现在是多少？
 - **期望事实**：从 0% 提升到 100%（评测 REJECT 10/10）。
-- **溯源**：J3「拒答率从 0% 提升到 100%（评测 REJECT 10/10）。」
+- **溯源**：CORPUS `jianli-agent-rag.md`。
 - **判定要点**：命中"拒答率 100%（REJECT 10/10）" ✅；说"拒答率 0%"❌（那是修复前的基线）。
 
 ### FQ-19 · jianli 的 Agent 能调用哪些工具？
-- **期望事实**：`search_knowledge` 一个白名单只读工具 + `list_my_appointments` / `cancel_appointment` / `reschedule_appointment` 三个 RBAC 守卫的预约管理工具（面试官仅本人、owner_admin 可管理全部含他人）；MAX_STEPS=4 防死循环，5 种异常映射为结构化 outcome。
-- **溯源**：J4（content.py projects_chunks jianli，TASK-AIQA-AGENT-CRUD-001 已推翻原 PRD#14 禁令并登记 agent_tools）。
-- **判定要点**：命中"search_knowledge 只读 + list/cancel/reschedule 三个 RBAC 守卫的预约管理工具，本人/管理员双范围" ✅；说"Agent 能直接写数据库/发邮件"或"预约端点绝不开放"❌。
+- **期望事实**：五个白名单工具：`search_knowledge`、`request_interview_booking`、`list_my_appointments`、`cancel_appointment`、`reschedule_appointment`；面试官只管理本人，owner_admin 才能管理他人，写操作复用 BookingService，MAX_STEPS=4。
+- **溯源**：CORPUS `jianli-agent-rag.md` / `docs/baseline.yml agent_tools`。
+- **判定要点**：命中五工具 + 本人/管理员 RBAC + BookingService 复用 ✅；说 Agent 可直接写数据库、导出他人信息或调用白名单外工具 ❌。
 
 ### FQ-20 · jianli 的 Agent 是怎么决定要不要检索的？
 - **期望事实**：模型通过 function calling（`tool_choice=auto`）自主决策是否检索并生成检索词。
-- **溯源**：J4。
+- **溯源**：CORPUS `jianli-agent-rag.md`。
 - **判定要点**：命中"function calling / tool_choice=auto 模型自主决策" ✅；说成"硬编码固定检索词"❌（那是演进前的旧方案）。
 
 ### FQ-21 · jianli 用什么来量化检索质量？
-- **期望事实**：`tests/aiqa/test_rag_eval.py` 基于真实语料（10 篇上传→分块→混合检索→streamAnswer 全链路）。
-- **溯源**：J5。
+- **期望事实**：`tests/aiqa/test_rag_eval.py` 将 canonical corpus 真实上传、分块、embedding 入库，再通过混合检索与 `streamAnswer` 验证命中、拒答、隐私和误拒，不是只测一个 mock scorer。
+- **溯源**：CORPUS `jianli-evaluation-ci.md` + `tests/aiqa/test_rag_eval.py`。
 - **判定要点**：命中"test_rag_eval.py + 真实语料全链路" ✅；说"没有评测"❌。
 
 ### FQ-22 · jianli 的检索评测达到了什么水平？
-- **期望事实**：LITERAL 8/8、REJECT 10/10、语义 / 极端改写用例 6/6。
-- **溯源**：J5。
-- **判定要点**：命中三项核心比例 ✅；把 8/8 说成 6/8（那是一度退化的值）⚠️→若坚持 ❌。
+- **期望事实**：当前版本化报告中 RAG 事实一致性 38/38；越界集 10/10 拒答。整体报告为 79/79，但样本规模有限，不能等同生产质量。
+- **溯源**：CORPUS `jianli-evaluation-ci.md` / `apps/web/evals/latest.json`。
+- **判定要点**：命中 38/38 + 10/10 + 有限样本边界 ✅；把整体 79/79 说成 79 条全是 RAG 问题或生产准确率 100% ❌。
 
 ### FQ-23 · jianli 的预约业务闭环有哪些关键保障？
 - **期望事实**：Slot 快照与并发锁、3 分钟预览不预占、原子创建、字段级 AES-256-GCM 加密、Outbox 通知、审计日志、SSE 恢复契约。
-- **溯源**：J6。
+- **溯源**：CORPUS `jianli-reliability.md`。
 - **判定要点**：命中 4 项以上关键保障 ✅；只答"有加密"⚠️；说成"无加密明文存储"❌。
 
 ### FQ-24 · jianli 的集成测试情况如何？
-- **期望事实**：真实 PG16 + Redis7 集成测试 53+ passed；ruff / mypy 门禁全绿。
-- **溯源**：J6。
-- **判定要点**：命中"53+ passed + ruff/mypy 全绿" ✅；说"0 测试"❌。
+- **期望事实**：当前公开版本化证据合计 79/79，覆盖 Agent/Trace 22、RAG 事实 38、Web 1、Reranker 协议 4、缓存/Provider 韧性 8、多副本熔断 6；GitHub 三作业已完成本地等价门禁，但远端 run 尚待授权 push。
+- **溯源**：CORPUS `jianli-evaluation-ci.md` / `apps/web/evals/latest.json`。
+- **判定要点**：命中 79/79 的分组含义 + 远端未跑边界 ✅；说远端 GitHub Actions 已绿或把它说成 79 条端到端生产测试 ❌。
 
 ### FQ-25 · jianli 的 embedding 经历过什么演进？
 - **期望事实**：从本地哈希（无语义）换成 BGE-M3。
-- **溯源**：J7「embedding 从本地哈希换成 BGE-M3（哈希无语义）」。
+- **溯源**：CORPUS `jianli-agent-rag.md`。
 - **判定要点**：命中"本地哈希 → BGE-M3，哈希无语义" ✅；说反方向 ❌。
 
 ### FQ-26 · jianli 开发中有过什么值得记录的坑？
 - **期望事实**：Agent 模型自主决策上线后评测一度 8/8→6/8，根因是 greeting 判定里 'hi' 子串误匹配 'litchi'，改整词匹配修复。
-- **溯源**：J7。
+- **溯源**：CORPUS `jianli-reliability.md`。
 - **判定要点**：命中"greeting 'hi'⊂'litchi' 子串误匹配、改整词匹配" ✅；说成"没有任何坑"❌（与诚实记录相悖）。
 
 ---
@@ -199,32 +197,32 @@
 
 ### FQ-34 · 你在泰益智是怎么带人的？
 - **期望事实**：团队 1→3 人；教同事 Figma（UI/UX）与 MQTT（数据上报）；方式 = 1 对 1 实操演示 → 布置任务 + 验收 → 不停改版迭代；Figma 设计稿与小程序端能力冲突 → 列转换成本清单对齐、先还原核心页再迭代。
-- **溯源**：CORPUS `interview-story.md`「带人与协作」。
+- **溯源**：CORPUS `behavior-stories.md`「行为故事、协作与职业动机」。
 - **判定要点**：命中"1 对 1 实操→任务+验收→改版"或"先还原核心页" ✅；说"没带过人"❌。
 
 ### FQ-35 · 你工程上最大的教训是什么？
 - **期望事实**：① 67/84 配置漂移——"失败记录是证据不是污点、评测自己暴露漂移比上线后被用户发现好"；② 静默错误——"错误不报 ≠ 没问题、零报错最危险、对每个探针结果做语义核验"；③ 并发压测时间边界止损。
-- **溯源**：CORPUS `interview-story.md`「失败与复盘」。
+- **溯源**：CORPUS `behavior-stories.md`「行为故事、协作与职业动机」。
 - **判定要点**：命中任意一条核心教训 ✅；说"没什么教训"❌（与诚实记录相悖）。
 
 ### FQ-36 · 你的求职动机和职业规划是什么？
 - **期望事实**：科班 + 2023 年起用 AI 工具编程 → 前后端项目 → 泰益智从 0 做项目、从架构角度思考工程 → AI 全栈方向；意向深圳南山（充满理想的城市 + AI 产业密集）；选公司看重更大平台；5 年目标一步步往架构师方向走；一句话自荐"文档/契约/评测/门禁都是交付物，让任何接手的人（同事或 AI）无缝上手"。
-- **溯源**：CORPUS `interview-story.md`「求职动机」「文档化沟通」。
+- **溯源**：CORPUS `behavior-stories.md`「行为故事、协作与职业动机」。
 - **判定要点**：命中"2023 起 AI 编程 / 深圳南山 / 架构师 / 可交接"至少两项 ✅；说成"没有规划"❌。
 
 ### FQ-37 · 慧眼识蚁项目是做什么的？
 - **期望事实**：红火蚁精准防控的"大数据 + 机器人"装备（挑战杯科技发明制作 A 类、团队 5 人我任第一作者）：① 蚁丘-蚁巢识别估算（CNN 多核卷积 + GANs 还原运动蚂蚁轮廓区分红火蚁与本地蚁 + 回归模型估蚁巢大小）；② 户外巡检 + 药剂投放机器人（多传感器融合 + GPS + 环境感知）；③ 大数据决策云平台（时间序列 + 稀疏门控 MoE 预测繁殖/迁徙趋势，输出重点巡检区域）。
-- **溯源**：CORPUS `interview-story.md`「慧眼识蚁」。
+- **溯源**：CORPUS `behavior-stories.md`「慧眼识蚁竞赛」。
 - **判定要点**：命中"红火蚁 + 大数据/机器人 + CNN/GANs/MoE 任一项" ✅；说成"与蚂蚁无关"❌。
 
 ### FQ-38 · 慧眼识蚁做到了什么程度？
 - **期望事实**：完成实物中试/原型、已落地实测；识别准确率 ≥95% 为申报书目标指标（非必达实测数字）；相关专利属学校（申报号 [专利号已脱敏]）；对应 2024 大创国家级立项（第一负责人）。
-- **溯源**：CORPUS `interview-story.md`「慧眼识蚁」。
+- **溯源**：CORPUS `behavior-stories.md`「慧眼识蚁竞赛」。
 - **判定要点**：命中"实物中试/原型 + 已落地实测" ✅；把 ≥95% 说成"实测已达成"⚠️（如实标注为目标指标）；专利说成个人申报 ❌（属学校）。
 
 ---
 
 ## 备注
-- **不考项**：教育背景（仅 `sections` 有、不进检索语料）。**FQ-27+ 已由 TASK-AIQA-KB-EXPAND-014 扩展**：C 组 litchi 架构（FQ-27~30）、D 组 sleep 泰益智（FQ-31~33）、E 组行为/动机/竞赛（FQ-34~38，溯源 interview-story.md）。FQ-27+ 的 page_key/project_key 与 `measure_fact_consistency.py` QUESTION_BANK 同步。
+- **覆盖项**：个人教育、能力、证书、行为故事已进入三篇 canonical profile 文档；C 组 litchi（FQ-27~30）、D 组 sleep（FQ-31~33）、E 组行为/动机/竞赛（FQ-34~38，溯源 `behavior-stories.md`）。QUESTION_BANK 的问题与域保持不变，仅等价替换文档来源。
 - **漂移风险**：若 `content.py` chunk 文本变更，本题库期望事实须同步修订，否则一致率失真。修订须走内容变更流程，不可静默改期望值凑分。
 - **题库口径变更（2026-08-18）**：分母 26 → 38（FQ-27+ 扩展，rubric.md §3 同步）；SLO ≥94% 不变，38 题下需 ✅ ≥ 36。

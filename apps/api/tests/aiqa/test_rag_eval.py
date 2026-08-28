@@ -48,36 +48,26 @@ pytestmark = pytest.mark.skipif(
 )
 
 # ---------------------------------------------------------------------------
-# Evaluation corpus (4 Chinese markdown docs, keyword-distributed). The text is
-# deliberately kept under one chunk each (~<500 chars) so a hit maps to one doc.
+# Canonical public corpus. Project documents stay short and domain-scoped; profile
+# documents are consolidated to avoid duplicate facts and retrieval crowd-out.
 # ---------------------------------------------------------------------------
 
 CORPUS: dict[str, str] = {
-    "resume.md": (
-        "# [姓名已脱敏] · 个人简历\n"
-        "姓名：[姓名已脱敏]（名字：[姓名已脱敏]）。我叫[姓名已脱敏]。年龄 22，电话 [手机号已脱敏]（微信同号），"
-        "邮箱 [邮箱已脱敏]，中共党员。\n"
-        "## 教育背景\n"
-        "[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业，"
-        "2026 届本科，专业排名 3/153（前 2%），中共党员。\n"
-        "## 实习与项目\n"
-        "在泰益智医疗科技（广州）有限公司（2025.12—2026.06）实习，岗位 AI 全栈开发工程师，"
-        "在团队开发的睡眠健康 AI Agent 平台中主要负责云端后端、Agent Runtime 与 RAG，"
-        "也参与遥测链路、多租户治理和联调排障；同步任务改为有界异步接纳后，同一 RC 口径下"
-        "接纳吞吐由 87.78 提升到 433.53 次/秒（+393.9%），P95 由 1347.73ms 降至 "
-        "228.85ms。该指标衡量任务接纳，不代表 LLM 推理提速。\n"
-        "## 技术栈\n"
-        "精通 Python 与 FastAPI 后端开发，熟悉 RAG 检索增强生成与 AI Agent 编排；"
-        "实习中使用 NestJS、LangGraph、K8s / ArgoCD、Taro 微信小程序、Kafka/Flink/ClickHouse "
-        "数据平台。\n"
-        "## 求职意向\n"
-        "投递方向 AI 全栈开发工程师，意向城市深圳市南山区。"
+    "profile.md": (
+        "# [姓名已脱敏]｜个人档案、教育与能力\n"
+        "我叫[姓名已脱敏]，[学校已脱敏]计算机科学与技术专业 2026 届本科，中共党员，专业排名 "
+        "3/153（前 2%）。求职方向是 AI 全栈/后端与平台工程，意向深圳南山。实习中主要负责"
+        "云端后端、Agent Runtime 与 RAG，也参与数据链路、多租户治理、联调和产品协作。"
+        "技术栈包括 Python/FastAPI、NestJS、PostgreSQL/pgvector、Redis、TypeScript/React、"
+        "LangGraph、Docker、K8s/ArgoCD、Kafka/Flink/ClickHouse；日常在 WSL/Linux 下开发、"
+        "部署和排查。我偏好先设计后编码，把文档、契约、评测、门禁和可观测性都视为交付物。"
     ),
-    "honors.md": (
-        "# 荣誉证书与竞赛经历\n"
-        "获得 2025 年国家励志奖学金，2024 年大创国家级立项（第一负责人），"
-        "挑战杯 A 类赛事路演资格，2022—2026 校级奖学金，2026 年优秀毕业生；"
-        "持有 TiDB 数据库专员 PCTA 认证，大学英语四级 CET4。技术博客：CSDN。"
+    "credentials.md": (
+        "# 证书、荣誉与竞赛资格证明\n"
+        "持有 PingCAP TiDB 数据库专员 PCTA 认证证书和大学英语四级 CET4。获得 2025 年国家励志"
+        "奖学金、2022—2026 校级奖学金、2026 年优秀毕业生；2024 年大学生创新创业训练计划"
+        "国家级立项第一负责人，并获得挑战杯科技发明制作 A 类赛事路演资格。识别准确率 ≥95% "
+        "是红火蚁项目申报书目标指标，不表述为已经实测达到；相关专利属于学校。"
     ),
     "litchi-overview.md": (
         "# Litchi Copilot｜项目概览与核心价值\n"
@@ -169,105 +159,99 @@ CORPUS: dict[str, str] = {
         "不展示源码、日志或截图，也不把它当作公开仓库可复现证据。下一步应补齐事务 Outbox、"
         "服务身份与设备归属校验、Temporal 恢复演练和跨 Pod/真机端到端幂等验证。"
     ),
-    # EVAL-002: corpus expanded to 10 docs so top-6 has real discrimination.
-    "education.md": (
-        "# 教育背景与毕业设计\n"
-        "[学校已脱敏]（广州 · 公办本科）计算机科学与技术专业，"
-        "2026 届本科。\n"
-        "专业排名 3/153（前 2%），中共党员。\n"
-        "毕业设计（2026 届优秀毕业设计，得分 90.4）："
-        "《基于大模型 RAG 的荔枝智能问答平台设计与实现》。"
+    "jianli-overview.md": (
+        "# Jianli AI 面试协作站｜项目定位\n"
+        "这是我独立开发并准备以正式域名上线的求职作品：把简历与项目 RAG 问答、登录注册、"
+        "对话留存、动态面试时段、预约管理、邮件与飞书通知串成完整产品链。技术栈为 FastAPI、"
+        "SQLAlchemy/Alembic（迁移已到 0010）、PostgreSQL 16 + pgvector、Redis 7、React 19、"
+        "DeepSeek V4 Flash 与 BGE-M3。它的核心不是聊天页面，而是让代表我发言的 Agent 有依据"
+        "才回答、有权限才操作，并让并发、隐私、通知和失败路径可验证。"
     ),
-    "skills.md": (
-        "# 工程能力与工具链\n"
-        "熟悉 Git（提交纪律 / PR / 变更预算治理）与 Docker 容器化部署（毕设 3 个 Dockerfile + "
-        "7 服务 docker-compose 本地编排；K8s 部署用过、运维深度有限）。\n"
-        "做过 SQL 查询与索引设计：jianli pgvector 余弦检索 <=> + 0.47 阈值校准、毕设 MySQL 14 张表 "
-        "idx_platform_* 二级索引、泰益智 dbt 模型 SQL。\n"
-        "日常在 WSL/Linux 下开发与排查（py_compile / psycopg / 日志定位）；监控指标接触过"
-        "（毕设 Prometheus、泰益智 feature-service 指标），非专职 SRE。\n"
-        "测试扎实：pytest RAG 评测 7/7 + 集成测试 53+ + Jest 144 + 毕设 JUnit 38，"
-        "评测与门禁日常在跑。"
+    "jianli-agent-rag.md": (
+        "# Jianli 受控 Agent 与 RAG\n"
+        "知识检索采用向量 top10 + BM25 top10，经 RRF 融合取最多 12 个候选，再由可选 "
+        "Cross-Encoder 取 top6；0.47 向量阈值与 CJK 静态门槛共同约束无依据拒答（越界集 "
+        "10/10）。生产 embedding 是 1024 维 BGE-M3，纯向量 avg-rank 1.3，对照无语义的本地"
+        "哈希为 1.8。Agent 通过 "
+        "function calling 自主决定是否 search_knowledge，登录后还可在 RBAC 下创建、查询、取消和"
+        "改期本人预约；owner_admin 才能管理他人。所有写操作复用 BookingService，MAX_STEPS=4 "
+        "防止循环失控，不允许白名单外工具或直接写数据库。检索效果不理想时，会分别检查域过滤、"
+        "分块、向量/BM25 召回、RRF 排序、阈值和评测集，而不是只改 Prompt。"
     ),
-    "internship.md": (
-        "# 实习与团队协作\n"
-        "在初创团队承担全栈开发职责，与产品、设计协作推进功能上线；习惯编写"
-        "技术文档与交接说明，擅长把复杂实现讲给非技术同事听。"
+    "jianli-agent-lab.md": (
+        "# Jianli Agent Lab｜真实挑战与脱敏轨迹\n"
+        "页面内置依据问答、多步只读预约、安全越权攻击、无依据拒答四类挑战；点击后调用右侧真实 "
+        "SSE 问答，不展示预制答案。服务端按 policy、routing、retrieval/tool、generation、result "
+        "发出 step 单调递增的 answer.trace，前端可展开时间线。轨迹只允许固定 phase/status、"
+        "白名单工具名、耗时和短标签，不包含用户原文、Prompt、知识原文、工具参数/完整结果或预约 "
+        "PII；它是结构化执行事实，不是模型思维链。"
     ),
-    "certificates.md": (
-        "# 认证与竞赛\n"
-        "持有 PingCAP TiDB 数据库专员 PCTA 认证证书，大学英语四级 CET4。\n"
-        "2025 年国家励志奖学金、2024 年大创国家级立项（第一负责人）、"
-        "挑战杯 A 类赛事路演资格、2022—2026 校级奖学金、2026 年优秀毕业生；"
-        "参与过校内创新创业项目申报与路演，在团队中负责方案设计与进度管理。"
+    "jianli-evaluation-ci.md": (
+        "# Jianli 评测中心与 CI 门禁\n"
+        "评测中心是项目页公开证据，无需登录；页面读取版本化报告并展示样本数、时间、"
+        "verified commit、套件结果与脱敏失败/边界案例。"
+        "当前报告为 79/79：Agent/Trace 22、RAG 事实一致性 38、Web 交付 1、Cross-Encoder 协议 4、"
+        "语义缓存与 Provider 韧性 8、多副本共享熔断 6。GitHub Actions 定义 backend-agent → "
+        "rag-integration → web-delivery 三个串行硬门禁；本地等价门禁已通过，但仓库尚未授权 push，"
+        "所以回答‘GitHub CI 真跑过了吗’时必须说：没有远端 Actions run，不能说云端 CI 已实际跑过。"
     ),
-    "rag-notes.md": (
-        "# RAG 实践笔记\n"
-        "记录混合检索的调优经验：向量与关键词的召回差异、分块大小对引用的影响、"
-        "相似度阈值对拒答行为的约束，以及评测集在检索回归中的作用。"
+    "jianli-observability.md": (
+        "# Jianli OpenTelemetry + Prometheus/Grafana\n"
+        "API 以 OpenTelemetry 记录 HTTP、AIQA、工具、重排、语义缓存和熔断阶段，配置 OTLP 后由 "
+        "Collector 导出；未配置时 no-op，导出失败不改变回答。Prometheus 从容器私网 "
+        "/internal/metrics 抓取低基数指标，Nginx 对公网明确返回 404，Grafana Agent Overview 当前有 "
+        "10 个面板。标签和 Span 禁止问题/回答/Prompt/知识原文、PII、密钥、高基数 ID 与异常正文。"
+        "配置和自动化测试已验证，完整观测容器栈首次部署 smoke 仍待执行。"
     ),
-    "agent-notes.md": (
-        "# Agent 工程笔记\n"
-        "记录受控 Agent 的设计模式：如何防止智能体乱调用工具——工具白名单（只允许已注册工具）、"
-        "步骤预算（限制步数）、人工审批节点（高风险写操作需确认）、失败重试与幂等键，"
-        "以及如何通过可观测性追踪一次完整的工具调用链。"
+    "jianli-reranker.md": (
+        "# Jianli Reranker 对照实验\n"
+        "高召回层先做 vector + BM25 + RRF top12，页面/项目域过滤与相关性门槛之后，才把问题和"
+        "候选片段交给可选 Qwen3-Reranker-8B Cross-Encoder，最终取 top6。超时、429/5xx、畸形"
+        "响应、重复或越界索引都 fail-open 回退原 RRF 顺序，每次检索最多外调一次且超时上限 5 秒。"
+        "真实 provider 的 5 题组件对照为 MRR 0.3333→1.0000、Hit@1 0/5→5/5；样本很小，"
+        "只能证明组件排序改善，不能外推端到端生产质量；79/79 版本化检查同样不是生产准确率。"
     ),
-    # TASK-AIQA-KB-EXPAND-014: 行为故事、求职动机与竞赛项目（Round 2 访谈产出）。
-    "interview-story.md": (
-        "# 行为故事、求职动机与竞赛项目\n"
-        "## 工程方法论与人设\n"
-        "我偏好先设计后编码，重视可观测性、可演进性与契约测试。确定性验证 + 诚实记录是我做工程"
-        "的原则：评测入口钉死 deterministic provider（不读环境变量），失败记录刻意保留当证据——"
-        "可复现的未通过比包装过的通过更有价值。\n"
-        "## 带人与协作\n"
-        "在泰益智实习时团队从 1 人带成 3 人：教同事用 Figma 做 UI/UX、教同事做 MQTT 数据上报；"
-        "带人方式是 1 对 1 实操演示一遍 → 布置任务 + 验收 → 不停改版迭代。跨职能冲突的处理："
-        "Figma 设计稿（CSS 语义）不能直接用于小程序（WXSS + 小程序组件体系），逐页转译成本高"
-        "——我列转换成本清单与设计对齐，先还原核心页再迭代。\n"
-        "## 失败与复盘\n"
-        "三个真实教训：① 配置漂移——评测曾继承环境变量只过 67/84，钉死后恢复，我既气又庆幸："
-        "评测体系自己暴露了漂移而不是上线后被用户发现，失败记录是证据不是污点；② 并发压测——"
-        "200 并发仅 19% 成功，修复四项后仍不达标，时间边界到了就停止并显式登记已知问题，"
-        "不 hack 掩盖；③ 51 条重复——数据对不上就是 bug，错误不报不等于没问题，零报错恰恰是"
-        "最危险的信号，要养成对每个探针结果做语义核验的习惯。\n"
-        "## 时间线与多线程\n"
-        "大三：挑战杯 + 大创国家级立项（第一负责人）+ "
-        "学生会主席（23 人团队）+ 2025 国家励志奖学金。"
-        "大四上学期集中研究嵌入式软件开发；大四下学期在泰益智实习 7 个月、同时做毕业设计"
-        "（2025-12 开始，最初智能手表选题因想深耕 AI 方向主动转向 RAG 问答平台，2026-03 才首次 "
-        "git 提交，04 月收尾）。\n"
-        "## 文档化沟通\n"
-        "我靠文档可以跟同事交接，也可以随时更换 AI 编程工具——文档、契约、评测、门禁都是交付物"
-        "的一部分，让任何接手的人（同事或 AI）都能无缝上手，"
-        "我带来的不是一次性代码而是可持续的工程。\n"
-        "## 求职动机\n"
-        "科班出身，2023 年起用 AI 工具编程，独立做过前后端项目；进泰益智后从 0 做项目、慢慢从"
-        "架构角度思考工程，成长为全栈工程师。意向深圳南山（充满理想的城市、AI 产业密集）；选公司"
-        "看重更大平台；5 年目标是一步步往架构师方向走。优势：内驱力强、喜欢追前沿、能抗压、专注"
-        "做好一件事。我对细节较真，早期会在局部投入过多，用时间盒与先核心后细节来校正。\n"
-        "## 慧眼识蚁——红火蚁智能追踪与靶向灭治装备（竞赛项目）\n"
-        "挑战杯科技发明制作 A 类作品，团队 5 人（我任第一作者/申报者代表），核心是大数据 + 机器人的"
-        "红火蚁精准防控模式：① 蚁丘-蚁巢识别估算——CNN 多核卷积 + 增大感受野提取不同生境蚁丘"
-        "共有特征，GANs 还原快速运动蚂蚁轮廓以区分红火蚁与本地蚁，回归模型由蚁丘特征估算蚁巢大小；"
-        "② 户外巡检与药剂投放机器人——多传感器（光学/热成像）融合 + GPS + 环境感知，自动投放饵剂；"
-        "③ 大数据决策云平台——时间序列预测 + 稀疏门控专家混合模型（MoE）预测红火蚁繁殖与迁徙趋势，"
-        "输出重点巡检区域。成果：完成实物中试/原型，已落地实测"
-        "（识别准确率 ≥95% 为申报书目标指标）；"
-        "相关专利属学校（申报号 [专利号已脱敏]）；与 2024 大创国家级立项（第一负责人）对应。"
+    "jianli-reliability.md": (
+        "# Jianli 可靠业务闭环｜不是只会聊天的 Demo\n"
+        "预约先生成 3 分钟预览令牌且不预占，创建时复核连续三个 30 分钟 Slot，并用行锁和数据库"
+        "唯一约束防超卖；敏感字段使用 AES-256-GCM，Outbox 将事务提交与邮件/飞书异步投递解耦。"
+        "匿名 grounded 回答可进入同域语义缓存，知识变更使缓存失效；LLM 与 Reranker 使用 Redis Lua "
+        "共享熔断状态，Redis 故障退回本地 breaker。工具失败重试依靠幂等键与业务唯一约束避免"
+        "重复副作用。当前证据来自真实 PG/Redis 测试和本地等价门禁，"
+        "一次 Agent 检索回归曾从 8/8 降到 6/8，根因是问候判断把 litchi 中的 hi 当成整词，"
+        "改为整词匹配后恢复。正式域名部署、远端 CI 与完整观测栈 smoke 仍是上线验收项。"
+    ),
+    "behavior-stories.md": (
+        "# 行为故事、协作与职业动机\n"
+        "我偏好先设计后编码，重视可观测性、可演进性与契约测试；失败记录是证据而不是污点。"
+        "实习中用一对一演示、任务拆分和验收帮助同事学习 Figma 与 MQTT；当设计稿和小程序组件"
+        "体系冲突时，我列出转换成本，与产品和设计先对齐核心页面再迭代。三个重要教训是：配置"
+        "漂移要靠确定性评测暴露；ClickHouse 静默空结果说明零报错不等于正确；性能修复到时间边界"
+        "仍未达标时应登记风险而不是修改口径。科班背景加上 2023 年起使用 AI 工具开发，让我逐步"
+        "从实现功能转向思考架构、契约和交付，目标是 AI 全栈并长期向架构师发展。\n\n"
+        "## 慧眼识蚁竞赛\n"
+        "挑战杯科技发明制作 A 类作品，团队 5 人，我任第一作者/申报者代表。方案用 CNN/GANs "
+        "辅助红火蚁识别与蚁巢估算，以多传感器、GPS 和环境感知支持巡检投药，并用时间序列与 "
+        "MoE 预测繁殖迁徙趋势。完成实物原型和实测；识别准确率 ≥95% 是申报目标而非已证实实测"
+        "结果，相关专利属于学校。"
     ),
 }
 
 # Literal hit cases: the question contains words literally present in the doc
 # (both BM25 and vector embeddings can ground them).
 LITERAL_CASES: list[tuple[str, str]] = [
-    ("[姓名已脱敏]在哪个大学读书？", "resume.md"),
-    ("你的技术栈包括哪些？", "resume.md"),
-    ("你获得过什么荣誉？", "honors.md"),
+    ("[姓名已脱敏]在哪个大学读书？", "profile.md"),
+    ("你的技术栈包括哪些？", "profile.md"),
+    ("你获得过什么荣誉？", "credentials.md"),
     ("Litchi Copilot 的 Agent 架构是什么？", "litchi-agent-rag.md"),
     ("Litchi 用了什么向量数据库？", "litchi-agent-rag.md"),
     ("泰益智项目用什么做任务编排？", "sleep-agent-runtime.md"),
     ("你的 RAG 是怎么做租户隔离的？", "sleep-rag-governance.md"),
     ("泰益智项目怎么防 Prompt Injection？", "sleep-rag-governance.md"),
+    ("Jianli 的 Agent Lab 有哪些挑战场景？", "jianli-agent-lab.md"),
+    ("Jianli 评测中心和 CI 门禁是怎么做的？", "jianli-evaluation-ci.md"),
+    ("Jianli 怎么用 OpenTelemetry 和 Prometheus 做可观测性？", "jianli-observability.md"),
+    ("Jianli 的 Reranker 对照实验结果是什么？", "jianli-reranker.md"),
 ]
 
 # Semantic hit cases (EVAL-002, the discriminator): the question paraphrases the
@@ -276,12 +260,12 @@ LITERAL_CASES: list[tuple[str, str]] = [
 # local hash embedding it typically ranks lower (BM25 single-char overlap still
 # pulls it in, but weaker). Rank = index+1 in citations, 99 when missing.
 SEMANTIC_CASES: list[tuple[str, str]] = [
-    ("你本科是在哪所高校念的？", "education.md"),
-    ("平时的工程部署和环境管理用什么？", "skills.md"),
-    ("你实习时主要在团队里做什么？", "internship.md"),
-    ("有没有专业上的资格证明？", "certificates.md"),
-    ("检索效果不理想时你一般从哪几个方面调？", "rag-notes.md"),
-    ("智能体怎么做才不会乱调用东西？", "agent-notes.md"),
+    ("你本科是在哪所高校念的？", "profile.md"),
+    ("平时的工程部署和环境管理用什么？", "profile.md"),
+    ("你实习时主要在团队里做什么？", "profile.md"),
+    ("有没有专业上的资格证明？", "credentials.md"),
+    ("检索效果不理想时你一般从哪几个方面调？", "jianli-agent-rag.md"),
+    ("智能体怎么做才不会乱调用东西？", "jianli-agent-rag.md"),
 ]
 
 # EXTREME_SEMANTIC_CASES (EVAL-002 direction A): paraphrases with ZERO low-frequency
@@ -291,12 +275,12 @@ SEMANTIC_CASES: list[tuple[str, str]] = [
 # it (rank=99), BGE-M3 (semantic) should pull it near the top. This is where the
 # hash-vs-semantic gap is widest and the discriminator is strongest.
 EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
-    ("你本科的成绩和排名大概是什么水平？", "education.md"),
-    ("你带过新人或者同事吗？", "interview-story.md"),
-    ("你在团队里怎么和产品经理对齐需求？", "internship.md"),
-    ("手上有没有能证明水平的证照？", "certificates.md"),
-    ("搜索结果不对的时候会从哪下手排查？", "rag-notes.md"),
-    ("工具调用失败重试时，怎么避免重复执行产生副作用？", "agent-notes.md"),
+    ("你本科的成绩和排名大概是什么水平？", "profile.md"),
+    ("你带过新人或者同事吗？", "behavior-stories.md"),
+    ("你在团队里怎么和产品经理对齐需求？", "behavior-stories.md"),
+    ("手上有没有能证明水平的证照？", "credentials.md"),
+    ("搜索结果不对的时候会从哪下手排查？", "jianli-agent-rag.md"),
+    ("工具调用失败重试时，怎么避免重复执行产生副作用？", "jianli-reliability.md"),
 ]
 
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).
@@ -319,11 +303,11 @@ REJECT_CASES: list[str] = [
 # would wrongly refuse these. Pairs with REJECT_CASES (recall half) so the page
 # can claim both "越界拦截率 100%" AND "误拒率 0/N". Cases reuse docs already
 # proven retrievable by LITERAL/SEMANTIC cases (resume/honors/litchi/skills/
-# education/internship/taiyizhi) so they stay stable, not flaky.
+# profile/credentials/behavior stories and project documents) so they stay stable.
 #
 # In-scope questions that MUST be answered (offtopic=False). "你叫什么名字？" is
-# included now that the corpus explicitly states the name (resume.md: "姓名：[姓名已脱敏]
-# （名字：[姓名已脱敏]）。我叫[姓名已脱敏]。") so the query retrieves it above the 0.47 threshold
+# included because profile.md explicitly states "我叫[姓名已脱敏]", so the query retrieves it
+# above the 0.47 threshold
 # (BM25 single-char 名/字 overlap + semantic match). Pairs with REJECT_CASES.
 FALSE_REJECT_CASES: list[str] = [
     "你叫什么名字？",

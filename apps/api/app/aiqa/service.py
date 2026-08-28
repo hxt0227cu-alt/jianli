@@ -148,7 +148,7 @@ def _is_malicious_question(question: str) -> bool:
 # FQ-13 answered NestJS/115REST/35 表, FQ-24 answered the thesis load-test, FQ-27
 # answered Python+FastAPI for a Spring Boot project). Mapping:
 #   resume                  -> None (any experience topic may be asked on the resume page)
-#   projects / jianli       -> []  (jianli facts live in static pages only)
+#   projects / jianli       -> seven layered Jianli interview documents
 #   projects / litchi       -> four layered Litchi interview documents
 #   projects / sleep202603_an -> six layered Sleep interview documents
 #   projects / (none)       -> None (competition / behavioural questions)
@@ -156,7 +156,15 @@ def _is_malicious_question(question: str) -> bool:
 def _kb_domain_docs(page_key: str, project_key: str | None) -> list[str] | None:
     if page_key == "projects":
         if project_key == "jianli":
-            return []
+            return [
+                "jianli-overview.md",
+                "jianli-agent-rag.md",
+                "jianli-agent-lab.md",
+                "jianli-evaluation-ci.md",
+                "jianli-observability.md",
+                "jianli-reranker.md",
+                "jianli-reliability.md",
+            ]
         if project_key == "litchi":
             return [
                 "litchi-overview.md",

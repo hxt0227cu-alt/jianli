@@ -108,12 +108,11 @@ def build_pages() -> dict[str, PageContentData]:
     )
 
     projects_jianli: dict[str, object] = {
-        "heading": "个人 AI 问答网站（jianli）",
+        "heading": "AI 面试协作站（jianli）",
         "body": (
-            "面向个人求职的作品集站点：公开 RAG 问答（基于本人资料、越界拒答、决策链 "
-            "SSE 可见）、第一人称人格层、动态面试表实时刷新、对话式面试预约代理。核心"
-            "约束是面试场景真实性优先，绝不编造经历。技术栈 FastAPI + PostgreSQL"
-            "(pgvector) + Redis + React 19 + DeepSeek + BGE-M3。"
+            "面向真实上线的 AI 面试协作站：把有依据的项目问答、受控预约 Agent、并发与隐私"
+            "保护、异步通知、Agent Lab、版本化评测和可观测性串成一条可验证产品链。核心不是"
+            "聊天页面，而是让 Agent 有据可答、有权才做、失败可追踪。"
         ),
     }
     projects_sleep: dict[str, object] = {
@@ -139,49 +138,50 @@ def build_pages() -> dict[str, PageContentData]:
             "jianli",
             [
                 (
-                    "jianli 是个人 AI 问答网站（本项目自身）：把简历问答、项目追问与面试"
-                    "预约做成一条可验证的产品链。核心约束是面试场景真实性优先——越界或无"
-                    "依据的问题一律拒答，绝不编造经历。"
+                    "Jianli 是我独立开发并准备正式上线的 AI 面试协作站：把简历与项目 RAG 问答、"
+                    "登录注册、会话、动态时段、预约管理、邮件与飞书通知串成产品链。技术栈是 "
+                    "FastAPI、SQLAlchemy/Alembic 0010、PG16 + pgvector、Redis7、React19、"
+                    "DeepSeek V4 Flash 与 BGE-M3。"
                 ),
                 (
-                    "jianli 技术栈：FastAPI + SQLAlchemy + Alembic（0001-0007 迁移共 15 张表，"
-                    "up→down→up 可逆）+ PostgreSQL 16 + pgvector + Redis 7 + React 19/Vite "
-                    "+ TypeScript；LLM 用 DeepSeek V4 Flash（chat），embedding 用硅基流动 "
-                    "BGE-M3（1024 维）。"
+                    "Jianli 检索采用向量 top10 + BM25 top10，经 RRF 融合最多 12 个候选，再由可选 "
+                    "Cross-Encoder 取 top6；0.47 阈值和 CJK 门槛使越界集 10/10 拒答。BGE-M3 "
+                    "纯向量 avg-rank 1.3，对照本地哈希 1.8。Agent 有五个"
+                    "白名单工具：知识检索，以及在 RBAC 下创建、查询、取消、改期预约；"
+                    "MAX_STEPS=4，写操作复用 BookingService。"
                 ),
                 (
-                    "jianli 混合检索：向量 top10 + BM25 top10 经 RRF 融合取 top6 作为引用；"
-                    "CJK 单字 BM25 索引对 embedding 退化鲁棒，语义向量优势须在纯向量层量化"
-                    "（BGE-M3 avg-rank 1.3 vs 本地哈希 1.8）。"
+                    "Jianli Agent Lab 提供依据问答、多步只读预约、安全越权攻击、无依据拒答四个"
+                    "真实挑战，点击后调用右侧 SSE 问答。answer.trace 展示策略、路由、检索/工具、"
+                    "生成与结果的脱敏时间线，只含白名单字段，不含原文、Prompt、知识内容、"
+                    "工具参数/完整结果或预约 PII，也不是模型思维链。"
                 ),
                 (
-                    "jianli 越界拒答双层门槛：① 知识库向量相关性阈值 0.47（数据校准：拒答 "
-                    "top1 max 0.464 / 命中 min 0.463，接受边缘取舍）；② 静态检索加 CJK 停用词"
-                    "过滤，功能字不参与重叠计数。拒答率从 0% 提升到 100%（评测 REJECT 10/10）。"
+                    "Jianli 评测中心是项目页公开证据、无需登录，读取版本化报告；当前 79/79："
+                    "Agent/Trace 22、事实一致性 38、"
+                    "Web 1、Reranker 协议 4、缓存与 Provider 韧性 8、多副本熔断 6。GitHub Actions "
+                    "已有 backend→RAG→Web 串行硬门禁，本地等价流程通过；尚未授权 push，"
+                    "没有远端 Actions run，不能说云端 CI 已实际运行。"
                 ),
                 (
-                    "jianli Agent 工具化：search_knowledge 注册为白名单只读工具，模型通过 "
-                    "function calling 自主决策是否检索并生成检索词（tool_choice=auto）；决策"
-                    "链经 SSE answer.tool_calls 帧可观测；双路召回（模型 query + 原问题对照）"
-                    "防次优改写丢证据。预约域开放 list_my_appointments / cancel_appointment / "
-                    "reschedule_appointment 三个 RBAC 守卫的预约管理工具（面试官仅本人、"
-                    "owner_admin 可管理全部含他人），MAX_STEPS=4 防死循环，5 种异常优雅映射"
-                    "为结构化 outcome，28KB 测试覆盖全路径。"
+                    "Jianli 可观测闭环用 OpenTelemetry 记录 "
+                    "HTTP/AIQA/tool/rerank/cache/breaker 阶段，"
+                    "Prometheus 私网抓取低基数指标，Grafana 当前 10 个面板；Nginx 对公网 metrics "
+                    "返回 404。未配置 OTLP 时 no-op，采集失败不影响业务；禁止原文、PII、密钥和"
+                    "高基数 ID。配置与测试已验证，完整容器栈首次部署 smoke 仍待执行。"
                 ),
                 (
-                    "jianli 评测闭环：tests/aiqa/test_rag_eval.py 基于真实语料（10 篇上传→"
-                    "分块→混合检索→streamAnswer 全链路）量化检索质量：LITERAL 8/8、REJECT "
-                    "10/10、语义/极端改写用例 6/6；评测先暴露缺陷（拒答率 0%）再驱动修复闭环。"
+                    "Jianli 的 Qwen3-Reranker-8B 只重排已授权候选，失败回退 RRF；5 题真实 provider "
+                    "组件对照 MRR 0.3333→1.0000、Hit@1 0/5→5/5。它证明了这组候选的排序改善，"
+                    "但样本很小，不能外推为端到端生产质量；79/79 同样不是生产准确率，"
+                    "重排也不能扩大召回或绕过拒答。"
                 ),
                 (
-                    "jianli 业务闭环：Slot 快照与并发锁、3 分钟预览不预占、原子创建、字段级 "
-                    "AES-256-GCM 加密、Outbox 通知、审计日志、SSE 恢复契约；真实 PG16 + Redis7 "
-                    "集成测试 53+ passed，ruff/mypy 门禁全绿。"
-                ),
-                (
-                    "jianli 真实演进记录：embedding 从本地哈希换成 BGE-M3（哈希无语义）；"
-                    "Agent 模型自主决策上线后评测一度 8/8→6/8，最终根因是 greeting 判定里 "
-                    "'hi' 子串误匹配 'litchi'（改整词匹配修复）——诚实记录踩坑过程，不粉饰。"
+                    "Jianli 预约用 3 分钟预览令牌且不预占，创建时复核连续 Slot，并以行锁和数据库"
+                    "唯一约束防超卖；AES-256-GCM 保护敏感字段，Outbox 异步投递邮件/飞书。匿名"
+                    "grounded 回答可进同域语义缓存，LLM/Reranker 使用 Redis Lua 共享熔断；"
+                    "一次检索回归 8/8→6/8 的根因是 litchi 中 hi 被问候判断误匹配，改整词后恢复。"
+                    "正式域名部署、远端 CI 和完整观测栈 smoke 仍属于上线验收。"
                 ),
             ],
         ),

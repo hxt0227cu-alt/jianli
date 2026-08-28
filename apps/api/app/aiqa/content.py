@@ -285,9 +285,17 @@ def build_pages() -> dict[str, PageContentData]:
                     "证据并交给 Ollama；不能宣称 BM25/RRF、高级 reranker 或特定 HNSW/IVF 调优。"
                 ),
                 (
+                    "litchi 曾把中文 PDF/DOCX 入口解析为空或乱码误判成向量问题。当前改用 PDFBox/"
+                    "Apache POI，有效文本才能分块，空分块明确标为未索引，扫描件由清洗脚本标为 "
+                    "needs_ocr。历史跨 Windows/容器导入仍有重复状态；检索层会按文档、来源、标题、"
+                    "页码和内容去重并优先不同来源，但不宣称旧数据已经清理。"
+                ),
+                (
                     "litchi 评测：测试源码已提交；38/38 和 119 轮巡检来自未提交本地报告。60 条数据"
                     "与结构校验已提交，但真实 runner 为 Agent 20/20、RAG 24/30、安全 0/10，gate "
-                    "失败；角色/租户、citation、P95 和成本统计都有口径缺陷，因此结果用于暴露盲区。"
+                    "失败；角色/租户、citation、P95 和成本统计都有口径缺陷。相同结果对旧错误"
+                    "evidenceIds 仅 3/30，修正权威文档编号后为 24/30，主要是标签修正而非能力提升"
+                    "八倍；剩余 6 条才是真实未命中。"
                 ),
                 (
                     "litchi 并发边界：历史 50 并发/50 请求全成功，平均约 6.9s、P95 约 11.2s；"
@@ -296,7 +304,12 @@ def build_pages() -> dict[str, PageContentData]:
                 ),
                 (
                     "litchi 当前 Agent 状态与 outbox 不在同一事务；后端有 SSE 状态端点，前端主要"
-                    "轮询；诊断链有真实模型、数据集演示和后端 fallback，仓库无可复现准确率报告。"
+                    "轮询。图像实验从 27,594 张原始图中取五类 300 训练/80 验证，最佳 Top-1 "
+                    "93.75%、末轮 91.25%，部署文件等于 best.pt；小验证集不能外推真实果园。诊断"
+                    "降级仍可能参考文件名或数据集原型，但用 engine/demoMode 明示；只有 "
+                    "ultralytics-yolo 且 demoMode=false 算真实模型推理。"
+                ),
+                (
                     "Redis Stream/Last-Event-ID、租户 RLS、专用执行器、事务 Outbox、职责分离审批、"
                     "全链 deadline 与 Token/成本预算都是下一版方案，尚未落地。"
                 ),

@@ -1,4 +1,4 @@
-# 简历事实一致率 · 题库（FQ-01 … FQ-58）
+# 简历事实一致率 · 题库（FQ-01 … FQ-61）
 
 > **事实源（ground truth）**：线上优先使用 `test_rag_eval.py` 的 canonical corpus；个人域由
 > `profile.md`、`credentials.md`、`behavior-stories.md` 承载，项目域使用各项目分层文档。
@@ -241,6 +241,21 @@
 - **溯源**：CORPUS `litchi-overview.md`。
 - **判定要点**：命中“模块存在 + 强关联缺失” ✅；宣称完整技术员审核—门店履约—效果反馈闭环 ❌。
 
+### FQ-59 · litchi 为什么发现文档不命中后没有继续调向量阈值？
+- **期望事实**：根因排查发现中文 PDF/DOCX 在文本入口已经为空或乱码；坏输入无法靠相似度参数补救。当前使用 PDFBox/Apache POI，只有有效文本产生分块，空分块标为未索引，扫描件由清洗脚本标记 `needs_ocr`。历史重复状态仍在，检索只是在结果层去重。
+- **溯源**：CORPUS `litchi-agent-rag.md` / `DocumentService` / `clean_knowledge_docs.py`。
+- **判定要点**：命中“先检查解析入口 + 空文本不索引 + OCR/历史重复边界” ✅；说调高 top-k 或降低阈值就能恢复空文档 ❌。
+
+### FQ-60 · litchi 的 RAG 从 3/30 到 24/30 是模型提升了八倍吗？
+- **期望事实**：不是。同一批 runner 结果对修复前错误 `evidenceIds` 只有 3/30，对修正权威文档编号后的标注为 24/30；主要变化是评测标签修复，剩余 6 条才是真实未命中。结果来自未提交工作区，证据等级低于干净提交。
+- **溯源**：CORPUS `litchi-evidence-retrospective.md` / 评测结果与标注修复前备份的只读复算。
+- **判定要点**：命中“同一结果、标签修正、仍有 6 条失败、工作区证据” ✅；宣称模型或检索算法突然提升八倍 ❌。
+
+### FQ-61 · litchi 图像识别的 93.75% 能代表真实果园吗？
+- **期望事实**：不能。原始 11 类 27,594 张图片只抽取五类均衡子集，300 张训练、80 张验证；续训最佳 Top-1 93.75%，末轮 91.25%，部署模型哈希等于 `best.pt`。小验证集波动明显，只证明实验链路。降级路径仍可能使用文件名提示或数据集原型，必须通过 `engine`/`demoMode` 明示；只有 `ultralytics-yolo` 且 `demoMode=false` 属真实模型推理。
+- **溯源**：CORPUS `litchi-evidence-retrospective.md` / 训练 CSV、数据目录、模型哈希与诊断服务源码。
+- **判定要点**：命中“300/80 + 最佳/末轮区别 + best checkpoint + demoMode 边界” ✅；表述为真实田间准确率 93.75% 或把 fallback 当模型结果 ❌。
+
 ## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-31 · 泰益智的 84 例评测怎么分类？
@@ -323,6 +338,6 @@
 ---
 
 ## 备注
-- **覆盖项**：个人教育、能力、证书、行为故事进入三篇 canonical profile 文档；B 组 Jianli 基础 FQ-11~26 + 源码级追问 FQ-51~58；C 组 litchi 基础 FQ-27~30 + 技术追问 FQ-39~43；D 组 sleep 基础 FQ-31~33 + 技术追问 FQ-44~50；E 组行为/动机/竞赛 FQ-34~38。canonical 文档仍为 20 篇。
+- **覆盖项**：个人教育、能力、证书、行为故事进入三篇 canonical profile 文档；B 组 Jianli 基础 FQ-11~26 + 源码级追问 FQ-51~58；C 组 litchi 基础 FQ-27~30 + 技术追问 FQ-39~43 + 开发故事补强 FQ-59~61；D 组 sleep 基础 FQ-31~33 + 技术追问 FQ-44~50；E 组行为/动机/竞赛 FQ-34~38。canonical 文档仍为 20 篇。
 - **漂移风险**：若 `content.py` chunk 文本变更，本题库期望事实须同步修订，否则一致率失真。修订须走内容变更流程，不可静默改期望值凑分。
 - **题库口径变更（2026-08-18）**：分母 26 → 38（FQ-27+ 扩展，rubric.md §3 同步）；SLO ≥94% 不变，38 题下需 ✅ ≥ 36。

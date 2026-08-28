@@ -91,7 +91,11 @@ CORPUS: dict[str, str] = {
         "SimpleEmbeddingService 用双字符片段和分词做 Java hash，映射到 1024 维并 L2 归一化；"
         "它便于 CPU 离线演示，但不是 BGE 等语义 embedding。查询合并 Milvus 文档候选和本地扫描，"
         "按标题、来源、关键词启发式重排，Neo4j 单独补关系证据，再交给本地 Ollama 合成；失败时"
-        "使用证据模板降级。不能宣称 BM25/RRF、高级 reranker 或 HNSW/IVF 调优。"
+        "使用证据模板降级。不能宣称 BM25/RRF、高级 reranker 或 HNSW/IVF 调优。\n"
+        "一次关键复盘是：初版中文 PDF/DOCX 已在入口解析为空或乱码，我却先去调向量和阈值。"
+        "当前实现改用 PDFBox 和 Apache POI；有效文本才能产生分块，空分块会明确标成未索引，"
+        "清洗脚本另把扫描件标为 needs_ocr。历史跨 Windows/容器导入还留下重复状态，当前检索会"
+        "按文档、来源、标题、页码和内容去重并优先不同来源，但不能说旧状态已经清理干净。"
     ),
     "litchi-evidence-retrospective.md": (
         "# Litchi Copilot｜评测、并发、事务与失败复盘\n"
@@ -99,12 +103,18 @@ CORPUS: dict[str, str] = {
         "低于可复现提交。60 条评测数据和结构校验已提交，真实 runner 结果在工作区：Agent 20/20、"
         "RAG 24/30、安全拒答 0/10，合计约 44/60，gate 失败。Runner 固定技术员上下文，未真实"
         "覆盖角色/租户；citation 可被通用词命中，所谓 P95 实际接近样本最大值，成本字段固定为 0，"
-        "所以结果用于暴露盲区，不是质量证书。\n"
+        "所以结果用于暴露盲区，不是质量证书。同一批 runner 结果对修复前 evidenceIds 只有 3/30，"
+        "对修复后标注为 24/30；主要变化是纠正权威文档编号，不是检索能力提升八倍，剩余 6 条才是"
+        "真实未命中。\n"
         "历史 50 并发、50 请求全部成功，平均约 6.9 秒、P95 约 11.2 秒；后续 100 并发、200 请求"
         "多轮成功率约 50.5%、21% 和 19%，其中一轮 P95 约 15.2 秒。依赖状态、脚本和代码版本"
         "没有严格冻结，不能证明单一性能回归根因，只能确认高并发稳定性未达标。Agent 状态与 outbox "
         "不是同一事务；后端提供 SSE 状态端点但当前前端主要轮询。诊断链存在真实模型、数据集演示和"
-        "后端 fallback 三条路径，仓库没有可复现 mAP/precision/recall，不能混称为模型准确率。"
+        "后端 fallback 三条路径。原始 11 类 27,594 张图片只抽取五类均衡子集：300 张训练、80 张"
+        "验证；续训中最佳 Top-1 为 93.75%，最后一轮为 91.25%，部署权重哈希与 best.pt 一致。"
+        "80 张验证集过小且 epoch 波动明显，只能证明五分类实验链路。当前降级路径仍可能参考文件名"
+        "提示或数据集原型，但会返回 engine 与 demoMode；只有 ultralytics-yolo 且 demoMode=false "
+        "能作为真实模型推理，不能把演示 fallback 混称为模型准确率。"
     ),
     "litchi-evolution.md": (
         "# Litchi Copilot｜当前边界与下一版演进（以下方案尚未落地）\n"
@@ -355,6 +365,15 @@ EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
     ("手上有没有能证明水平的证照？", "credentials.md"),
     ("搜索结果不对的时候会从哪下手排查？", "jianli-agent-rag.md"),
     ("工具调用失败重试时，怎么避免重复执行产生副作用？", "jianli-reliability.md"),
+    ("文档抽出来就是空的，为什么继续调相似度没有意义？", "litchi-agent-rag.md"),
+    (
+        "Litchi 项目评测命中从三道变成二十四道，为什么不能说模型提升了八倍？",
+        "litchi-evidence-retrospective.md",
+    ),
+    (
+        "Litchi 的叶片五分类验证准确率最高九成多，为什么仍不能说能在真实果园使用？",
+        "litchi-evidence-retrospective.md",
+    ),
 ]
 
 # Out-of-scope or not-in-corpus questions: must be refused (offtopic=True).

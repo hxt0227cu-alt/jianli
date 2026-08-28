@@ -82,18 +82,21 @@
 - 任一冻结断言下降、需要修改任务外文件、需要 API/DB/依赖/权限/阈值变化或超过预算时停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`e106fa1`（实现提交；任务证据由后续闭环提交补齐）
+- 修改文件清单：`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`、`docs/fact-consistency/fact-bank.md`、本任务单
+- 测试命令及结果：
+  - `PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py::test_rag_extreme_semantic_hit_cases -q -s` → 1 passed；新增 Litchi 3/3 均为目标文档 rank=1，整组 8/9，未命中项为任务前既有 Jianli 用例
+  - `PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q` → 7 passed（真实 PG/Redis/BGE-M3，142.31s）
+  - `python scripts/seed_kb.py` → canonical 20/20 active + indexed，Litchi 仍为 4 篇
+- lint / typecheck：`ruff` pass；`mypy app/aiqa/content.py` 0 errors；`compileall` pass；`git diff --check` pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：真实模型 `deepseek-v4-flash` 两条单一追问均 `grounded=true`，首引均为 `litchi-evidence-retrospective.md`；正确区分标签修复与模型提升，并正确说明 300/80 小样本、93.75%/91.25%、`best.pt`、`engine/demoMode` 边界
+- 变更预算实际值：4 文件；实现语料 17 行变更、评测 25 行变更，其余为事实题库与任务治理；未超过 `max_files=4`
+- 未解决风险：复合提问“准确率边界 + 降级防冒充”曾出现一次未走检索、`grounded=false` 且混入异项目事实；拆成单一问题后正确。该问题属于既有 Agent 路由/无依据生成策略，不在本任务获批范围。数据库另保留 232 条软删除历史文档，不参与活跃检索。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：not_required（仅 canonical 内容与等价评测补强）
+- verified_commit：`e106fa1`
 
 ## 关联
 - Change Request：无

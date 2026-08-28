@@ -85,18 +85,22 @@
 - 任一冻结断言下降、需要修改任务外文件、需要 API/DB/依赖/权限/阈值变化或超过预算时立即停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`ee5b70f`（本地 commit；未创建 PR）
+- 修改文件清单：本任务单、`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`、`docs/fact-consistency/fact-bank.md`
+- 测试命令及结果：
+  - 真实 PG/Redis/BGE-M3 全套：`PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q` → `7 passed in 119.84s`
+  - Jianli 深度语义追问：`test_rag_semantic_hit_cases -q -s` → `20/20`，`avg-rank 1.6`，`1 passed`
+  - 正式灌库：`python scripts/seed_kb.py` → canonical `20/20 active + indexed`
+  - 真实 DeepSeek V4 Flash 抽检：检索词 fallback、并发抢 Slot、CI 运行边界均 `HTTP 200`、`grounded=true`，首引对应 Jianli 文档；并发回答明确区分行锁与部分唯一索引，CI 回答明确无远端 Actions run
+- lint / typecheck：`ruff check ...` → pass；`mypy app/aiqa/content.py` → 0 error；`compileall` → pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：七篇 Jianli canonical 文件名不变；新增八条源码级语义追问；事实库新增 FQ-51~58；未删除或放宽既有拒答、隐私、误拒断言；真实检索与模型回答均区分实现证据和待上线边界
+- 变更预算实际值：4 文件；业务静态语料 `+39/-32`，测试/语料 `+68/-42`，事实文档 `+42/-2`，任务治理文件 `+104`；未超过 `max_files=4`
+- 未解决风险：每次正式重灌采用软删，当前 historical 为 212 行；不占 canonical 20 篇 active 限额，但长期清理策略属于后续数据库维护任务。远端 Actions、正式域名和完整观测栈 smoke 仍为已如实披露的上线验收项
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：not_required（无需求、API、领域模型或安全契约变化）
+- verified_commit：`ee5b70f`
 
 ## 关联
 - Change Request：无

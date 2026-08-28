@@ -87,18 +87,18 @@
 - 冻结测试失败、需要任务外文件、需要改变 API/DB/依赖/权限或超过预算时停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`7db98ec feat(kb): rebuild canonical portfolio corpus`
+- 修改文件清单：`apps/api/app/aiqa/content.py`、`apps/api/app/aiqa/service.py`、`apps/api/scripts/seed_kb.py`、`apps/api/tests/aiqa/test_rag_eval.py`、`docs/fact-consistency/fact-bank.md`、`tasks/TASK-KB-JIANLI-FOUNDATION-005.md`
+- 测试命令及结果：加载 `scripts/dev-env.sh` 的真实 PG/Redis + BGE-M3 环境运行 `PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q` → `7 passed in 115.63s`；真实模型复验项目定位、Agent/RAG、Agent Lab、评测/CI、可观测性、Reranker、可靠性七类问题均 `grounded=true`，显式 Jianli 评测证据边界问法回答正确。
+- lint / typecheck：`ruff check app/aiqa/content.py app/aiqa/service.py scripts/seed_kb.py tests/aiqa/test_rag_eval.py` → passed；`mypy app/aiqa/content.py app/aiqa/service.py` → `Success: no issues found in 2 source files`；`python -m compileall -q app/aiqa scripts/seed_kb.py` → passed
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：七篇 Jianli 文档均小于 500 字符并分别覆盖七个主题；`projects/jianli` 已映射至这七篇文档；正式灌库返回 `active=20, indexed=20, non-indexed=0`，canonical `20/20` 校验通过。
+- 变更预算实际值：6 个允许文件；生产代码 47 行新增；共享测试/事实文档 144 行新增（任务单本身不计实现预算），未超过 `max_files=6 / expected_prod_lines=100 / expected_test_lines=240`。
+- 未解决风险：不带“Jianli/项目”主题的泛化问法“评测中心现在有哪些结果”可能被 Agent 误路由至预约查询工具；带项目语境的自然问法可正确命中。该问题属于后续 Agent 意图路由深化，不是语料缺失。本任务也未宣称远程 GitHub Actions 首跑、完整可观测容器 smoke 或正式生产部署已经完成。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`7db98ec`
 
 ## 关联
 - Change Request：无

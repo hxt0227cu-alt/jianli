@@ -75,18 +75,18 @@
 - 任一冻结断言下降、需要修改任务外文件或超过预算时停止报告。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`7db98ec feat(kb): rebuild canonical portfolio corpus`
+- 修改文件清单：`apps/api/tests/aiqa/test_rag_eval.py`、`docs/fact-consistency/fact-bank.md`、`apps/api/scripts/seed_kb.py`、`tasks/TASK-KB-CORPUS-CLEANUP-006.md`
+- 测试命令及结果：加载 `scripts/dev-env.sh` 的真实 PG/Redis + BGE-M3 环境运行 `PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q` → `7 passed in 115.63s`
+- lint / typecheck：`ruff check tests/aiqa/test_rag_eval.py scripts/seed_kb.py` → passed；`python -m compileall -q scripts/seed_kb.py tests/aiqa/test_rag_eval.py` → passed
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：九篇旧文档已从 canonical corpus 移除并收敛为三篇；正式灌库返回 `active=20, indexed=20, non-indexed=0`，canonical `20/20` 校验通过；命中、拒答和隐私冻结断言均未降低。
+- 变更预算实际值：4 个允许文件；实现 1 行净变化；测试/事实文档 144 行新增（任务单本身不计实现预算），未超过 `max_files=4 / expected_prod_lines=2 / expected_test_lines=180`。
+- 未解决风险：零依赖本地哈希 embedding 的语义改写用例为 `4/6`，它仅是无语义能力的离线 fallback；生产 BGE-M3 环境冻结门禁为 `7/7`。未改变阈值掩盖该差异。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`7db98ec`
 
 ## 关联
 - Change Request：无

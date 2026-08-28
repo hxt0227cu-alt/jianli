@@ -103,6 +103,35 @@ def _seed_owner(engine: Engine) -> UUID:
     return UUID(str(row[0]))
 
 
+def _active_documents(engine: Engine) -> list[dict[str, object]]:
+    query = text(
+        "SELECT id,name,status,failure_reason FROM knowledge_documents "
+        "WHERE retrieval_disabled_at IS NULL ORDER BY name,id"
+    )
+    with engine.connect() as conn:
+        return [dict(row) for row in conn.execute(query).mappings()]
+
+
+def _seed_state_errors(active: list[dict[str, object]], expected_names: set[str]) -> list[str]:
+    errors: list[str] = []
+    actual_names = {str(item["name"]) for item in active}
+    if len(active) != len(expected_names):
+        errors.append(f"active count {len(active)} != expected {len(expected_names)}")
+    missing = sorted(expected_names - actual_names)
+    if missing:
+        errors.append(f"missing: {', '.join(missing)}")
+    extra = sorted(actual_names - expected_names)
+    if extra:
+        errors.append(f"unexpected: {', '.join(extra)}")
+    for item in active:
+        status = str(item["status"])
+        if status != "indexed":
+            reason = str(item.get("failure_reason") or "no failure reason")
+            reason = re.sub(r"sk-[A-Za-z0-9_-]+", "sk-<redacted>", reason)
+            errors.append(f"{item['name']}: status={status}, reason={reason[:160]}")
+    return errors
+
+
 async def _main(clear: bool) -> int:
     _load_env_local(Path(__file__).resolve().parent.parent / ".env.local")
     settings = Settings.from_env()
@@ -159,20 +188,19 @@ async def _main(clear: bool) -> int:
             print(f"[ERR] upload failed: {resp.text[:500]}", file=sys.stderr)
             return 1
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
-        indexed = sum(1 for i in listed if i["status"] == "indexed")
+        active = _active_documents(engine)
+        indexed = sum(1 for item in active if str(item["status"]) == "indexed")
         print(
-            f"== KB now {len(listed)} doc(s): indexed={indexed}, "
-            f"non-indexed={len(listed)-indexed} (含软删/失败残留)"
+            f"== KB active {len(active)} doc(s): indexed={indexed}, "
+            f"non-indexed={len(active)-indexed}; historical={len(listed)-len(active)}"
         )
-        # WARN only when THIS upload's docs did not all index (soft-deleted leftovers
-        # from previous failed runs stay in the list and are not this run's failures).
-        if indexed < len(CORPUS):
-            print(
-                "[WARN] 本次上传未全部 indexed——请确认 .env.local 的 "
-                "JIANLI_LLM_EMBEDDING_API_KEY 有效（embedding 失败会 mark_failed）",
-                file=sys.stderr,
-            )
+        errors = _seed_state_errors(active, set(CORPUS))
+        if errors:
+            print("[ERR] canonical corpus verification failed:", file=sys.stderr)
+            for error in errors:
+                print(f"  - {error}", file=sys.stderr)
             return 1
+        print(f"== verified canonical corpus: {indexed}/{len(CORPUS)} active + indexed")
     return 0
 
 

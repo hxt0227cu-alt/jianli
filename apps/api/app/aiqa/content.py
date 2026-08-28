@@ -190,19 +190,35 @@ def build_pages() -> dict[str, PageContentData]:
             [
                 (
                     "Sleep 是团队开发的非接触式睡眠监测与受控 Agent 平台。我主要负责云端后端、"
-                    "Agent Runtime 与 RAG，也参与遥测链路、多租户治理和联调；固件主要由同事负责，"
-                    "我做云侧验证。项目使用过真实 ESP32/雷达硬件日志，但未完成生产上线。"
+                    "Agent Runtime 与 RAG，也参与遥测链路、多租户治理、云环境和联调；固件主要由"
+                    "同事负责，我做云侧验证。项目使用过真实 ESP32/雷达日志；NDA 材料不公开，"
+                    "历史 staging 应用启动失败，不能称为生产上线。"
                 ),
                 (
-                    "Sleep Agent 使用固定 route→policy→finalize DAG，不是开放式 ReAct。"
-                    "同步执行改成 "
-                    "202 异步接纳、有界队列与背压后，RC 接纳吞吐 87.78→433.53 次/秒（+393.9%），"
-                    "P95 1347.73→228.85ms；这些是接纳性能，不是 LLM 推理速度。"
+                    "Sleep 控制面鉴权并解析可信 tenant 后创建 AgentRun 与 Outbox，再投递 FastAPI。"
+                    "本地有界队列默认容量 1000、10 个 Worker，HTTP 202 只代表接纳。并发 100、"
+                    "1000 个合成请求下接纳吞吐 87.78→433.53 次/秒，P95 1347.73→228.85ms；"
+                    "不含真实 LLM/RAG/工具或跨 Pod，不能说推理提速。Run 与 Outbox 也非同一事务。"
                 ),
                 (
-                    "Sleep RAG 基于 PostgreSQL + pgvector，以租户上下文限制检索；模型外再用固定图、"
-                    "工具白名单、HITL 和预算约束写操作。当前没有足够证据宣称 Hybrid/BM25/RRF、"
-                    "rerank、claim 级引用或正式 Recall/MRR，RAG 是证据层而非性能主卖点。"
+                    "Sleep 任务编排使用 LangGraph route→policy→finalize 固定 DAG，不是 ReAct。"
+                    "local "
+                    "coordinator "
+                    "负责进程内队列与 SQLite 恢复；Temporal 有 Workflow/信号/Activity 代码，但测试"
+                    "使用 Fake Client，不能宣称真实中断恢复；PostgreSQL Store 只存快照，没有 CAS。"
+                    "五个预算字段中部分在执行后检查，也没有货币成本预算。"
+                ),
+                (
+                    "Sleep 六个工具由 Agent 类型固定规划，再经 policy allowlist、参数与设备校验；"
+                    "device_control 未审批会暂停，但当前不是职责分离审批。控制面没有为该类型注入"
+                    "可信设备白名单，执行器缺省又回退到输入 device_id；内部 Agent 端点也没有独立"
+                    "服务身份，所以不能宣称设备归属和服务认证已经闭环。"
+                ),
+                (
+                    "Sleep RAG 实现摄入、分块、Embedding、pgvector 余弦检索、global+tenant 过滤、"
+                    "引用和无证据拒答；真实 PG 有 2/2 隔离测试，另有 8/8 确定性契约，但测试向量"
+                    "固定。没有 BM25/RRF、reranker、阈值或正式 Recall/MRR；固定工具能防改工具类型，"
+                    "不能证明未知 Prompt Injection 与输出 DLP 已解决。"
                 ),
                 (
                     "Sleep 流式故障：Worker 重平衡曾出现 6291 行但仅 6240 唯一事件，多出的"
@@ -212,16 +228,24 @@ def build_pages() -> dict[str, PageContentData]:
                     "仅代表本地双进程、单 Kafka、单 ClickHouse 验证。"
                 ),
                 (
-                    "Sleep 证据：确定性工程集共七类（不是六类）、84/84，"
-                    "但健康合规子项 71.43%，"
-                    "公开 Harness 的设备 ACK "
-                    "为模拟；120 条红队由我和同事共同设计、执行、分析，96 条通过（80%），危险写"
-                    "工具调用为 0。失败说明正则难覆盖语义变体，不能宣称生产安全 100%。"
+                    "Sleep 后端 MQTT command/ACK 和固件源码存在，真实硬件联调由本人确认；但公开 "
+                    "Agent Harness 的 ACK 是模拟。当前仓库每次 HTTP 请求生成新 command_id，没有"
+                    "请求 fingerprint 幂等闭环，迟到 ACK 可能改写 timeout。内部 RC 的指纹、唯一约束"
+                    "和真实 ACK 属于 NDA 经历，不冒充公开仓库可复现实现。"
                 ),
                 (
-                    "Sleep 历史 ACK/RDS staging 由我实际操作排障，基础设施和迁移曾在阿里云跑通，"
-                    "但应用启动失败。内部未提交 RC 做过 command_id、请求指纹、数据库唯一约束和"
-                    "真实设备 ACK；受 NDA 约束不展示源码/日志/截图，也不当作公开仓库可复现证据。"
+                    "Sleep HEAD 的 84 条确定性用例实际由 11 个 case group 组成并全部通过；七类只是"
+                    "展示归并。它固定 Provider/特征/语料且模拟设备 ACK，只验证状态和工具序列。"
+                    "未提交"
+                    "RC 的健康合规为 25/35；120 条红队由我和同事协同设计执行，96/120，危险写工具"
+                    "调用为 0，但 17 条输入守卫漏检，不能称为生产安全率。"
+                ),
+                (
+                    "Sleep 历史阿里云基础设施和迁移跑通过，但应用启动失败，候选未重新部署。当前有"
+                    "健康、指标和脱敏 metadata Trace View；Prometheus 实抓、告警恢复、跨服务 "
+                    "Trace、"
+                    "Temporal 中断恢复和镜像回滚尚无证据。下一版优先做事务 Outbox、服务身份、可信"
+                    "设备归属、持久执行、请求幂等和 queued/running/waiting_approval 中断演练。"
                 ),
             ],
         ),
@@ -236,20 +260,38 @@ def build_pages() -> dict[str, PageContentData]:
                     "是实验模板。"
                 ),
                 (
+                    "litchi 把农户、门店、技术员的诊断线索、证据、方案、确认、咨询和反馈放在同一"
+                    "产品中，但相邻模块之间缺少统一业务 ID 和强状态关联，因此只能称为部分协作闭环，"
+                    "不能宣传完整履约闭环。"
+                ),
+                (
                     "litchi 受控 Agent：Planner 生成最多 4 步计划，内嵌 Guard 过滤未知/重复工具并按"
                     "角色收窄白名单，Executor 顺序执行，Synthesizer 只基于工具证据作答；写工具先"
-                    "进入 waiting_approval。当前同一技术员仍可发起并确认，不宣称双人复核。"
+                    "进入 waiting_approval。当前同一技术员仍可发起并确认，不宣称双人复核。异步"
+                    "执行使用公共线程池，cancel 不能中断已经发出的依赖调用。"
                 ),
                 (
                     "litchi RAG：支持 txt/md/csv/json/docx/pdf，按 480/120 切块；1024 维确定性哈希"
-                    "向量用于 CPU 本地演示，并非语义 embedding。ChatService 合并 Milvus 文档候选"
-                    "与 Neo4j 图谱关系，再交给本地 Ollama qwen2.5:0.5b 生成有依据的回答。"
+                    "向量由双字符/分词 Java hash 后 L2 归一化，用于 CPU 本地演示，并非语义 "
+                    "embedding。"
+                    "查询合并 Milvus 与本地候选，做标题/来源/关键词启发式重排，再用 Neo4j 补关系"
+                    "证据并交给 Ollama；不能宣称 BM25/RRF、高级 reranker 或特定 HNSW/IVF 调优。"
                 ),
                 (
-                    "litchi 的证据边界：历史 50 并发本地测试全部成功，但后续 100 并发、200 请求"
-                    "多轮成功率仅约 50.5%/21%/19%，环境条件不同，不能强推因果，只能确认高并发"
-                    "稳定性未达标。Redis Stream、租户级 RLS、专用 Agent 执行器、事务 Outbox 与"
-                    "Token/成本预算均是下一版计划，尚未落地。"
+                    "litchi 评测：测试源码已提交；38/38 和 119 轮巡检来自未提交本地报告。60 条数据"
+                    "与结构校验已提交，但真实 runner 为 Agent 20/20、RAG 24/30、安全 0/10，gate "
+                    "失败；角色/租户、citation、P95 和成本统计都有口径缺陷，因此结果用于暴露盲区。"
+                ),
+                (
+                    "litchi 并发边界：历史 50 并发/50 请求全成功，平均约 6.9s、P95 约 11.2s；"
+                    "后续 100 并发/200 请求多轮成功率约 50.5%/21%/19%，一轮 P95 约 15.2s。条件"
+                    "没有严格冻结，不能证明唯一根因，只能确认高并发稳定性未达标。"
+                ),
+                (
+                    "litchi 当前 Agent 状态与 outbox 不在同一事务；后端有 SSE 状态端点，前端主要"
+                    "轮询；诊断链有真实模型、数据集演示和后端 fallback，仓库无可复现准确率报告。"
+                    "Redis Stream/Last-Event-ID、租户 RLS、专用执行器、事务 Outbox、职责分离审批、"
+                    "全链 deadline 与 Token/成本预算都是下一版方案，尚未落地。"
                 ),
             ],
         ),

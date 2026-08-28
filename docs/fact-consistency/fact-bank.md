@@ -176,12 +176,37 @@
 - **溯源**：CORPUS `litchi-evidence-retrospective.md`。
 - **判定要点**：同时命中“50 并发历史成功 + 200 请求多轮失败 + 条件不同不能强推因果 + 未证明唯一根因” ✅；只说“50 并发 100% 所以生产可用”或把 19% 说成“200 并发”❌。
 
+### FQ-39 · litchi 为什么不信任 Planner 直接调用工具？
+- **期望事实**：Planner 只产出候选 JSON 计划；服务端 Guard 再按 availableTools、重复调用、角色 supports 和最大 4 步过滤，Executor 只执行过滤后的计划。模型输出是非可信输入，权限与预算必须由确定性代码执行。
+- **溯源**：CORPUS `litchi-agent-rag.md`。
+- **判定要点**：命中“模型计划非可信 + 服务端白名单/RBAC/步数二次校验” ✅；说“模型自己保证不越权”❌。
+
+### FQ-40 · litchi 的 RAG 摄入和检索链路是什么？
+- **期望事实**：多格式抽取→空白归一化→480/120 切块→双字符/分词 Java hash→1024 维 L2 归一化→Milvus/本地候选→标题/来源/关键词启发式重排→Neo4j 关系证据→Ollama 合成/模板降级。
+- **溯源**：CORPUS `litchi-agent-rag.md`。
+- **判定要点**：能说明哈希向量是 CPU 离线取舍而非语义 embedding ✅；宣称 BGE、BM25/RRF 或高级 reranker 已实现 ❌。
+
+### FQ-41 · litchi 为什么有 outbox 表仍不是事务 Outbox？
+- **期望事实**：Agent/业务状态与 outbox 通过不同保存调用或连接完成，不共享同一原子事务；状态成功而事件失败、或反向不一致的窗口仍存在。
+- **溯源**：CORPUS `litchi-evidence-retrospective.md` / `litchi-evolution.md`。
+- **判定要点**：命中“同事务原子写入缺失” ✅；仅以“存在 outbox 表”证明可靠投递 ❌。
+
+### FQ-42 · litchi 的 SSE、取消和恢复做到什么程度？
+- **期望事实**：后端提供状态 SSE，但前端主要轮询；事件在进程内，没有 Last-Event-ID 持久重放。cancel 只改状态，不能中断已发出的 LLM/数据库调用；执行 steps 也没有逐步持久化。
+- **溯源**：CORPUS `litchi-agent-rag.md` / `litchi-evolution.md`。
+- **判定要点**：主动说明“端点存在不等于前端闭环或断线恢复” ✅；宣称流式 Token 输出或多实例恢复已完成 ❌。
+
+### FQ-43 · litchi 为什么只能称为部分协作闭环？
+- **期望事实**：农户、门店、技术员相关的诊断、方案、审批、咨询和反馈模块都存在，但缺少贯穿它们的统一业务 ID、强状态流转和事务关联。
+- **溯源**：CORPUS `litchi-overview.md`。
+- **判定要点**：命中“模块存在 + 强关联缺失” ✅；宣称完整技术员审核—门店履约—效果反馈闭环 ❌。
+
 ## D 组 · sleep 泰益智域（page_key=`projects`，project_key=`sleep202603_an`；TASK-AIQA-KB-EXPAND-014 新增）
 
 ### FQ-31 · 泰益智的 84 例评测怎么分类？
-- **期望事实**：7 类——sleep_analysis 20 / knowledge_answer 20 / device_control 20 / algorithm_optimization 9 / sleep_report 5 / sleep_improvement 5 / voice_companion 5，共 84/84；健康合规子项 71.43%。该工程集不调用外部 LLM，公开测试 Harness 中的设备 ACK 为模拟，不能把 84/84 说成真实设备或生产安全 100%。
+- **期望事实**：源码实际是 11 个 case group——睡眠分析 20、知识问答 10、Prompt Injection 10、已审批控制 10、未审批控制 5、模拟超时 5、睡眠报告 5、改善计划 5、语音陪伴 5、算法优化 5、隐私拒绝 4，共 84/84；七类只是展示归并。该工程集不调用外部 LLM，公开 Harness 的设备 ACK 为模拟。未提交 RC 的健康合规为 25/35=71.43%。
 - **溯源**：CORPUS `sleep-evidence-retrospective.md`。
-- **判定要点**：命中 7 类细分 + 84/84，并同时说明 deterministic/模拟 ACK/健康合规边界 ✅；只报 100% 而省略口径 ❌。
+- **判定要点**：命中“源码 11 groups + 可展示归并七类 + deterministic/模拟 ACK” ✅；说成“源码原生七类”或只报 100% 而省略口径 ❌。
 
 ### FQ-32 · 泰益智 51 条重复的根因是什么？
 - **期望事实**：故障注入重平衡首轮被杀 Worker 的原 6 分区出 51 条重复，根因 ClickHouse `Array(UUID)` 参数查重返回空集却不报错，换 string→UUID 子查询修复；3 轮 × 6,240 事件验证（12 分区 lag 全 0、恢复 median 12.605s、300 次显式重放全抑制）。
@@ -192,6 +217,41 @@
 - **期望事实**：三端——Taro 小程序（16 页，rpx 单位 / TARO_ENV 分支 / 统一 API 封装做跨端规避）+ Web（dist）+ Android（Capacitor 壳 appId=com.sleep202603.app，MainActivity 一行 extends BridgeActivity、零自定义原生代码）。
 - **溯源**：CORPUS `sleep-overview.md`。
 - **判定要点**：命中"三端 + Capacitor 壳零原生代码" ✅；说"写过 Java/Kotlin 业务代码"❌（诚实边界）。
+
+### FQ-44 · Sleep 的 202 异步接纳优化到底优化了什么？
+- **期望事实**：控制面创建 Run/Outbox 后投递 FastAPI；本地有界队列接纳并由 Worker 后台执行。1000 个合成请求、并发 100 下接纳吞吐 87.78→433.53/s，P95 1347.73→228.85ms；只测 HTTP 接纳，不含真实 LLM/RAG/工具或完成延迟。
+- **溯源**：CORPUS `sleep-agent-runtime.md`。
+- **判定要点**：命中“202=接纳、不是完成或推理提速” ✅；说“Agent 推理性能提升 393.9%”❌。
+
+### FQ-45 · Sleep 为什么用固定 DAG，Temporal 又验证到了哪？
+- **期望事实**：route→policy→finalize 固定 DAG 让工具集合、审批点和预算可预测；不是开放式 ReAct。Temporal 有 Workflow、信号和 Activity 实现，但测试使用 Fake Client，没有真实 Worker/Pod 中断恢复证据。
+- **溯源**：CORPUS `sleep-agent-runtime.md`。
+- **判定要点**：区分固定图实现与真实 Temporal 恢复 ✅；宣称 Temporal exactly-once 或故障恢复已验证 ❌。
+
+### FQ-46 · Sleep 的设备控制安全边界有什么缺口？
+- **期望事实**：固定计划、allowlist、参数校验和 HITL 已实现；但 device_control 的可信 allowed_device_ids 未由 NestJS 控制面强制注入，执行器缺省会回退到输入 device_id，内部 Agent API 也缺少独立服务认证。
+- **溯源**：CORPUS `sleep-rag-governance.md`。
+- **判定要点**：同时说明已实现守卫和可信边界缺口 ✅；用“危险写工具 0”掩盖设备归属风险 ❌。
+
+### FQ-47 · Sleep 的 RAG 租户隔离能证明什么？
+- **期望事实**：已实现 global+tenant 过滤、引用和无证据拒答，真实 PG 隔离测试为 2/2；但集成测试使用固定向量，且没有 BM25/RRF/reranker/阈值或正式 Recall/MRR，所以只能证明本地查询边界，不证明生产级语义质量。
+- **溯源**：CORPUS `sleep-rag-governance.md`。
+- **判定要点**：命中“2/2 本地隔离 + 固定向量/质量边界” ✅；外推为生产多租户安全或高级 Hybrid RAG ❌。
+
+### FQ-48 · Sleep 的设备 command_id 为什么不等于请求幂等？
+- **期望事实**：当前公开仓库每次 HTTP 请求生成新 command_id，重复请求仍可能产生两个命令；没有请求 fingerprint 核对，迟到 ACK 还可能把 timeout 改成 success。内部 RC 的指纹/唯一约束/真实 ACK 属 NDA 经历，不作为公开可复现实现。
+- **溯源**：CORPUS `sleep-data-reliability.md`。
+- **判定要点**：命中“命令 ID 唯一≠业务请求幂等 + 迟到 ACK 状态守卫缺失” ✅。
+
+### FQ-49 · Sleep 的 120 条红队 80% 和危险写工具 0 如何同时理解？
+- **期望事实**：120 条为未提交 RC，本人与同事协同设计、执行和分析；96/120 通过，24 条失败主要包括 17 条输入守卫漏检和 7 条运行边界问题。危险写工具 0 只说明固定工具/审批在这些模拟样本中守住，不代表输入防护或生产安全 100%。
+- **溯源**：CORPUS `sleep-evidence-retrospective.md`。
+- **判定要点**：能同时解释“写边界守住”和“总体仍有失败” ✅；把 0 次危险调用说成系统 100% 安全 ❌。
+
+### FQ-50 · Sleep 上云和可观测性实际做到哪？
+- **期望事实**：本人操作的历史阿里云基础设施和数据库迁移跑通过，但应用启动失败且候选未重部署。当前有指标/健康/脱敏 metadata trace 代码；Prometheus 实抓、告警恢复、跨服务 OTel Trace、Temporal 中断恢复和镜像回滚没有公开运行证据。
+- **溯源**：CORPUS `sleep-evolution.md`。
+- **判定要点**：命中“真实上云排障但应用失败 + 代码能力与运行证据分开” ✅；说 staging/生产上线成功 ❌。
 
 ## E 组 · 行为/动机/竞赛（interview-story，TASK-AIQA-KB-EXPAND-014 新增）
 
@@ -223,6 +283,6 @@
 ---
 
 ## 备注
-- **覆盖项**：个人教育、能力、证书、行为故事已进入三篇 canonical profile 文档；C 组 litchi（FQ-27~30）、D 组 sleep（FQ-31~33）、E 组行为/动机/竞赛（FQ-34~38，溯源 `behavior-stories.md`）。QUESTION_BANK 的问题与域保持不变，仅等价替换文档来源。
+- **覆盖项**：个人教育、能力、证书、行为故事进入三篇 canonical profile 文档；C 组 litchi 基础 FQ-27~30 + 技术追问 FQ-39~43；D 组 sleep 基础 FQ-31~33 + 技术追问 FQ-44~50；E 组行为/动机/竞赛 FQ-34~38。canonical 文档仍为 20 篇。
 - **漂移风险**：若 `content.py` chunk 文本变更，本题库期望事实须同步修订，否则一致率失真。修订须走内容变更流程，不可静默改期望值凑分。
 - **题库口径变更（2026-08-18）**：分母 26 → 38（FQ-27+ 扩展，rubric.md §3 同步）；SLO ≥94% 不变，38 题下需 ✅ ≥ 36。

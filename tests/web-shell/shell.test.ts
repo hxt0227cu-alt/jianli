@@ -24,6 +24,12 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('邮箱或密码错误，请检查后重试。');
     expect(source).toContain('无法连接到登录服务，请确认本地 API 已启动后重试。');
     expect(source).toContain("page === 'mine' ? '我的预约'");
+    // TASK-WEB-NAV-LABEL-CONSISTENCY-001: top navigation mirrors the sidebar labels.
+    expect(source).toContain("onPage('resume')}>简历问答</button>");
+    expect(source).toContain("onPage('projects')}>项目说明</button>");
+    expect(source).toContain("onPage('interview')}>预约面试</button>");
+    expect(source).not.toContain('>页面一</button>');
+    expect(source).not.toContain('>页面二</button>');
     expect(source).toContain('/slots/snapshot?week_offset=');
     expect(source).toContain('/appointment-confirmations');
     expect(source).toContain("'/appointments'");

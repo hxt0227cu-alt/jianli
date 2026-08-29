@@ -78,18 +78,18 @@
 - 冻结 Web 验收失败或超过 3 个文件时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待完成
-- 修改文件清单：待完成
-- 测试命令及结果：待完成
-- lint / typecheck：待完成
+- commit / PR：`17f0e9d7a1f4337c5dec1e916692627fac5f193b`
+- 修改文件清单：本任务单、`apps/web/main.tsx`、`tests/web-shell/shell.test.ts`；均在允许路径内。
+- 测试命令及结果：WSL `pnpm test` → `1 passed`；`pnpm typecheck` → passed；`pnpm build` → passed（1793 modules transformed）。
+- lint / typecheck：TypeScript `tsc --noEmit` → passed；production build → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待完成
-- 变更预算实际值：待完成
-- 未解决风险：待完成
-- 是否偏离 TASK：待完成
+- 验收证据：在页面二保持 Jianli 展示上下文时实问两题：①岗位/团队题命中 6 个片段，引用 `profile.md` / `behavior-stories.md` 等；②成就感题命中 6 个片段，引用行为故事与工程证据；两题均显示“已基于资料回答”，不再显示“越界问题已拒绝”。
+- 变更预算实际值：3/3 文件；生产代码 +21/-16 行；测试 +8 行，未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待完成
-- verified_commit：待完成
+- spec_sync：clean
+- verified_commit：`17f0e9d7a1f4337c5dec1e916692627fac5f193b`
 
 ## 关联
 - 前置任务：`TASK-AIQA-RECOMMENDATION-RECALL-001`

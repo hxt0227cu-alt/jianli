@@ -79,19 +79,22 @@
 - 超过 3 个修改文件时拆分任务。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待完成
-- 修改文件清单：待完成
-- 测试命令及结果：待完成
-- lint / typecheck：待完成
+- commit / PR：`17f0e9d7a1f4337c5dec1e916692627fac5f193b`
+- 修改文件清单：本任务单、`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`；均在允许路径内。
+- 测试命令及结果：
+  - 真实 PostgreSQL / Redis / BGE-M3：`PYTHONPATH=. .venv/bin/pytest tests/aiqa/test_rag_eval.py -q -s` → `7 passed in 131.56s`；literal 20/20、semantic 20/20、REJECT 10/10、FALSE-REJECT 10/10，隐私断言通过。
+  - `scripts/seed_kb.py` → canonical corpus `20/20 active + indexed`，文档总数保持 20。
+- lint / typecheck：`ruff check app/aiqa/content.py tests/aiqa/test_rag_eval.py` → passed；`mypy app/aiqa/content.py` → 0 issues；`compileall` → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待完成
-- 变更预算实际值：待完成
-- 未解决风险：待完成
-- 是否偏离 TASK：待完成
+- 验收证据：两道新增 FALSE-REJECT 均 `offtopic=False / grounded=True`；正式重灌后页面真链路由关联 `TASK-WEB-FOLLOWUP-SCOPE-001` 完成，均命中 6 个片段并显示引用与“已基于资料回答”。
+- 变更预算实际值：3/3 文件；生产/静态内容 +6 行；测试/语料 +8 行，未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否；页面项目过滤冲突按预算规则拆为关联前端任务，没有把跨项目事实塞入错误项目语料。
 - 规范影响结论：none
-- spec_sync：待完成
-- verified_commit：待完成
+- spec_sync：clean
+- verified_commit：`17f0e9d7a1f4337c5dec1e916692627fac5f193b`
 
 ## 关联
 - Change Request：无（符合既有规范的 Bug 修复）
 - 测试任务：TC-AI-001 / TC-AI-002 / TC-AI-004 / TC-AI-006
+- 关联实现：`TASK-WEB-FOLLOWUP-SCOPE-001`

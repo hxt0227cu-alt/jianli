@@ -84,18 +84,18 @@
 - 事实无法从既有语料核验、超过 4 个文件、超出预算或冻结测试失败时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待填写
-- 修改文件清单：待填写
-- 测试命令及结果：待填写
-- lint / typecheck：待填写
+- commit / PR：`9cd77bf4cc7bda4db8a8050f40cd49f92e74ccf7`
+- 修改文件清单：`apps/web/main.tsx`、`apps/web/styles.css`、`tests/web-shell/shell.test.ts`、`tasks/TASK-PAGE2-PROJECT-DEPTH-001.md`
+- 测试命令及结果：`npm test` → 1 test / 1 file passed；`npm run build` → 1793 modules transformed，production build 成功
+- lint / typecheck：`npm run typecheck` → 0 error；`git diff --check` → 0 error
 - DB 迁移验证：无
-- 验收证据：待填写
-- 变更预算实际值：待填写
-- 未解决风险：待填写
-- 是否偏离 TASK：待填写
+- 验收证据：Codex 内置浏览器 1440×1000 实测：Sleep 为 `project-card khaki`（783px）+ 可靠性复盘（482px）+ 交付账本（450px）三个板块；Litchi 为 `project-card sun`（802px）+ 双链路工程图（611px）+ 毕设验收板（643px）三个板块；主内容宽 705px，无横向溢出，暖色主题与文字层次清晰，warning/error 控制台记录为 0。
+- 变更预算实际值：4 / 4 files；生产代码/样式 138 增 / 1 删≤320；测试 17 行≤35
+- 未解决风险：新增板块事实为公开聚合叙事，详细源码与 NDA 证据仍由右侧项目隔离问答承接。
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待填写
+- verified_commit：`9cd77bf4cc7bda4db8a8050f40cd49f92e74ccf7`
 
 ## 关联
 - Change Request：无（U2 展示内容补齐，不改变业务行为或契约）

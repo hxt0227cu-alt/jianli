@@ -113,14 +113,14 @@ def test_grounded_and_blocked_paths_emit_monotonic_safe_traces() -> None:
         item["phase"] for item in malicious
     }
 
-    no_evidence = _trace_events("你是否参与过 NASA 火星项目？请给出具体成果")
+    no_evidence = _trace_events("今天天气怎么样？")
     assert any(
         item["phase"] == "retrieval" and item["status"] == "blocked"
         for item in no_evidence
     )
 
     trace_text = json.dumps(grounded + malicious + no_evidence, ensure_ascii=False)
-    for forbidden in ("你擅长什么", "诊断证明", "NASA", "system prompt", "storage_key"):
+    for forbidden in ("你擅长什么", "诊断证明", "天气", "system prompt", "storage_key"):
         assert forbidden not in trace_text
 
 

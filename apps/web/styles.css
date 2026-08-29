@@ -442,23 +442,34 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .project-view .agent-scenarios button>small{font-size:17px}
 .project-view .agent-scenarios button>em{font-size:14px}
 
-.project-view .eval-center-head h2{font-size:24px}
-.project-view .eval-center-head p{font-size:14px}
-.project-view .eval-score strong{font-size:31px}
-.project-view .eval-score span{font-size:13px}
-.project-view .eval-meta>span{font-size:13px}
-.project-view .eval-suite-grid span{font-size:13px}
-.project-view .eval-suite-grid strong{font-size:23px}
-.project-view .eval-suite-grid p{font-size:13px}
-.project-view .eval-suite-grid code{font-size:12px}
+.project-view .eval-center-head h2{font-size:28px;line-height:1.3}
+.project-view .eval-center-head p{font-size:15px;line-height:1.65}
+.project-view .eval-score strong{font-size:36px}
+.project-view .eval-score span{font-size:14px}
+.project-view .eval-meta>span{font-size:14px;padding:7px 11px}
+.project-view .eval-suite-grid span{font-size:15px}
+.project-view .eval-suite-grid strong{font-size:27px}
+.project-view .eval-suite-grid p{font-size:15px;line-height:1.65}
+.project-view .eval-suite-grid code{font-size:13px}
 .project-view .eval-comparison-grid span,
-.project-view .eval-comparison-grid small{font-size:12px}
-.project-view .eval-comparison-grid b{font-size:17px}
-.project-view .comparison-values span{font-size:15px}
-.project-view .eval-comparison-grid code{font-size:12px}
-.project-view .eval-cases summary{font-size:14px}
-.project-view .eval-cases article{font-size:13px}
-.project-view .eval-center>footer{font-size:12px}
+.project-view .eval-comparison-grid small{font-size:14px}
+.project-view .eval-comparison-grid b{font-size:19px}
+.project-view .comparison-values span{font-size:17px}
+.project-view .eval-comparison-grid code{font-size:13px}
+.project-view .eval-cases summary{font-size:16px}
+.project-view .eval-cases article{font-size:15px}
+.project-view .eval-center>footer{font-size:14px;line-height:1.7}
+
+/* TASK-PAGE2-EVAL-TYPE-SCALE-002：评测证据板二次放大并同步舒展间距。 */
+.project-view .eval-center{padding:28px}
+.project-view .eval-center .eyebrow{font-size:15px}
+.project-view .eval-meta{gap:10px;margin:18px 0}
+.project-view .eval-suite-grid{gap:12px}
+.project-view .eval-suite-grid article{min-height:160px;padding:17px;gap:8px}
+.project-view .eval-comparison-grid{margin-top:14px}
+.project-view .eval-comparison-grid article{padding:18px;gap:20px}
+.project-view .eval-cases summary{padding:16px 0 8px}
+.project-view .eval-cases article{padding:11px 13px}
 
 .project-view .project-depth-head h2,
 .project-view .proof-head h2{font-size:28px}

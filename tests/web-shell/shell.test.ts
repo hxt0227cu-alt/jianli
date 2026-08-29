@@ -64,7 +64,10 @@ describe('web shell acceptance surface', () => {
     expect(styles).toContain('TASK-PAGE2-TYPE-SCALE-001');
     expect(styles).toContain('.project-view .evidence-card p{font-size:15px}');
     expect(styles).toContain('.project-view .agent-scenarios button>small{font-size:17px}');
-    expect(styles).toContain('.project-view .eval-suite-grid p{font-size:13px}');
+    expect(styles).toContain('TASK-PAGE2-EVAL-TYPE-SCALE-002');
+    expect(styles).toContain('.project-view .eval-suite-grid strong{font-size:27px}');
+    expect(styles).toContain('.project-view .eval-suite-grid p{font-size:15px;line-height:1.65}');
+    expect(styles).toContain('.project-view .eval-center>footer{font-size:14px;line-height:1.7}');
     expect(styles).toContain('.project-view .replay-flow article>p{font-size:16px}');
     expect(styles).toContain('.project-view .lane-flow article>p{font-size:15px}');
     expect(styles).toContain('.project-view .proof-grid article>p{font-size:15px}');

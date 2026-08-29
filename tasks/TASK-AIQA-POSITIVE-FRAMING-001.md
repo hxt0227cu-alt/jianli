@@ -83,19 +83,20 @@
 - 冻结验收失败或超过 3 个文件时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待完成
-- 修改文件清单：待完成
-- 测试命令及结果：待完成
-- lint / typecheck：待完成
+- commit / PR：`83b95f25965275d813da27af353b45de49e367c4`
+- 修改文件清单：本任务单、`apps/api/app/aiqa/persona.py`、`apps/api/tests/aiqa/test_persona_style.py`；均在允许路径内。
+- 测试命令及结果：`PYTHONPATH=. pytest tests/aiqa/test_persona_style.py tests/aiqa/test_aiqa.py -q` → `20 passed`；新增正向 few-shot 不主动追加不利信息断言通过。
+- lint / typecheck：`ruff check app/aiqa/persona.py tests/aiqa/test_persona_style.py` → passed；`mypy app/aiqa/persona.py` → 0 issues；`compileall`、`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待完成
-- 变更预算实际值：待完成
-- 未解决风险：待完成
-- 是否偏离 TASK：待完成
+- 验收证据：单改 Prompt 后页面复验仍被旧成就语料诱导输出 `67/84`，按停止条件拆出 `TASK-KB-POSITIVE-STORY-001`；关联任务完成后复问只输出 84/84、18,720 零丢失、5.6 万行精确去重和可交接价值，不再主动输出失败率、未验证或局限。
+- 变更预算实际值：3/3 文件；生产代码 +15/-14 行；测试 +19/-4 行，未超预算。
+- 未解决风险：大模型输出具有概率性；当前以强 Prompt、正向 few-shot、聚焦语料和真实页面复验共同约束，未增加破坏流式输出的关键词硬删器。
+- 是否偏离 TASK：否；发现语料根因后按禁止路径和预算规则拆分，没有在本任务越界修改 corpus。
 - 规范影响结论：none
-- spec_sync：待完成
-- verified_commit：待完成
+- spec_sync：clean
+- verified_commit：`83b95f25965275d813da27af353b45de49e367c4`
 
 ## 关联
 - Change Request：无（符合既有 Persona 简洁与问题相关性要求的 Bug 修复）
 - 测试任务：TC-AI-004
+- 关联实现：`TASK-KB-POSITIVE-STORY-001`

@@ -82,18 +82,18 @@
 - 冻结 RAG 门禁失败或超过 3 个文件时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待完成
-- 修改文件清单：待完成
-- 测试命令及结果：待完成
-- lint / typecheck：待完成
+- commit / PR：`83b95f25965275d813da27af353b45de49e367c4`
+- 修改文件清单：本任务单、`apps/api/tests/aiqa/test_rag_eval.py`、`apps/api/app/aiqa/content.py`；均在允许路径内。
+- 测试命令及结果：真实 PostgreSQL / Redis / BGE-M3：`PYTHONPATH=. pytest tests/aiqa/test_rag_eval.py -q -s` → `7 passed in 191.08s`；literal 20/20、semantic 20/20、REJECT 10/10、FALSE-REJECT 10/10，隐私断言通过；`scripts/seed_kb.py` → `20/20 active + indexed`。
+- lint / typecheck：`ruff check app/aiqa/content.py tests/aiqa/test_rag_eval.py` → passed；`mypy app/aiqa/content.py` → 0 issues；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待完成
-- 变更预算实际值：待完成
-- 未解决风险：待完成
-- 是否偏离 TASK：待完成
+- 验收证据：页面二保持 Jianli 展示上下文复问“你最有成就感的一段工程经历是哪一段？”→ 命中 6 个片段，回答只保留固定 DAG/白名单/HITL、84/84、18,720 零丢失、5.6 万行精确去重与可复跑可交接价值；未出现 `67/84`、`80%`、失败记录、未验证路径或安全不足。
+- 变更预算实际值：3/3 文件；生产/静态内容 +3/-3 行；测试/语料 +3/-3 行，未超预算。
+- 未解决风险：无；专门技术复盘文档仍保留真实边界，只有明确技术核验问题才会使用。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待完成
-- verified_commit：待完成
+- spec_sync：clean
+- verified_commit：`83b95f25965275d813da27af353b45de49e367c4`
 
 ## 关联
 - 前置任务：`TASK-AIQA-POSITIVE-FRAMING-001`

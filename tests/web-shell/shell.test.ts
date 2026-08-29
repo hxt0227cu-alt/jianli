@@ -11,7 +11,10 @@ const qualityWorkflow = readFileSync(resolve(process.cwd(), '.github/workflows/a
 describe('web shell acceptance surface', () => {
   it('keeps the three static destinations and evidence boundaries', () => {
     expect(source).toContain("'resume' | 'projects'");
-    expect(source).toContain('<iframe className="resume-embed" src="/resume.pdf" title="简历 PDF"');
+    expect(source).toContain('<img className="resume-preview-image"');
+    expect(source).toContain('src={`/resume-preview.png?v=${attempt}`}');
+    expect(source).toContain('href="/resume.pdf"');
+    expect(source).not.toContain('<iframe className="resume-embed"');
     expect(source).toContain('正在加载简历…');
     expect(source).toContain("fetch('/resume.pdf', { method: 'HEAD'");
     expect(source).toContain('简历暂时无法加载');

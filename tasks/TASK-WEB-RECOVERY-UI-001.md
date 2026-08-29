@@ -85,18 +85,18 @@
 - 冻结测试失败或实际修改超过 6 个文件立即停止，不得降低断言。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`1b0033681107d28a8bd8425b893f725651ce1ec2`
+- 修改文件清单：`apps/web/main.tsx`、`apps/web/my-appointments.tsx`、`apps/web/appointment.css`、`apps/web/styles.css`、`tests/web-shell/shell.test.ts`、本任务单；均在允许路径内
+- 测试命令及结果：WSL `npm run test` → 1 passed；`npm run build` → production build passed（1793 modules）
+- lint / typecheck：WSL `npm run typecheck` → 0 error；`git diff --check` → 0 error
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：本地 `http://127.0.0.1:5173/resume.pdf` HEAD 200 / `application/pdf`；浏览器真实 PDF 成功渲染；不存在邮箱登录统一显示“邮箱或密码错误，请检查后重试”；匿名进入“我的预约”仅显示全宽可恢复错误态且顶栏标题正确；受控移除 PDF 时 DOM 显示“简历暂时无法加载”及“重新加载”，随后已恢复 PDF 并复验 200
+- 变更预算实际值：6/6 文件；生产代码 +127/-36 行，测试 +12/0 行，未超预算
+- 未解决风险：整个前端进程完全停机时无法由已停机的页面代码展示兜底，正式部署仍须依赖容器探活与自动重启；本任务已覆盖应用仍运行时的 API/PDF 失败恢复
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`1b0033681107d28a8bd8425b893f725651ce1ec2`
 
 ## 关联
 - Change Request：无（符合现有规范的缺陷修复）

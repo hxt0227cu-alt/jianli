@@ -74,18 +74,18 @@
 - 预览图超过 3MB、视觉渲染缺页/模糊、冻结测试失败或超过 4 个文件时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待填写
-- 修改文件清单：待填写
-- 测试命令及结果：待填写
-- lint / typecheck：待填写
+- commit / PR：`3f0b491ac56b2c2ac7addfd478ec151776f31691`
+- 修改文件清单：本任务单、`apps/web/main.tsx`、`apps/web/styles.css`、`apps/web/public/resume-preview.png`；均在允许路径内。
+- 测试命令及结果：WSL `pnpm test` → 1 passed；`pnpm typecheck` → passed；`pnpm build` → passed（1793 modules transformed）。
+- lint / typecheck：TypeScript `tsc --noEmit` → passed；production build → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待填写
-- 变更预算实际值：待填写
-- 未解决风险：待填写
-- 是否偏离 TASK：待填写
-- 规范影响结论：待填写
-- spec_sync：待填写
-- verified_commit：待填写
+- 验收证据：Poppler `pdfinfo` 确认源 PDF 为 A4 单页；200 DPI 渲染为 1654×2339 PNG，885,980 bytes；原图检查无缺页、裁切、乱码或黑块。本地浏览器 1920×1250 视觉验收确认页面内仅显示白色简历纸张，黑色工具栏/缩略图/背景均消失，下载与原始 PDF 入口可见。
+- 变更预算实际值：4/4 文件；生产代码 +15/-2 行；静态预览 1 个（0.85MB），未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否
+- 规范影响结论：none
+- spec_sync：clean
+- verified_commit：`3f0b491ac56b2c2ac7addfd478ec151776f31691`
 
 ## 关联
 - 测试变更：`TASK-TEST-WEB-RESUME-PREVIEW-002`

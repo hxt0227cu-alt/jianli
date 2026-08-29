@@ -68,21 +68,20 @@
 - 超出 2 个文件或冻结验收失败时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待填写
-- 修改文件清单：待填写
-- 测试命令及结果：待填写
-- lint / typecheck：待填写
+- commit / PR：测试期望提交 `75adf1d4fbc8910c314b4752981f08449c1baeea`；通过验收的实现快照 `3f0b491ac56b2c2ac7addfd478ec151776f31691`
+- 修改文件清单：本任务单、`tests/web-shell/shell.test.ts`；均在允许路径内。
+- 测试命令及结果：WSL `pnpm test` → 1 passed；`pnpm typecheck` → passed；`pnpm build` → passed（1793 modules transformed）。
+- lint / typecheck：TypeScript `tsc --noEmit` → passed；production build → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待填写
-- 变更预算实际值：待填写
-- 未解决风险：待填写
-- 是否偏离 TASK：待填写
-- 规范影响结论：待填写
-- spec_sync：待填写
-- verified_commit：待填写
+- 验收证据：冻结测试明确断言高清预览图、原始 PDF 入口、资源检查、加载/失败/重试态，并明确禁止页面内嵌 iframe；全部通过。
+- 变更预算实际值：2/2 文件；生产代码 0 行；测试 +3/-1 行，未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否
+- 规范影响结论：test_plan 等价更新，未降低 TC-UI-002
+- spec_sync：clean
+- verified_commit：`3f0b491ac56b2c2ac7addfd478ec151776f31691`
 
 ## 关联
 - 前置任务：`TASK-TEST-WEB-RESUME-001`
 - 实现任务：`TASK-WEB-RESUME-CLEAN-PREVIEW-001`
 - 测试任务：TC-UI-002
-

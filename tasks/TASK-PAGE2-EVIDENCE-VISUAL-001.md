@@ -83,18 +83,18 @@
 - 事实无法从既有语料核验、超过 4 个文件、超出预算或冻结测试失败时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`6ad01d76603d4165306e22b48d578b6e77e04576`
+- 修改文件清单：`apps/web/main.tsx`、`apps/web/styles.css`、`tests/web-shell/shell.test.ts`、`tasks/TASK-PAGE2-EVIDENCE-VISUAL-001.md`
+- 测试命令及结果：`npm test` → 1 test / 1 file passed；`npm run build` → 1793 modules transformed，production build 成功
+- lint / typecheck：`npm run typecheck` → 0 error；`git diff --check` → 0 error
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：Codex 内置浏览器 1440×1000 实测：Agent Lab 4 卡为 2×2（487px×2），说明文字 14px / 23.8px 行高；Sleep 6 张事实卡、`project-card khaki`；Litchi 6 张事实卡、`project-card sun`；三个项目切换正常，控制台 0 warning / 0 error。
+- 变更预算实际值：4 / 4 files；生产代码/样式 58 增 / 4 删≤180；测试 13 行≤20
+- 未解决风险：无
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`6ad01d76603d4165306e22b48d578b6e77e04576`
 
 ## 关联
 - Change Request：无（不改变业务行为或契约）

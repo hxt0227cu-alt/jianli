@@ -63,6 +63,27 @@ class _FakeGateway:
         return
 
 
+class _UnknownToolGateway:
+    """Emit a provider-invalid tool once, then answer the grounded generation call."""
+
+    @property
+    def model_name(self) -> str:
+        return "fake-unknown-tool"
+
+    async def answer(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, object]] | None = None,
+    ) -> AsyncIterator[tuple[str, str | dict[str, object]]]:
+        if tools is not None:
+            yield (
+                "tool_call",
+                {"name": "summarize_project", "arguments": "{}"},
+            )
+            return
+        yield ("delta", "（模拟回答）仅依据检索到的 Litchi 项目资料。")
+
+
 def _collect(
     service: AnswerService,
     question: str,
@@ -140,6 +161,45 @@ def test_model_skips_tool_system_fallback_grounds(tmp_path: Path) -> None:
     calls = next(d["calls"] for name, d in events if name == "answer.tool_calls")
     assert calls[0]["query"] == "jianli 技术栈是什么"  # fallback searched the raw question
     assert calls[0]["hits"]
+
+
+def test_unknown_tool_is_blocked_then_compound_question_uses_rag(tmp_path: Path) -> None:
+    """Regression: rejected provider tool names must not enter booking generation."""
+    gateway = _UnknownToolGateway()
+    service = _service(tmp_path, gateway)
+    question = (
+        "Litchi 的叶片五分类最高 93.75%，这个数字能代表真实果园效果吗？"
+        "降级路径如何避免冒充模型推理？"
+    )
+    events = _collect(service, question, "projects", "litchi")
+
+    blocked = [
+        data
+        for name, data in events
+        if name == "answer.trace"
+        and data.get("phase") == "tool"
+        and data.get("status") == "blocked"
+    ]
+    assert len(blocked) == 1
+    assert blocked[0].get("tool_name") is None
+    calls = next(data["calls"] for name, data in events if name == "answer.tool_calls")
+    assert calls[0]["name"] == "search_knowledge"
+    assert calls[0]["query"] == question
+    assert calls[0]["hits"]
+    citations = next(data["citations"] for name, data in events if name == "answer.citations")
+    assert citations and all(str(item["doc"]) == "litchi" for item in citations)
+    completed = dict(events[-1][1])
+    assert completed["grounded"] is True and completed["offtopic"] is False
+
+
+def test_unknown_tool_with_no_evidence_still_refuses(tmp_path: Path) -> None:
+    """The fallback remains fail-closed when the original question has no evidence."""
+    service = _service(tmp_path, _UnknownToolGateway())
+    events = _collect(service, "今天天气怎么样？", "projects", "jianli")
+    completed = dict(events[-1][1])
+    assert completed["grounded"] is False and completed["offtopic"] is True
+    citations = next(data["citations"] for name, data in events if name == "answer.citations")
+    assert citations == []
 
 
 def test_model_query_misses_fallback_question_recovers(tmp_path: Path) -> None:

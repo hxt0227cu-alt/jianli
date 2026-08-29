@@ -1200,6 +1200,20 @@ class AnswerService:
                         tool_name="search_knowledge",
                     )
                     break  # → RAG branch
+                if name not in _TRACE_TOOL_NAMES:
+                    # Providers can occasionally emit a tool name that was never offered.
+                    # Reject it without feeding the rejected call into the booking result
+                    # branch: factual questions must still take the grounded RAG path.
+                    observe_agent_tool(name, "blocked", 0)
+                    yield _trace(
+                        phase="tool",
+                        status="blocked",
+                        label="白名单外工具已拒绝",
+                        duration_ms=0,
+                        detail="结构化结果：forbidden",
+                    )
+                    search_query = question
+                    break
                 tool_started = time.monotonic()
                 result = await self._run_agent_tool(name, args, principal)
                 tool_trace.append({"name": name, "result": result})

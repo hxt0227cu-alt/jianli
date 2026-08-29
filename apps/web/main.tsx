@@ -506,9 +506,78 @@ function EvaluationEvidence() {
   return <section className="eval-center" aria-labelledby="eval-center-title"><div className="eval-center-head"><div><span className="eyebrow">EVALUATION / VERSIONED</span><h2 id="eval-center-title">结果、门禁和失败，都留证据。</h2><p>{report.environment}</p></div><div className="eval-score"><strong>{report.overall.passed}/{report.overall.total}</strong><span>版本化检查通过</span></div></div><div className="eval-meta"><span>验证 commit <code>{report.verified_commit}</code></span><span>{new Date(report.generated_at).toLocaleDateString('zh-CN')}</span><span className={`ci-state ${report.ci.status}`}>{ciLabel}</span></div><div className="eval-suite-grid">{report.suites.map((suite) => <article key={suite.id}><span>{suite.label}</span><strong>{suite.passed}/{suite.total}</strong><p>{suite.evidence}</p><code>{suite.verified_commit}</code></article>)}</div><div className="eval-comparison-grid">{report.comparisons.map((comparison) => <article key={comparison.id}><div><span>REAL PROVIDER · {comparison.sample_size} CASES</span><b>{comparison.label}</b><small>{comparison.provider_model}</small></div><div className="comparison-values"><span><small>召回排序</small>{comparison.baseline}</span><em>→</em><span><small>重排后</small>{comparison.reranked}</span></div><code>{comparison.verified_commit}</code></article>)}</div><details className="eval-cases"><summary>失败与边界案例 <span>{report.cases.length} 项</span></summary><div>{report.cases.map((item) => <article key={item.id} className={item.category}><span>{categoryLabel[item.category]}</span><b>{item.title}</b><small>{item.test_id} · {item.status === 'verified' ? '已验证' : item.status === 'resolved' ? '已解决' : '待处理'}</small></article>)}</div></details><footer>只公开聚合指标和脱敏案例；不包含问题原文、完整回答、Prompt、知识原文或个人信息。</footer></section>;
 }
 
+function SleepReliabilityReplay() {
+  return <section className="project-depth-panel khaki-light" aria-labelledby="sleep-replay-title">
+    <div className="project-depth-head">
+      <div><span className="eyebrow">RELIABILITY REPLAY / DATA PATH</span><h2 id="sleep-replay-title">不是“接了 Kafka”，而是把 51 条幽灵重复追到类型边界。</h2><p>从故障现象、静默根因到重放验收，展示一条可复盘的数据可靠性闭环。</p></div>
+      <span className="depth-badge">真实硬件日志参与联调</span>
+    </div>
+    <div className="replay-flow">
+      <article><span>01 · 发现</span><strong>6,291 / 6,240</strong><p>Worker 重平衡后总写入多出 51 条，但唯一事件数仍是 6,240。</p></article>
+      <article><span>02 · 定位</span><strong>ARRAY(UUID) → ∅</strong><p>ClickHouse 查重参数静默返回空集，没有报错，导致重复写入被放行。</p></article>
+      <article><span>03 · 修复</span><strong>STRING → UUID</strong><p>改为字符串数组并在 SQL 内显式转换，避免驱动层类型绑定陷阱。</p></article>
+      <article><span>04 · 验收</span><strong>3 × 6,240 · LAG 0</strong><p>三轮重平衡全部无重复，300 次显式重放全抑制，恢复中位数 12.605s。</p></article>
+    </div>
+    <div className="depth-boundary"><b>证据边界</b><p>这是本地双进程、单 Kafka、单 ClickHouse 的可靠性验证；不能外推为跨区域生产容灾。</p></div>
+  </section>;
+}
+
+function SleepDeliveryEvidence() {
+  return <section className="project-proof-panel khaki-dark" aria-labelledby="sleep-proof-title">
+    <div className="proof-head"><div><span className="eyebrow">DELIVERY LEDGER / HONEST EVIDENCE</span><h2 id="sleep-proof-title">安全、性能和上云，按证据等级拆开说。</h2><p>通过的、失败的、受 NDA 约束的，不混成一句“生产可用”。</p></div><strong>4 层证据</strong></div>
+    <div className="proof-grid">
+      <article><span>确定性工程集</span><strong>84/84</strong><p>11 个 case group；固定 Provider，公开 Harness 的设备 ACK 为模拟。</p><small>已提交源码与测试</small></article>
+      <article><span>协作红队</span><strong>96/120</strong><p>危险写工具调用 0 次；仍有 17 条输入守卫漏检和 7 条运行边界问题。</p><small>本人和同事协同，未提交 RC</small></article>
+      <article><span>租户检索</span><strong>PG 2/2 · RAG 8/8</strong><p>验证 global + tenant 过滤；固定向量不等于生产级语义质量。</p><small>本地真实 PostgreSQL</small></article>
+      <article className="known-gap"><span>云端交付</span><strong>迁移成功 · 应用失败</strong><p>阿里云基础设施和数据库迁移跑通，应用最终未启动，候选未重新部署。</p><small>明确保留失败证据</small></article>
+    </div>
+    <footer>下一版优先级：事务 Outbox、服务身份、可信设备归属、请求幂等和真实 Temporal 中断演练。</footer>
+  </section>;
+}
+
+function LitchiEngineeringMap() {
+  return <section className="project-depth-panel sun-light" aria-labelledby="litchi-map-title">
+    <div className="project-depth-head">
+      <div><span className="eyebrow">ENGINEERING MAP / TWO CONTROLLED CHAINS</span><h2 id="litchi-map-title">一个人交付，不等于把所有责任都交给模型。</h2><p>Agent 负责提出候选动作，服务端负责权限与预算；RAG 负责拼证据，模型只负责合成。</p></div>
+      <span className="depth-badge">Spring Boot + Vue 3 + Python</span>
+    </div>
+    <div className="engineering-lanes">
+      <div className="lane-label"><span>受控 Agent</span><b>模型计划是非可信输入</b></div>
+      <div className="lane-flow">
+        <article><span>01</span><b>Planner</b><p>生成 JSON 候选计划，硬上限 4 步。</p></article>
+        <article><span>02</span><b>Guard</b><p>过滤未知/重复工具，按角色收窄白名单。</p></article>
+        <article><span>03</span><b>Executor</b><p>顺序执行；写操作进入 waiting_approval。</p></article>
+        <article><span>04</span><b>Synthesizer</b><p>只基于工具证据组织答案，失败走降级。</p></article>
+      </div>
+      <div className="lane-label"><span>证据 RAG</span><b>为无 GPU 本地演示做约束取舍</b></div>
+      <div className="lane-flow">
+        <article><span>01</span><b>多格式抽取</b><p>PDFBox / POI；空文档不进入索引。</p></article>
+        <article><span>02</span><b>480 / 120</b><p>重叠切块后生成 1024 维确定性哈希向量。</p></article>
+        <article><span>03</span><b>证据融合</b><p>Milvus 候选 + 启发式重排 + Neo4j 关系。</p></article>
+        <article><span>04</span><b>本地合成</b><p>Ollama 作答；不可宣称 BGE、RRF 或高级 reranker。</p></article>
+      </div>
+    </div>
+  </section>;
+}
+
+function LitchiAcceptanceEvidence() {
+  return <section className="project-proof-panel sun-dark" aria-labelledby="litchi-proof-title">
+    <div className="proof-head"><div><span className="eyebrow">THESIS REVIEW / EVIDENCE & LIMITS</span><h2 id="litchi-proof-title">答辩分数之外，更值钱的是我知道数据能证明什么。</h2><p>独立交付、运行证据与失败边界同时摆在台面上。</p></div><strong>90.4</strong></div>
+    <div className="proof-grid litchi-proof-grid">
+      <article><span>独立交付</span><strong>3 角色 · 22 页面</strong><p>Java 后端、Vue 前端、Python 诊断、语料与评测由本人完成。</p><small>优秀毕业设计</small></article>
+      <article><span>完整 AI 环境</span><strong>3 ENGINES · LIVE</strong><p>Milvus、Neo4j、Ollama 同时真实运行并在答辩现场演示。</p><small>数据平台 / 可观测 / Helm 为实验模板</small></article>
+      <article><span>历史稳定性</span><strong>38/38 · 119 RUNS</strong><p>来自未提交本地报告；不能替代干净提交和正式质量门禁。</p><small>证据等级主动标注</small></article>
+      <article><span>并发边界</span><strong>50C OK · 100C FAIL</strong><p>50 并发历史全成功；100 并发/200 请求多轮最低成功率约 19%。</p><small>高并发稳定性未达标</small></article>
+      <article><span>评测校准</span><strong>3/30 → 24/30</strong><p>主要是修正错误 evidenceIds，不是模型能力提升八倍；仍有 6 条未命中。</p><small>先修评测，再谈优化</small></article>
+      <article><span>图像实验</span><strong>93.75% BEST</strong><p>五类 300/80 小样本验证，只证明实验链路，不能外推真实果园。</p><small>部署使用 best checkpoint</small></article>
+    </div>
+    <footer>尚未落地：事务 Outbox、职责分离审批、Last-Event-ID 重放、全链 deadline 与 Token/成本预算。</footer>
+  </section>;
+}
+
 function ProjectView({ selected, onSelect, onInterview, onRunScenario }: { selected: ProjectId; onSelect: (id: ProjectId) => void; onInterview: () => void; onRunScenario: (question: string) => void }) {
   const project = projects[selected];
-  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT VALUE / 02</span><h1>把不确定的模型，放进确定的工程边界。</h1><p>三个项目分别验证 Agent 治理、可靠落地与独立交付能力；实现细节可直接在右侧继续追问。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button><button className={selected === 'litchi' ? 'active' : ''} onClick={() => onSelect('litchi')}>项目 03 · litchi</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><section className={`project-card ${project.accent}`} aria-labelledby={`project-${selected}-title`}><div className="project-card-top"><span>{project.label}</span><span>核心价值 / 可验证证据</span></div><div className="project-hero"><div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><p className="project-name">{project.name}</p><h2 id={`project-${selected}-title`}>{project.headline}</h2><p className="project-problem">{project.problem}</p></div><div className="evidence-grid">{project.evidence.map((item) => <article className="evidence-card" key={item.label}><span>{item.label}</span><strong>{item.value}</strong><p>{item.detail}</p></article>)}</div><div className="evidence-boundary"><span>证据边界</span><p>{project.boundary}</p></div></section>{selected === 'jianli' && <section className="agent-lab"><div className="agent-lab-head"><div><span className="eyebrow">AGENT LAB / LIVE</span><h2>别只看架构，直接挑战它。</h2><p>场景会发送到右侧真实问答流，并展示服务端结构化执行轨迹。</p></div><span className="live-badge"><span className="live-dot" /> 实时执行</span></div><div className="agent-scenarios">{AGENT_LAB_SCENARIOS.map((scenario, index) => <button key={scenario.key} onClick={() => onRunScenario(scenario.question)}><span>0{index + 1}</span><b>{scenario.title}</b><small>{scenario.description}</small><em>运行场景 →</em></button>)}</div></section>}{selected === 'jianli' && <EvaluationEvidence />}<div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>页面只呈现最有价值的结论；架构、代码、取舍、失败与测试口径请直接追问数字分身。</p></div></main>;
+  return <main className="workspace project-view"><div className="workspace-heading project-heading"><div><span className="eyebrow">PROJECT VALUE / 02</span><h1>把不确定的模型，放进确定的工程边界。</h1><p>三个项目分别验证 Agent 治理、可靠落地与独立交付能力；实现细节可直接在右侧继续追问。</p></div><div className="project-actions"><div className="project-tabs"><button className={selected === 'jianli' ? 'active' : ''} onClick={() => onSelect('jianli')}>项目 01 · jianli</button><button className={selected === 'sleep' ? 'active' : ''} onClick={() => onSelect('sleep')}>项目 02 · sleep AIoT</button><button className={selected === 'litchi' ? 'active' : ''} onClick={() => onSelect('litchi')}>项目 03 · litchi</button></div><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><section className={`project-card ${project.accent}`} aria-labelledby={`project-${selected}-title`}><div className="project-card-top"><span>{project.label}</span><span>核心价值 / 可验证证据</span></div><div className="project-hero"><div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div><p className="project-name">{project.name}</p><h2 id={`project-${selected}-title`}>{project.headline}</h2><p className="project-problem">{project.problem}</p></div><div className="evidence-grid">{project.evidence.map((item) => <article className="evidence-card" key={item.label}><span>{item.label}</span><strong>{item.value}</strong><p>{item.detail}</p></article>)}</div><div className="evidence-boundary"><span>证据边界</span><p>{project.boundary}</p></div></section>{selected === 'jianli' && <section className="agent-lab"><div className="agent-lab-head"><div><span className="eyebrow">AGENT LAB / LIVE</span><h2>别只看架构，直接挑战它。</h2><p>场景会发送到右侧真实问答流，并展示服务端结构化执行轨迹。</p></div><span className="live-badge"><span className="live-dot" /> 实时执行</span></div><div className="agent-scenarios">{AGENT_LAB_SCENARIOS.map((scenario, index) => <button key={scenario.key} onClick={() => onRunScenario(scenario.question)}><span>0{index + 1}</span><b>{scenario.title}</b><small>{scenario.description}</small><em>运行场景 →</em></button>)}</div></section>}{selected === 'jianli' && <EvaluationEvidence />}{selected === 'sleep' && <SleepReliabilityReplay />}{selected === 'sleep' && <SleepDeliveryEvidence />}{selected === 'litchi' && <LitchiEngineeringMap />}{selected === 'litchi' && <LitchiAcceptanceEvidence />}<div className="project-context"><span><Sparkles size={14} /> 右侧问答已按当前项目过滤</span><p>页面只呈现最有价值的结论；架构、代码、取舍、失败与测试口径请直接追问数字分身。</p></div></main>;
 }
 
 function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) {

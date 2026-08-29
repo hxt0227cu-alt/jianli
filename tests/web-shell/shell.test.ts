@@ -34,6 +34,23 @@ describe('web shell acceptance surface', () => {
     expect(styles).toContain('.project-card.khaki');
     expect(styles).toContain('.project-card.sun');
     expect(styles).toContain('.agent-scenarios button>small{color:#53675a;font-size:14px;line-height:1.7}');
+    // TASK-PAGE2-PROJECT-DEPTH-001: every project has three substantive blocks.
+    expect(source).toContain('function SleepReliabilityReplay()');
+    expect(source).toContain('function SleepDeliveryEvidence()');
+    expect(source).toContain('function LitchiEngineeringMap()');
+    expect(source).toContain('function LitchiAcceptanceEvidence()');
+    expect(source).toContain('把 51 条幽灵重复追到类型边界');
+    expect(source).toContain('安全、性能和上云，按证据等级拆开说');
+    expect(source).toContain('一个人交付，不等于把所有责任都交给模型');
+    expect(source).toContain('答辩分数之外，更值钱的是我知道数据能证明什么');
+    expect(source).toContain('迁移成功 · 应用失败');
+    expect(source).toContain('50C OK · 100C FAIL');
+    expect(source).toContain('不能外推为跨区域生产容灾');
+    expect(source).toContain('不是模型能力提升八倍');
+    expect(styles).toContain('.project-depth-panel.khaki-light');
+    expect(styles).toContain('.project-depth-panel.sun-light');
+    expect(styles).toContain('.project-proof-panel.khaki-dark');
+    expect(styles).toContain('.project-proof-panel.sun-dark');
     expect(source).toContain('不会发送真实请求');
     // TASK-FE-AIQA-001: ChatPanel live SSE answers (resume page), static fallback kept
     // for interview/mine (hence the old static copy assertion above still holds).

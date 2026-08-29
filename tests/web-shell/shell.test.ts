@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const source = readFileSync(resolve(process.cwd(), 'apps/web/main.tsx'), 'utf8');
+const styles = readFileSync(resolve(process.cwd(), 'apps/web/styles.css'), 'utf8');
 const myAppointments = readFileSync(resolve(process.cwd(), 'apps/web/my-appointments.tsx'), 'utf8');
 const appointmentCss = readFileSync(resolve(process.cwd(), 'apps/web/appointment.css'), 'utf8');
 const evalReport = JSON.parse(readFileSync(resolve(process.cwd(), 'apps/web/evals/latest.json'), 'utf8'));
@@ -21,6 +22,18 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('预约已创建，但日历刷新失败');
     expect(source).toContain('AI 面试协作站');
     expect(source).toContain('Sleep AIoT Agent');
+    // TASK-PAGE2-EVIDENCE-VISUAL-001: equalized evidence density and warm themes.
+    expect(source).toContain("accent: 'khaki'");
+    expect(source).toContain("accent: 'sun'");
+    expect(source).not.toContain("accent: 'blue'");
+    expect(source).not.toContain("accent: 'purple'");
+    expect(source).toContain('18,720 · LAG 0');
+    expect(source).toContain('MIGRATION OK · APP FAIL');
+    expect(source).toContain('MILVUS · NEO4J · OLLAMA');
+    expect(source).toContain('50C · P95 11.2S');
+    expect(styles).toContain('.project-card.khaki');
+    expect(styles).toContain('.project-card.sun');
+    expect(styles).toContain('.agent-scenarios button>small{color:#53675a;font-size:14px;line-height:1.7}');
     expect(source).toContain('不会发送真实请求');
     // TASK-FE-AIQA-001: ChatPanel live SSE answers (resume page), static fallback kept
     // for interview/mine (hence the old static copy assertion above still holds).

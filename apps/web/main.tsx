@@ -238,7 +238,7 @@ const projects: Record<ProjectId, ProjectInfo> = {
     boundary: '38 条为当前版本化同源评测集，样本规模仍有限；网站正在按正式域名上线标准收口。',
   },
   sleep: {
-    label: '项目 02', name: 'Sleep AIoT Agent', accent: 'blue',
+    label: '项目 02', name: 'Sleep AIoT Agent', accent: 'khaki',
     tags: ['实习主项目', 'Agent Governance', 'AIoT'],
     headline: '让会操作设备的 Agent 可控、可恢复、可评测。',
     problem: '模型错误可能转化为真实设备操作，因此权限、审批、预算和恢复必须由确定性系统控制。',
@@ -246,11 +246,14 @@ const projects: Record<ProjectId, ProjectInfo> = {
       { label: '受控执行', value: '6 TOOLS · 15 APIs', detail: 'L0–L4 风险分级、工具白名单、参数边界与 Human-in-the-loop 审批。' },
       { label: '安全评测', value: '84/84 · 0 BYPASS', detail: '84 条确定性回归全部通过；120 条红队中恶意设备写入绕过 0 次。' },
       { label: '性能治理', value: '+393.9% · 229ms', detail: '有界异步接纳实现背压，HTTP 接纳吞吐提升，P95 从 1.35s 降至 229ms。' },
+      { label: '数据可靠性', value: '18,720 · LAG 0', detail: '双 Worker 重平衡三轮各 6240/6240，300 次重放全部抑制；证据限于本地数据链路。' },
+      { label: '租户检索', value: '2/2 · 8/8', detail: 'pgvector 按 global + tenant 过滤；真实 PostgreSQL 隔离 2/2，确定性 RAG 契约 8/8。' },
+      { label: '云端边界', value: 'MIGRATION OK · APP FAIL', detail: '阿里云基础设施和数据库迁移跑通过，但应用启动失败，因此不包装成生产上线。' },
     ],
-    boundary: '本地与确定性模拟证据；229ms 是接纳层延迟而非 LLM 推理延迟，当前无真机生产结论。',
+    boundary: '229ms 是接纳层而非 LLM 推理延迟；公开 Harness 的设备 ACK 为模拟，真实硬件日志与内部 RC 受 NDA 约束。',
   },
   litchi: {
-    label: '项目 03', name: 'Litchi 荔枝问答平台', accent: 'purple',
+    label: '项目 03', name: 'Litchi 荔枝问答平台', accent: 'sun',
     tags: ['优秀毕业设计 90.4', '独立开发', 'Java AI 全栈'],
     headline: '在无 GPU、单人开发约束下，完成可控 Agent 与农技协同闭环。',
     problem: '不依赖模型堆料，转而用确定性编排、人工审批和降级机制保证系统可运行、可演示。',
@@ -258,8 +261,11 @@ const projects: Record<ProjectId, ProjectInfo> = {
       { label: '受控编排', value: '4 STAGES · 4 STEPS', detail: 'Planner、Guard、Executor、Synthesizer 分层；写操作必须由技术员审批。' },
       { label: '独立交付', value: '3 ROLES · 22 PAGES', detail: 'Spring Boot、Vue 3 与 Python 串起农户、门店、技术员协同主链路。' },
       { label: '工程验证', value: '38/38 · 119 RUNS', detail: '后端测试 38/38；建立 60 条评测集；30 分钟 119 轮巡检全部成功。' },
+      { label: '本地 AI 栈', value: 'MILVUS · NEO4J · OLLAMA', detail: '三套完整环境实际同时运行并在答辩现场演示；数据平台、可观测性与 Helm 属于实验模板。' },
+      { label: '检索管线', value: '480/120 · 1024D', detail: '多格式抽取与重叠切块、确定性哈希向量、启发式重排，再补 Neo4j 关系证据。' },
+      { label: '压力边界', value: '50C · P95 11.2S', detail: '历史 50 并发请求全部成功；升至 100 并发后最低仅 19%，明确保留扩容短板。' },
     ],
-    boundary: '60 条目前确认评测结构而非全部模型效果；100 并发仅 19% 成功，失败原始报告完整保留。',
+    boundary: '38/38 与 119 轮来自未提交本地报告；60 条已提交数据不等于全部模型效果，1024 维哈希也不是语义 Embedding。',
   },
 };
 

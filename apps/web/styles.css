@@ -288,3 +288,51 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .desktop-app{display:none!important}
   .desktop-gate{display:flex!important}
 }
+
+/* TASK-PAGE2-EVIDENCE-VISUAL-001：暖色项目主题与可读的 2×2 挑战卡。 */
+.project-card.khaki{
+  --project-bg:#cdbf98;
+  --project-panel:#eee5cb;
+  --project-line:rgba(78,69,42,.32);
+  --project-accent:#4f4b2a;
+  --project-muted:#5b5438;
+  color:#2f2c1e;
+  border-color:rgba(101,88,48,.3);
+  background:linear-gradient(145deg,#d9cda9 0%,#c6b786 100%);
+  box-shadow:0 24px 54px rgba(66,55,25,.2),inset 0 1px 0 rgba(255,255,255,.44);
+}
+
+.project-card.sun{
+  --project-bg:#f2dda0;
+  --project-panel:#fff2c8;
+  --project-line:rgba(112,79,25,.27);
+  --project-accent:#76501b;
+  --project-muted:#65512c;
+  color:#382b18;
+  border-color:rgba(140,99,30,.26);
+  background:linear-gradient(145deg,#f7e8b5 0%,#ecd18a 100%);
+  box-shadow:0 24px 54px rgba(93,66,20,.18),inset 0 1px 0 rgba(255,255,255,.58);
+}
+
+.project-card.khaki .evidence-card,
+.project-card.sun .evidence-card{
+  background:rgba(255,252,237,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.48);
+}
+.project-card.khaki .evidence-card p,
+.project-card.sun .evidence-card p{color:#3f3a28}
+.project-card.khaki .project-problem,
+.project-card.khaki .evidence-boundary p,
+.project-card.sun .project-problem,
+.project-card.sun .evidence-boundary p{color:var(--project-muted)}
+.project-card.khaki .project-tags span,
+.project-card.sun .project-tags span{background:rgba(255,255,255,.24)}
+
+.agent-lab-head h2{font-size:24px}
+.agent-lab-head p{font-size:14px;line-height:1.65;color:#4f6657}
+.agent-scenarios{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.agent-scenarios button{min-height:174px;padding:18px;border-radius:11px}
+.agent-scenarios button>span{font-size:12px}
+.agent-scenarios button>b{margin:8px 0 7px;font-size:17px;line-height:1.4}
+.agent-scenarios button>small{color:#53675a;font-size:14px;line-height:1.7}
+.agent-scenarios button>em{padding-top:13px;font-size:12px}

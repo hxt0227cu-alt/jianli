@@ -550,13 +550,15 @@ function PdfView() {
   return <div className="pdf-viewer">
     {state === 'error' ? <div className="pdf-failure" role="alert"><FileText size={34} /><h2>简历暂时无法加载</h2><p>预览服务未连接或 PDF 资源暂不可用，请确认服务启动后重试。</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>重新加载</button></div> : <>
       <div className={state === 'ready' ? 'pdf-loading hidden' : 'pdf-loading'}><FileText size={22} /><span>{state === 'checking' ? '正在检查简历资源…' : '正在加载简历…'}</span></div>
-      {(state === 'loading' || state === 'ready') && <iframe className="resume-embed" src="/resume.pdf" title="简历 PDF" onLoad={() => setState('ready')} onError={() => setState('error')} />}
+      {(state === 'loading' || state === 'ready') && <a className="resume-preview-sheet" href="/resume.pdf" target="_blank" rel="noreferrer" aria-label="打开简历 PDF 原文件">
+        <img className="resume-preview-image" src={`/resume-preview.png?v=${attempt}`} width="1654" height="2339" alt="简历预览" onLoad={() => setState('ready')} onError={() => setState('error')} />
+      </a>}
     </>}
   </div>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
-  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF（放置于 apps/web/public/resume.pdf）；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><span className="placeholder-badge">PDF 简历</span><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历.pdf</span><span className="muted">素材放于 public/resume.pdf</span></div><PdfView /></div></div></main>;
+  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF 的高清预览；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><a className="placeholder-badge" href="/resume.pdf" download="resume.pdf">下载 PDF</a><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> [姓名已脱敏] · 简历</span><a href="/resume.pdf" target="_blank" rel="noreferrer">打开原始 PDF ↗</a></div><PdfView /></div></div></main>;
 }
 
 function EvaluationEvidence() {

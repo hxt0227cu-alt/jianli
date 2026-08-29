@@ -79,18 +79,18 @@
 - 超过 3 个文件、超出预算或冻结测试失败时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待填写
-- 修改文件清单：待填写
-- 测试命令及结果：待填写
-- lint / typecheck：待填写
+- commit / PR：`19f1cb5fef832ef7b283ef49ced7581520c39e36`
+- 修改文件清单：`apps/web/styles.css`、`tests/web-shell/shell.test.ts`、`tasks/TASK-PAGE2-TYPE-SCALE-001.md`
+- 测试命令及结果：`npm test` → 1 test / 1 file passed；`npm run build` → 1793 modules transformed，production build 成功
+- lint / typecheck：`npm run typecheck` → 0 error；`git diff --check` → 0 error
 - DB 迁移验证：无
-- 验收证据：待填写
-- 变更预算实际值：待填写
-- 未解决风险：待填写
-- 是否偏离 TASK：待填写
+- 验收证据：Codex 内置浏览器 1440×1000 实测：Jianli 事实卡正文 15px、Agent Lab 正文 17px、评测正文 13px/commit 12px；Sleep 复盘正文 16px、证据账本正文 15px；Litchi 双链路与验收正文均 15px。三个项目无横向溢出、裁切或重叠，warning/error 控制台记录为 0。
+- 变更预算实际值：3 / 3 files；生产样式 71 行≤90；测试 9 行≤20
+- 未解决风险：字号增大后各板块纵向高度同步增加，符合桌面端滚动展示预期。
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待填写
+- verified_commit：`19f1cb5fef832ef7b283ef49ced7581520c39e36`
 
 ## 关联
 - Change Request：无（纯视觉可读性调整）

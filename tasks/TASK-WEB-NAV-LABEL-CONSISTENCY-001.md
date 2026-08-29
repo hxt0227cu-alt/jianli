@@ -77,18 +77,18 @@
 - 超过 3 个文件、超出预算或冻结验收测试失败时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`10324020e7ff73b39172cc96216be3f513a1526b`
+- 修改文件清单：`apps/web/main.tsx`、`tests/web-shell/shell.test.ts`、`tasks/TASK-WEB-NAV-LABEL-CONSISTENCY-001.md`
+- 测试命令及结果：WSL `pnpm test` → 1 test / 1 file passed；WSL `pnpm build` → 1793 modules transformed，production build 成功
+- lint / typecheck：WSL `pnpm typecheck` → 0 error；`git diff --check` → 0 error（仅 Git CRLF 提示）
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：Codex 内置浏览器实测，顶部与左侧前四项均依次为“简历问答 / 项目说明 / 预约面试 / 我的预约”；`labelsMatch=true`、`activeMatches=true`，当前页面 active 状态一致。
+- 变更预算实际值：3 / 3 files；生产代码 1 addition / 1 deletion≤4；测试 6 additions≤8
+- 未解决风险：顶部文案变长后占用宽度增加，但目标为仅桌面端且当前桌面视口无溢出。
+- 是否偏离 TASK：否
 - 规范影响结论：none
-- spec_sync：待回填
-- verified_commit：待回填
+- spec_sync：clean
+- verified_commit：`10324020e7ff73b39172cc96216be3f513a1526b`
 
 ## 关联
 - Change Request：无（既有导航一致性缺陷修复）

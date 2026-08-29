@@ -51,6 +51,15 @@ describe('web shell acceptance surface', () => {
     expect(styles).toContain('.project-depth-panel.sun-light');
     expect(styles).toContain('.project-proof-panel.khaki-dark');
     expect(styles).toContain('.project-proof-panel.sun-dark');
+    // TASK-PAGE2-TYPE-SCALE-001: project-wide two-step type scale increase.
+    expect(styles).toContain('TASK-PAGE2-TYPE-SCALE-001');
+    expect(styles).toContain('.project-view .evidence-card p{font-size:15px}');
+    expect(styles).toContain('.project-view .agent-scenarios button>small{font-size:17px}');
+    expect(styles).toContain('.project-view .eval-suite-grid p{font-size:13px}');
+    expect(styles).toContain('.project-view .replay-flow article>p{font-size:16px}');
+    expect(styles).toContain('.project-view .lane-flow article>p{font-size:15px}');
+    expect(styles).toContain('.project-view .proof-grid article>p{font-size:15px}');
+    expect(styles).toContain('.project-view .project-context{font-size:14px}');
     expect(source).toContain('不会发送真实请求');
     // TASK-FE-AIQA-001: ChatPanel live SSE answers (resume page), static fallback kept
     // for interview/mine (hence the old static copy assertion above still holds).

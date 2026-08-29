@@ -404,3 +404,74 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .proof-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .proof-grid article,.replay-flow article{min-height:170px}
 }
+
+/* TASK-PAGE2-TYPE-SCALE-001：三个项目全部板块统一提升两个字号层级。 */
+.project-view .project-card-top{font-size:14px}
+.project-view .project-tags span{font-size:14px}
+.project-view .project-name{font-size:16px}
+.project-view .project-hero h2{font-size:34px}
+.project-view .project-problem{font-size:17px}
+.project-view .evidence-card>span{font-size:14px}
+.project-view .evidence-card strong{font-size:24px}
+.project-view .evidence-card p{font-size:15px}
+.project-view .evidence-boundary span{font-size:13px}
+.project-view .evidence-boundary p{font-size:14px}
+
+.project-view .agent-lab .eyebrow,
+.project-view .eval-center .eyebrow,
+.project-view .project-depth-panel .eyebrow,
+.project-view .project-proof-panel .eyebrow{font-size:13px}
+.project-view .agent-lab-head h2{font-size:27px}
+.project-view .agent-lab-head p{font-size:17px}
+.project-view .live-badge{font-size:14px}
+.project-view .agent-scenarios button>span{font-size:14px}
+.project-view .agent-scenarios button>b{font-size:20px}
+.project-view .agent-scenarios button>small{font-size:17px}
+.project-view .agent-scenarios button>em{font-size:14px}
+
+.project-view .eval-center-head h2{font-size:24px}
+.project-view .eval-center-head p{font-size:14px}
+.project-view .eval-score strong{font-size:31px}
+.project-view .eval-score span{font-size:13px}
+.project-view .eval-meta>span{font-size:13px}
+.project-view .eval-suite-grid span{font-size:13px}
+.project-view .eval-suite-grid strong{font-size:23px}
+.project-view .eval-suite-grid p{font-size:13px}
+.project-view .eval-suite-grid code{font-size:12px}
+.project-view .eval-comparison-grid span,
+.project-view .eval-comparison-grid small{font-size:12px}
+.project-view .eval-comparison-grid b{font-size:17px}
+.project-view .comparison-values span{font-size:15px}
+.project-view .eval-comparison-grid code{font-size:12px}
+.project-view .eval-cases summary{font-size:14px}
+.project-view .eval-cases article{font-size:13px}
+.project-view .eval-center>footer{font-size:12px}
+
+.project-view .project-depth-head h2,
+.project-view .proof-head h2{font-size:28px}
+.project-view .project-depth-head p,
+.project-view .proof-head p{font-size:17px}
+.project-view .depth-badge{font-size:14px}
+.project-view .replay-flow article>span,
+.project-view .lane-flow article>span{font-size:14px}
+.project-view .replay-flow article>strong{font-size:23px}
+.project-view .replay-flow article>p{font-size:16px}
+.project-view .depth-boundary b{font-size:13px}
+.project-view .depth-boundary p{font-size:15px}
+.project-view .lane-label span,
+.project-view .lane-label b{font-size:15px}
+.project-view .lane-flow article>b{font-size:19px}
+.project-view .lane-flow article>p{font-size:15px}
+.project-view .proof-grid article>span{font-size:14px}
+.project-view .proof-grid article>strong{font-size:22px}
+.project-view .proof-grid article>p{font-size:15px}
+.project-view .proof-grid article>small{font-size:13px}
+.project-view .project-proof-panel>footer{font-size:14px}
+.project-view .project-context{font-size:14px}
+
+@media(max-width:1280px){
+  .project-view .project-hero h2{font-size:29px}
+  .project-view .evidence-card strong{font-size:21px}
+  .project-view .project-depth-head h2,
+  .project-view .proof-head h2{font-size:25px}
+}

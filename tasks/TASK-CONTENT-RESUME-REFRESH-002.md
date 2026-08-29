@@ -54,13 +54,12 @@
 - Git revert 本任务提交。
 
 ## 交付证据
-- commit / PR：待回填
-- 修改文件：待回填
-- 测试结果：待回填
-- PDF 验证：待回填
+- commit / PR：`9802886`
+- 修改文件：本任务单、`apps/web/public/resume.pdf`、`apps/web/public/resume.md`
+- 测试结果：WSL `npm test` → 1 passed；`npm run typecheck` → pass；`npm run build` → pass（1793 modules，26.50s）
+- PDF 验证：源文件与站内副本 SHA-256 均为 `7b261512fe58f4d5c0a8d9edecb2c3d086aaaad1d425a8cedc59e463a1322325`；1 页；抽取文本 2136 字符；1191×1684 重渲染目检无裁切、重叠、黑块或缺字
 - DB 迁移：无
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
-- verified_commit：待回填
-
+- 变更预算实际值：3 文件（= max_files）；`resume.md` 64 行，未超预算
+- 未解决风险：新简历中的“完成容器化部署”“回归全部通过”等为简历压缩表达；canonical RAG 继续保留“部署栈已实现但正式上线 smoke 未完成”“不同评测集分别计量”的证据边界，未被本任务覆盖
+- 是否偏离 TASK：否
+- verified_commit：`9802886`

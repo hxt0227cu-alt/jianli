@@ -164,3 +164,112 @@
 .booking-card-row b { color: #2c382f; font-weight: 600; }
 .booking-card-link { display: inline-block; margin-top: 12px; color: #315f43; font-weight: 600; font-size: 13px; text-decoration: none; }
 .booking-card-link:hover { text-decoration: underline; }
+
+/* TASK-UI-GLASS-001：预约、认证和管理操作区保持高对比的玻璃层次。 */
+.appointment-cta,
+.login-panel form > button,
+.primary-command {
+  border-radius: 9px;
+  background: linear-gradient(145deg, #477f5b, #295b40);
+  box-shadow: 0 9px 22px rgba(41, 91, 64, .2), inset 0 1px 0 rgba(255, 255, 255, .16);
+}
+
+.appointment-cta:hover,
+.login-panel form > button:hover,
+.primary-command:hover:not(:disabled) { background: linear-gradient(145deg, #548f68, #306849); }
+
+.booking-steps,
+.booking-calendar,
+.booking-summary,
+.login-panel,
+.details-panel,
+.confirm-panel,
+.success-panel,
+.appointment-card,
+.admin-slot-board,
+.booking-card {
+  border-color: var(--glass-line, rgba(222, 241, 229, .52));
+  background: var(--glass-surface, rgba(244, 250, 246, .76));
+  box-shadow: var(--glass-shadow-soft, 0 14px 36px rgba(10, 31, 23, .12));
+  backdrop-filter: blur(20px) saturate(130%);
+  -webkit-backdrop-filter: blur(20px) saturate(130%);
+}
+
+.booking-steps { border-radius: 14px; overflow: hidden; }
+.booking-step { border-color: rgba(62, 91, 72, .1); color: #64776d; }
+.booking-step.active {
+  color: #245337;
+  background: linear-gradient(145deg, rgba(225, 243, 228, .82), rgba(210, 233, 216, .62));
+  box-shadow: inset 0 -3px 0 rgba(76, 137, 91, .35);
+}
+.step-icon { background: rgba(235, 243, 238, .72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .74); }
+.booking-step.active .step-icon { background: rgba(204, 231, 204, .88); }
+
+.booking-board { gap: 20px; }
+.booking-calendar,
+.booking-summary,
+.admin-slot-board { border-radius: 14px; overflow: hidden; }
+.booking-summary { background: rgba(248, 252, 249, .82); }
+.calendar-head { border-color: rgba(62, 91, 72, .11); background: rgba(252, 254, 252, .42); }
+.booking-summary dl div { border-color: rgba(62, 91, 72, .11); }
+.booking-note { background: rgba(232, 241, 235, .66); border: 1px solid rgba(62, 91, 72, .08); }
+
+.slot-grid { gap: 1px; background: rgba(67, 94, 76, .16); }
+.slot-day { background: rgba(250, 253, 251, .86); }
+.slot-day > b { border-color: rgba(67, 94, 76, .1); background: rgba(248, 252, 249, .58); }
+.slot-day button { border-radius: 5px; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+.slot-day button.available { background: rgba(210, 237, 213, .94); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .68); }
+.slot-day button.available:hover { transform: translateY(-1px); filter: saturate(1.1); box-shadow: 0 5px 11px rgba(42, 95, 60, .13); }
+.slot-day button.booked,
+.slot-day button.owner_locked,
+.slot-day button.unavailable { background: rgba(241, 215, 212, .96); }
+.slot-day button.selected { background: #f3d873; box-shadow: 0 4px 11px rgba(142, 118, 23, .18); }
+
+.login-panel { border-radius: 16px; background: rgba(248, 252, 249, .84); }
+.auth-overlay {
+  background: rgba(4, 15, 11, .55);
+  backdrop-filter: blur(14px) saturate(110%);
+  -webkit-backdrop-filter: blur(14px) saturate(110%);
+}
+.auth-overlay .login-panel {
+  border-color: rgba(230, 247, 236, .58);
+  background: linear-gradient(145deg, rgba(249, 253, 250, .91), rgba(231, 242, 235, .83));
+  box-shadow: 0 30px 90px rgba(2, 15, 9, .4), inset 0 1px 0 rgba(255, 255, 255, .78);
+}
+
+.login-panel input,
+.details-panel input,
+.details-panel select,
+.details-panel textarea {
+  border-color: rgba(60, 93, 71, .18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .78);
+  box-shadow: inset 0 1px 2px rgba(22, 52, 34, .04), 0 1px 0 rgba(255, 255, 255, .62);
+}
+.login-panel input:focus,
+.details-panel input:focus,
+.details-panel select:focus,
+.details-panel textarea:focus { border-color: rgba(62, 123, 82, .54); background: rgba(255, 255, 255, .94); }
+
+.details-panel,
+.confirm-panel,
+.success-panel { border-radius: 14px; }
+.confirm-panel dl div { border-color: rgba(62, 91, 72, .12); border-radius: 8px; background: rgba(255, 255, 255, .42); }
+.appointment-card { border-radius: 13px; background: rgba(250, 253, 251, .75); }
+.appointment-card:hover { border-color: rgba(72, 124, 88, .26); box-shadow: 0 18px 42px rgba(10, 31, 23, .14), inset 0 1px 0 rgba(255, 255, 255, .62); }
+.reschedule-board .booking-calendar { background: rgba(248, 252, 249, .62); }
+.booking-card { background: rgba(237, 248, 237, .74); }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .booking-steps,
+  .booking-calendar,
+  .booking-summary,
+  .login-panel,
+  .details-panel,
+  .confirm-panel,
+  .success-panel,
+  .appointment-card,
+  .admin-slot-board,
+  .booking-card { background: #f8fbf9; }
+  .auth-overlay .login-panel { background: #f2f8f4; }
+}

@@ -97,6 +97,8 @@ html,body{height:100%;margin:0;overflow:hidden}.desktop-app{display:grid;grid-te
 .pdf-viewer{position:relative;height:100%}
 .pdf-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#5f7268;background:#fbfcfb;font-size:13px;z-index:1;transition:opacity .2s}
 .pdf-loading.hidden{opacity:0;pointer-events:none}
+.pdf-failure{min-height:calc(100vh - 260px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:40px;color:#65776d;background:rgba(247,251,248,.88);border-radius:9px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.pdf-failure svg{color:#a07136}.pdf-failure h2{margin:5px 0 0;color:#263a30;font-size:24px}.pdf-failure p{max-width:440px;margin:0;font-size:14px;line-height:1.7}.pdf-failure button{margin-top:7px;border:0;border-radius:9px;padding:11px 20px;background:linear-gradient(145deg,#477f5b,#295b40);color:#fff;font-weight:700;cursor:pointer;box-shadow:0 9px 22px rgba(41,91,64,.2)}
 .account span:nth-child(2){min-width:0;overflow:hidden}
 .account b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .chat-panel>.chat-body{display:flex;flex-direction:column;align-items:stretch;align-content:start}

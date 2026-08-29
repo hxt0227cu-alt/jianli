@@ -13,8 +13,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain("'resume' | 'projects'");
     expect(source).toContain('<iframe className="resume-embed" src="/resume.pdf" title="简历 PDF"');
     expect(source).toContain('正在加载简历…');
+    expect(source).toContain("fetch('/resume.pdf', { method: 'HEAD'");
+    expect(source).toContain('简历暂时无法加载');
+    expect(source).toContain('重新加载');
     expect(source).not.toContain('PDF 简历将在这里显示');
     expect(source).toContain('登录并查看时段');
+    expect(source).toContain('邮箱或密码错误，请检查后重试。');
+    expect(source).toContain('无法连接到登录服务，请确认本地 API 已启动后重试。');
+    expect(source).toContain("page === 'mine' ? '我的预约'");
     expect(source).toContain('/slots/snapshot?week_offset=');
     expect(source).toContain('/appointment-confirmations');
     expect(source).toContain("'/appointments'");
@@ -122,7 +128,13 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('点击任意 30 分钟格子');
     expect(myAppointments).toContain('[0, 1, 2]');
     expect(myAppointments).toContain('从明天起 15 天内');
+    expect(myAppointments).toContain('预约暂时无法加载');
+    expect(myAppointments).toContain('暂时无法连接预约服务');
+    expect(myAppointments).toContain('!loading && !error && items.length === 0');
     expect(appointmentCss).toContain('grid-template-columns: minmax(0, 1fr) 300px');
+    expect(appointmentCss).toContain('.mine-view { width: 100%; max-width: none; }');
+    expect(appointmentCss).toContain('grid-template-columns: repeat(auto-fit, minmax(390px, 1fr))');
+    expect(appointmentCss).toContain('.appointment-state');
     expect(appointmentCss).toContain('.admin-slot-board');
   });
 });

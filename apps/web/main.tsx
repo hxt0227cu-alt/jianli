@@ -62,6 +62,7 @@ type ChatMessage = {
   booking?: BookingCard;
   traces?: AgentTrace[];
 };
+type ApiProblem = { code?: string; detail?: string; title?: string };
 
 const AGENT_LAB_SCENARIOS = [
   {
@@ -136,9 +137,14 @@ function csrfCookie(): string {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  let response: Response;
+  try {
+    response = await fetch(path, { credentials: 'include', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) } });
+  } catch {
+    throw new Error('无法连接到服务，请确认本地 API 已启动后重试。');
+  }
   if (!response.ok) {
-    const problem = await response.json().catch(() => ({}));
+    const problem = await response.json().catch(() => ({})) as ApiProblem;
     throw new Error(problem.detail || problem.title || `请求失败 (${response.status})`);
   }
   return response.status === 204 ? undefined as T : response.json() as Promise<T>;
@@ -486,13 +492,35 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
 
 function TopBar({ page, onPage, user }: { page: Page; onPage: (page: Page) => void; user: User | null }) {
   const isOwner = user?.role === 'owner_admin';
-  const title = page === 'dashboard' ? '工作台' : page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'admin' ? '知识库管理' : '预约面试';
+  const title = page === 'dashboard' ? '工作台' : page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'mine' ? '我的预约' : page === 'admin' ? '知识库管理' : '预约面试';
   return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav>{isOwner && <button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button>}<button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>页面一</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>页面二</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button>{isOwner && <button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button>}</nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function PdfView() {
-  const [loaded, setLoaded] = useState(false);
-  return <div className="pdf-viewer"><div className={loaded ? 'pdf-loading hidden' : 'pdf-loading'}><FileText size={22} /><span>正在加载简历…</span></div><iframe className="resume-embed" src="/resume.pdf" title="简历 PDF" onLoad={() => setLoaded(true)} /></div>;
+  const [state, setState] = useState<'checking' | 'loading' | 'ready' | 'error'>('checking');
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState('checking');
+    fetch('/resume.pdf', { method: 'HEAD', cache: 'no-store', signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`PDF unavailable (${response.status})`);
+        setState('loading');
+      })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+        setState('error');
+      });
+    return () => controller.abort();
+  }, [attempt]);
+
+  return <div className="pdf-viewer">
+    {state === 'error' ? <div className="pdf-failure" role="alert"><FileText size={34} /><h2>简历暂时无法加载</h2><p>预览服务未连接或 PDF 资源暂不可用，请确认服务启动后重试。</p><button type="button" onClick={() => setAttempt((value) => value + 1)}>重新加载</button></div> : <>
+      <div className={state === 'ready' ? 'pdf-loading hidden' : 'pdf-loading'}><FileText size={22} /><span>{state === 'checking' ? '正在检查简历资源…' : '正在加载简历…'}</span></div>
+      {(state === 'loading' || state === 'ready') && <iframe className="resume-embed" src="/resume.pdf" title="简历 PDF" onLoad={() => setState('ready')} onError={() => setState('error')} />}
+    </>}
+  </div>;
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
@@ -627,8 +655,25 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
   }, [setSlots]);
 
   const performLogin = async (email: string, password: string, rememberMe = false) => {
-    const response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email, password, remember_me: rememberMe }) });
-    if (!response.ok) throw new Error((await response.json()).detail || '登录失败');
+    let response: Response;
+    try {
+      response = await fetch('/auth/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Origin: window.location.origin }, body: JSON.stringify({ email, password, remember_me: rememberMe }) });
+    } catch {
+      throw new Error('无法连接到登录服务，请确认本地 API 已启动后重试。');
+    }
+    if (!response.ok) {
+      const problem = await response.json().catch(() => ({})) as ApiProblem;
+      const message = problem.code === 'INVALID_CREDENTIALS' || response.status === 401
+        ? '邮箱或密码错误，请检查后重试。'
+        : problem.code === 'EMAIL_UNVERIFIED'
+          ? '邮箱尚未验证，请先完成邮箱验证。'
+          : problem.code === 'RATE_LIMITED' || response.status === 429
+            ? '尝试次数过多，请稍后再试。'
+            : problem.code === 'INVALID_REQUEST' || response.status === 422
+              ? '邮箱或密码格式不正确，请检查后重试。'
+              : '登录失败，请稍后重试。';
+      throw new Error(message);
+    }
     setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
     const me = await api<User>('/auth/me'); setUser(me); await loadSlots(); setStep('slots'); await onAuthChange();
   };

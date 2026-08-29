@@ -26,6 +26,7 @@ type Appointment = {
   start_at: string;
   end_at: string;
 };
+type ApiProblem = { code?: string; detail?: string; title?: string };
 
 const shanghaiDay = (iso: string) =>
   new Intl.DateTimeFormat('en-CA', {
@@ -56,14 +57,22 @@ function csrfCookie(): string {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    credentials: 'include',
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-  });
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      credentials: 'include',
+      ...init,
+      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    });
+  } catch {
+    throw new Error('暂时无法连接预约服务，请确认本地 API 已启动后重试。');
+  }
   if (!response.ok) {
-    const problem = await response.json().catch(() => ({}));
-    throw new Error(problem.detail || problem.title || `请求失败 (${response.status})`);
+    const problem = await response.json().catch(() => ({})) as ApiProblem;
+    if (problem.code === 'AUTH_EXPIRED' || response.status === 401) {
+      throw new Error('登录状态已失效，请重新登录后再查看预约。');
+    }
+    throw new Error(problem.detail || problem.title || `预约请求失败 (${response.status})`);
   }
   return response.status === 204 ? (undefined as T) : (response.json() as Promise<T>);
 }
@@ -77,6 +86,7 @@ const statusLabel: Record<ApptStatus, string> = {
 export function MyAppointmentsView({ onInterview }: { onInterview: () => void }) {
   const [items, setItems] = useState<Appointment[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
@@ -84,11 +94,15 @@ export function MyAppointmentsView({ onInterview }: { onInterview: () => void })
   const [selected, setSelected] = useState<string[]>([]);
 
   const load = async () => {
+    setLoading(true);
+    setError('');
     try {
       const data = await api<{ items: Appointment[] }>('/appointments');
       setItems(data.items);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '加载失败');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -216,17 +230,35 @@ export function MyAppointmentsView({ onInterview }: { onInterview: () => void })
           <CalendarDays size={15} /> 新建预约
         </button>
       </div>
-      {error && <div className="booking-error">{error}</div>}
-      {items.length === 0 && (
+      {error && items.length > 0 && <div className="booking-error">{error}</div>}
+      {loading && (
+        <div className="appointment-state" aria-live="polite">
+          <RotateCcw className="state-spinner" size={34} />
+          <h2>正在加载预约</h2>
+          <p>正在读取你的预约与最新状态…</p>
+        </div>
+      )}
+      {!loading && error && items.length === 0 && (
+        <div className="appointment-state error-state" role="alert">
+          <RotateCcw size={34} />
+          <h2>预约暂时无法加载</h2>
+          <p>{error}</p>
+          <button className="primary-command" onClick={error.startsWith('登录状态') ? onInterview : () => void load()}>
+            {error.startsWith('登录状态') ? '去登录' : '重新加载'}
+          </button>
+        </div>
+      )}
+      {!loading && !error && items.length === 0 && (
         <div className="empty-state">
-          <CheckCircle2 size={28} />
-          <p>还没有预约。去预约面试页选择时段吧。</p>
+          <CheckCircle2 size={36} />
+          <h2>还没有预约</h2>
+          <p>完成首次预约后，时间、会议方式和联系人会集中显示在这里。</p>
           <button className="primary-command" onClick={onInterview}>
             去预约
           </button>
         </div>
       )}
-      <div className="appointment-list">
+      {!loading && items.length > 0 && <div className="appointment-list">
         {items.map((appointment) => (
           <section className="appointment-card" key={appointment.id}>
             <div className="card-head">
@@ -338,7 +370,7 @@ export function MyAppointmentsView({ onInterview }: { onInterview: () => void })
             )}
           </section>
         ))}
-      </div>
+      </div>}
     </main>
   );
 }

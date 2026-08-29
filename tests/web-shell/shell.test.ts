@@ -76,6 +76,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('answer-state grounded');
     expect(source).toContain('answer-state offtopic');
     expect(source).toContain('推荐追问');
+    // TASK-WEB-FOLLOWUP-SCOPE-001: cross-project/general followups carry their own evidence scope.
+    expect(source).toContain("{ question: '你适合什么样的团队和岗位？', pageKey: 'resume' }");
+    expect(source).toContain("{ question: '你最有成就感的一段工程经历是哪一段？', pageKey: 'resume' }");
+    expect(source).toContain("projectKey: 'litchi'");
+    expect(source).toContain("projectKey: 'sleep'");
+    expect(source).toContain('const requestedScope = scope ?? FOLLOWUP_POOL.find((item) => item.question === text);');
+    expect(source).toContain('if (requestProjectKey) body.project_key = requestProjectKey;');
+    expect(source).not.toContain('if (projectKey) body.project_key = projectKey;');
     // TASK-AGENT-TOOLS-001: visible tool-call decision chain.
     expect(source).toContain("event === 'answer.tool_calls'");
     expect(source).toContain('已检索知识库');

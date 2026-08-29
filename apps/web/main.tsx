@@ -93,17 +93,19 @@ const AGENT_LAB_SCENARIOS = [
 
 const EVAL_REPORT = evalReportData as EvalReport;
 
-// 豆包式追问池：每次回答完成后从池中随机抽 3 条显示为气泡（点击直接发）。
-const FOLLOWUP_POOL = [
-  '展开介绍 Litchi Copilot 的 Planner → Guard → Executor 设计',
-  '你做的 pgvector 多租户 RAG 怎么做的隔离？',
-  '泰益智项目里 LangGraph 和 Temporal 各负责什么？',
-  '你对 Prompt Injection 防护的思路是什么？',
-  '两个项目里模型选型和降级策略有什么不同？',
-  '你最有成就感的一段工程经历是哪一段？',
-  '你适合什么样的团队和岗位？',
-  '实习经历对正式工作的帮助有多大？',
-  '你的职业规划是怎么样的？',
+type FollowupQuestion = { question: string; pageKey: PageKey; projectKey?: ProjectId };
+
+// 推荐问题必须携带自己的证据域，不能盲目继承当前正在展示的项目。
+const FOLLOWUP_POOL: FollowupQuestion[] = [
+  { question: '展开介绍 Litchi Copilot 的 Planner → Guard → Executor 设计', pageKey: 'projects', projectKey: 'litchi' },
+  { question: '你做的 pgvector 多租户 RAG 怎么做的隔离？', pageKey: 'projects', projectKey: 'sleep' },
+  { question: '泰益智项目里 LangGraph 和 Temporal 各负责什么？', pageKey: 'projects', projectKey: 'sleep' },
+  { question: '你对 Prompt Injection 防护的思路是什么？', pageKey: 'resume' },
+  { question: '两个项目里模型选型和降级策略有什么不同？', pageKey: 'resume' },
+  { question: '你最有成就感的一段工程经历是哪一段？', pageKey: 'resume' },
+  { question: '你适合什么样的团队和岗位？', pageKey: 'resume' },
+  { question: '实习经历对正式工作的帮助有多大？', pageKey: 'resume' },
+  { question: '你的职业规划是怎么样的？', pageKey: 'resume' },
 ];
 type BookingStep = 'login' | 'slots' | 'details' | 'confirm' | 'done';
 type SlotStatus = 'available' | 'booked' | 'owner_locked' | 'unavailable';
@@ -298,7 +300,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [recommendations, setRecommendations] = useState<string[]>([]);
-  const [followups, setFollowups] = useState<string[]>([]);
+  const [followups, setFollowups] = useState<FollowupQuestion[]>([]);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   // Prevent the conversationId-change effect from wiping the in-flight assistant placeholder
@@ -350,7 +352,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     setFollowups(shuffled.slice(0, 3));
   };
 
-  const send = async (question?: string) => {
+  const send = async (question?: string, scope?: FollowupQuestion) => {
     const text = (question ?? draft).trim();
     if (!text || busy) return;
     setDraft('');
@@ -365,8 +367,11 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
         onConversationCreated?.(created.id);
       } catch { /* 会话创建失败则本次按匿名处理 */ }
     }
-    const body: Record<string, unknown> = { question: text, page_key: pageKey };
-    if (projectKey) body.project_key = projectKey;
+    const requestedScope = scope ?? FOLLOWUP_POOL.find((item) => item.question === text);
+    const requestPageKey = requestedScope?.pageKey ?? pageKey;
+    const requestProjectKey = requestedScope ? requestedScope.projectKey : projectKey;
+    const body: Record<string, unknown> = { question: text, page_key: requestPageKey };
+    if (requestProjectKey) body.project_key = requestProjectKey;
     if (activeConversationId) body.conversation_id = activeConversationId;
     setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
     const controller = new AbortController();
@@ -483,7 +488,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
       })}
     </div>
     {/* 中层：推荐追问（独立模块，不在消息流里） */}
-    {followups.length > 0 && !busy && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.pending && <div className="followups"><span className="followups-label">追问</span>{followups.map((item) => <button key={item} className="followup-bubble" onClick={() => send(item)}>{item}</button>)}</div>}
+    {followups.length > 0 && !busy && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !messages[messages.length - 1]?.pending && <div className="followups"><span className="followups-label">追问</span>{followups.map((item) => <button key={item.question} className="followup-bubble" onClick={() => send(item.question, item)}>{item.question}</button>)}</div>}
     {/* 底层：输入框（sticky 贴底） */}
     <div className="composer"><textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="输入你想追问的问题…" rows={1} disabled={busy} /><button disabled={busy} onClick={() => send()} aria-label="发送问题">{busy ? '回答中…' : <Send size={17} />}</button></div>
     <div className="chat-foot"><LockKeyhole size={12} /> 回答基于知识库与公开页面，越界问题将被拒绝</div>

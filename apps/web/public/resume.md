@@ -1,45 +1,59 @@
 # [姓名已脱敏]
 
+> 本文件是网站公开 PDF 简历的文字镜像。简历采用压缩表达；涉及实现状态、评测口径和证据边界的技术追问，以站内 canonical RAG 语料为准。
+
 年龄：22 · 电话：[手机号已脱敏]（微信同号）· 邮箱：[邮箱已脱敏] · 政治面貌：中共党员
 
-## 教育背景
+毕业院校：[学校已脱敏] · 专业：计算机科学与技术（专业排名 3/153）
 
-[学校已脱敏]（公办本科）· 计算机科学与技术 · 专业排名：3/153（前2%）· GPA：3.38/4.0
+CSDN 博客：https://blog.csdn.net/m0_73429744?spm=1000.2115.3001.5343
 
-## 项目经历
+## 个人简介
 
-### Litchi Copilot 荔枝智能农技协同平台（2026.03–2026.07，优秀毕设）
-
-面向农户、农资门店与农业技术员，围绕“病害识别—证据检索—方案推荐—人工审核—门店履约—效果反馈”构建 AI 业务闭环，将模型能力封装为可调用、可审批、可降级、可评测的 Agent 服务。
-
-- 基于 Spring Boot + Vue 3 + TypeScript + Python 独立完成三角色工作台、业务接口及图像诊断服务，实现端到端交付。
-- 设计 Planner → Guard → Executor → Synthesizer 受控 Agent，封装知识检索、图谱查询、果园上下文等工具，通过白名单、RBAC、步骤预算和 HITL 审批控制越权及高风险写操作。
-- 使用 Milvus + Neo4j + RAG 融合文档证据与病虫害关系数据，并封装兼容 Ollama / vLLM 的模型网关，支持模型及外部依赖故障降级。
-- 通过 SSE、Checkpoint、Prometheus 实现 Agent 过程追踪与指标监控；沉淀 60 条 Agent/RAG/安全评测任务，后端自动化测试 38/38 通过。
-
-### 泰益智医疗科技（广州）有限公司（初创）· AI 全栈开发工程师（Agent 方向）（2025.12–2026.6）
-
-面向睡眠健康与 IoT 场景构建 Agent Harness，围绕“睡眠监测—分析—建议—设备干预—效果反馈”业务闭环，将模型能力封装为可调用、可审批、可恢复、可评测的 Agent 服务。
-
-- 将用户睡眠改善目标拆解为知识问答、睡眠报告、改善计划、语音陪伴和算法优化等 5 类业务 Agent，明确各 Agent 的输入、输出及责任边界；协调 2 名协作者完成 Figma UI 设计与 MQTT 模块，本人负责整体架构及主要代码开发。
-- 根据任务时长、状态一致性和设备操作风险设计 LangGraph + Temporal + PostgreSQL 分层架构：LangGraph 负责有界推理，Temporal 负责长任务、审批/取消信号和失败重试，PostgreSQL 作为运行状态权威；通过稳定 Workflow ID 及步骤、工具、Token、超时预算控制重复执行与资源风险。
-- 针对健康数据和设备控制风险建立最小权限工具体系：禁止原始健康数据进入算法工具，设备写操作必须经 HITL 审批，并在执行期校验参数及设备权限；10 例 Prompt Injection 无越权写调用，5 例未审批任务全部阻断。
-- 实现 Embedding + pgvector 多租户 RAG，覆盖文档切分、向量检索、global/tenant 知识隔离、引用约束及无证据降级；真实本地 PostgreSQL/pgvector 跨租户隔离用例 2/2 通过。
-- 封装 OpenAI-Compatible 模型网关，加入并发限制、超时、Token 预算、熔断及确定性回退；建立 CI 化 Agent Evaluation，84 例轨迹回归和 8 例语义/RAG 契约测试全部通过。
-- 打通 NestJS、FastAPI 与 Taro 全栈链路，并在阿里云双节点 ACK + RDS staging 实际部署 Agent 平台；完成 Pod 故障、节点 drain、Temporal 工作流恢复及基于不可变镜像 digest 的回滚演练。
+聚焦业务落地的 AI-Agent 全栈工程师。熟悉 Agent Runtime 编排、Tool Calling、RAG 工程化、Human-in-the-Loop 审批、LLM 评测与安全治理、Harness 工程实践；拥有医疗 IoT、农业 B2B2C、企业预约多场景实战，具备团队协作与独立全链路开发经验。
 
 ## 实习经历
 
-- 2023.2–2023.9 掌大传媒（杭州）有限公司 · 运营实习生：发掘用户痛点，培养业务落地能力。
+### 泰益智医疗科技（广州）有限公司｜AI 全栈开发工程师（2025.12-2026.06）
+
+CTO 带教，承担全职工程师工作，负责 AI Agent 平台云端后端核心模块，对接 IoT 硬件团队，支撑高风险睡眠健康业务。
+
+- 基于 LangGraph、Temporal 实现 Agent 状态图编排，配置任务预算熔断、持久化重试恢复；改造为异步准入模型，100 并发压测 HTTP P95 由 1347ms 降至 229ms，全部请求执行成功。
+- 搭建 RAG 与上下文工程，实现 pgvector 向量检索、租户知识域隔离；落地工具白名单、人工审批、注入防护，84 条工程回归用例全量通过，审批绕过率 0。
+- 参与 MQTT-Kafka-ClickHouse 遥测链路建设，完成故障注入验证，实现事件 0 丢失 0 重复；推进 Harness 工程治理，落地 CI 门禁、供应链安全扫描，GitOps 完成端到端容器交付。
+
+## 项目经历
+
+### Jianli｜AI Agent 问答与面试预约系统（独立开发，2026.08）
+
+业务场景：企业预约业务，解决并发抢占、权限管控。
+
+技术栈：Python、PostgreSQL、pgvector、Redis、React、SSE。
+
+- 自研 Agent 执行循环，实现工具编排、RBAC 权限、有界上下文管理，依托行锁与幂等机制解决预约超卖，SSE 流式输出工具执行轨迹。
+- 搭建混合检索 RAG 链路和 BGE-M3 向量知识库；构建多套评测集，事实一致性 100%，越界拒答率提升至 100%；完善安全防护与自动化测试，完成容器化部署与消息通知链路。
+
+### Litchi Copilot｜荔枝农技 AI Agent 协同平台（优秀毕设｜独立开发，2025.06-2026.05）
+
+业务场景：B2B2C 农技服务闭环。
+
+技术栈：Java 17、Spring Boot 3.2、Vue 3、Milvus、Neo4j、Docker、Prometheus。
+
+- 自研 Agent Runtime，实现状态机生命周期、Checkpoint 持久化、最多 4 步工具规划、RBAC 工具权限管控，高危操作强制人工审批。
+- 构建 RAG + 知识图谱链路，支持多格式文档解析、混合召回；封装 YOLO 图像病害诊断服务；自建 60 条评测数据集，完成自动化测试与稳定性回归；独立完成核心业务接口、21 个业务页面开发。
+
+### 大数据红火蚁精准防控机器人｜国家级大创（第一负责人・优秀结题，2024.05-2025.04）
+
+- 牵头国家级创新创业项目，统筹团队完成硬件集成、野外业务测试、业务数据集构建和模型验证，项目获评优秀结题。
 
 ## 荣誉与证书
 
-- 2026 优秀毕设《基于大模型RAG的荔枝智能问答平台设计与实现》，得分 90.4。
-- 2025 年国家奖学金；2024 年大创国家级立项（第一负责人）；2024 挑战杯 A 类赛事路演资格。
-- 2022–2026 校级奖学金；在校曾任党务中心主任团主席（管理团队 23 人）。
-- TiDB 数据库专员 PCTA 认证证书、CET4。
+- 证书：TiDB-PCTA、CET-4；备考软考高级（系统架构师，10 月考试）。
+- 荣誉：国家励志奖学金、国家级大创立项（第一负责人）、挑战杯 A 类路演资格、校级奖学金、优秀毕业生。
 
-## 技术博客
+## 专业技能
 
-- CSDN：https://blog.csdn.net/m0_73429744
-- 知乎：https://www.zhihu.com/people/dreams-maker
+- AI-Agent & LLM：Agent Runtime、状态编排、Tool Calling、RAG 全链路、混合检索、Prompt/Context Engineering、Human-in-the-Loop、LLM 评测、Agent 安全护栏、Model Gateway。
+- 后端与数据：Java（Spring Boot）、Python、TypeScript（NestJS）、SQL；PostgreSQL、MySQL、Redis；Milvus、Neo4j、pgvector；Kafka、ClickHouse、RBAC、事务幂等。
+- 前端：Vue 3、React、TypeScript。
+- 云原生：Docker、Helm、GitOps（ArgoCD）、GitHub Actions、Prometheus/Grafana；了解 K8s、Flink、dbt。

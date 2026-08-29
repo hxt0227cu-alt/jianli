@@ -81,6 +81,15 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain("{ question: '你最有成就感的一段工程经历是哪一段？', pageKey: 'resume' }");
     expect(source).toContain("projectKey: 'litchi'");
     expect(source).toContain("projectKey: 'sleep'");
+    // TASK-WEB-FOLLOWUP-CONTEXT-002: project pages render two current-project questions plus one general question.
+    expect(source).toContain("projectKey: 'jianli'");
+    expect(source).toContain('item.projectKey === projectKey');
+    expect(source).toContain("item.pageKey === 'resume'");
+    expect(source).toContain('setRecommendations(FOLLOWUP_POOL.filter((item) => item.projectKey === projectKey)');
+    expect(source).toContain('...projectFollowups.slice(0, 2)');
+    expect(source).toContain('...generalFollowups.slice(0, 1)');
+    expect(source).toContain("sleep: 'sleep202603_an'");
+    expect(source).toContain('PROJECT_API_KEYS[selectedProjectKey]');
     expect(source).toContain('const requestedScope = scope ?? FOLLOWUP_POOL.find((item) => item.question === text);');
     expect(source).toContain('if (requestProjectKey) body.project_key = requestProjectKey;');
     expect(source).not.toContain('if (projectKey) body.project_key = projectKey;');

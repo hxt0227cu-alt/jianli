@@ -94,14 +94,26 @@ const AGENT_LAB_SCENARIOS = [
 const EVAL_REPORT = evalReportData as EvalReport;
 
 type FollowupQuestion = { question: string; pageKey: PageKey; projectKey?: ProjectId };
+const PROJECT_API_KEYS: Record<ProjectId, 'jianli' | 'sleep202603_an' | 'litchi'> = {
+  jianli: 'jianli',
+  sleep: 'sleep202603_an',
+  litchi: 'litchi',
+};
 
 // 推荐问题必须携带自己的证据域，不能盲目继承当前正在展示的项目。
 const FOLLOWUP_POOL: FollowupQuestion[] = [
+  { question: 'Jianli 的 Agent 如何限制工具权限和执行步数？', pageKey: 'projects', projectKey: 'jianli' },
+  { question: 'Jianli 的混合检索和证据门是怎么工作的？', pageKey: 'projects', projectKey: 'jianli' },
+  { question: 'Jianli 如何避免并发预约超卖？', pageKey: 'projects', projectKey: 'jianli' },
+  { question: 'Jianli 的评测与可观测性如何形成闭环？', pageKey: 'projects', projectKey: 'jianli' },
   { question: '展开介绍 Litchi Copilot 的 Planner → Guard → Executor 设计', pageKey: 'projects', projectKey: 'litchi' },
+  { question: 'Litchi 的 Milvus 与 Neo4j 如何组合检索？', pageKey: 'projects', projectKey: 'litchi' },
+  { question: 'Litchi 的病害诊断链路是怎么实现的？', pageKey: 'projects', projectKey: 'litchi' },
+  { question: 'Litchi 如何在本地小模型条件下保证 Agent 可控？', pageKey: 'projects', projectKey: 'litchi' },
   { question: '你做的 pgvector 多租户 RAG 怎么做的隔离？', pageKey: 'projects', projectKey: 'sleep' },
   { question: '泰益智项目里 LangGraph 和 Temporal 各负责什么？', pageKey: 'projects', projectKey: 'sleep' },
-  { question: '你对 Prompt Injection 防护的思路是什么？', pageKey: 'resume' },
-  { question: '两个项目里模型选型和降级策略有什么不同？', pageKey: 'resume' },
+  { question: 'Sleep 的 Kafka 重平衡如何保证事件不丢失？', pageKey: 'projects', projectKey: 'sleep' },
+  { question: 'Sleep 如何用受控工具和人工确认约束设备操作？', pageKey: 'projects', projectKey: 'sleep' },
   { question: '你最有成就感的一段工程经历是哪一段？', pageKey: 'resume' },
   { question: '你适合什么样的团队和岗位？', pageKey: 'resume' },
   { question: '实习经历对正式工作的帮助有多大？', pageKey: 'resume' },
@@ -327,7 +339,11 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     setFollowups([]);
     setRecommendations([]);
     if (!live) return;
-    api<{ items: string[] }>(`/pages/${pageKey}/recommendations`).then((data) => setRecommendations(data.items)).catch(() => undefined);
+    if (projectKey) {
+      setRecommendations(FOLLOWUP_POOL.filter((item) => item.projectKey === projectKey).slice(0, 3).map((item) => item.question));
+    } else {
+      api<{ items: string[] }>(`/pages/${pageKey}/recommendations`).then((data) => setRecommendations(data.items)).catch(() => undefined);
+    }
     if (conversationId) {
       // 恢复历史会话：拉取该会话的消息填充对话（TASK-FE-INTERVIEWER-001）
       api<{ items: { role: 'user' | 'assistant'; content: string }[] }>(`/conversations/${conversationId}/messages`).then((data) => {
@@ -348,6 +364,16 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   }, [live, messages]);
 
   const refreshFollowups = () => {
+    if (projectKey) {
+      const projectFollowups = FOLLOWUP_POOL
+        .filter((item) => item.projectKey === projectKey)
+        .sort(() => Math.random() - 0.5);
+      const generalFollowups = FOLLOWUP_POOL
+        .filter((item) => item.pageKey === 'resume')
+        .sort(() => Math.random() - 0.5);
+      setFollowups([...projectFollowups.slice(0, 2), ...generalFollowups.slice(0, 1)]);
+      return;
+    }
     const shuffled = [...FOLLOWUP_POOL].sort(() => Math.random() - 0.5);
     setFollowups(shuffled.slice(0, 3));
   };
@@ -369,7 +395,8 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     }
     const requestedScope = scope ?? FOLLOWUP_POOL.find((item) => item.question === text);
     const requestPageKey = requestedScope?.pageKey ?? pageKey;
-    const requestProjectKey = requestedScope ? requestedScope.projectKey : projectKey;
+    const selectedProjectKey = requestedScope ? requestedScope.projectKey : projectKey;
+    const requestProjectKey = selectedProjectKey ? PROJECT_API_KEYS[selectedProjectKey] : undefined;
     const body: Record<string, unknown> = { question: text, page_key: requestPageKey };
     if (requestProjectKey) body.project_key = requestProjectKey;
     if (activeConversationId) body.conversation_id = activeConversationId;

@@ -82,18 +82,18 @@
 - 超过 4 个文件或冻结测试失败时停止，不修改既有断言规避失败。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`695d1e6ecd3c2a4f16103b051ccf5c4a68f3119c`
+- 修改文件清单：`apps/web/styles.css`、`apps/web/appointment.css`、`tasks/TASK-UI-GLASS-001.md`
+- 测试命令及结果：`npm test` → 1 test / 1 file passed；`npm run build` → 1793 modules transformed，production build 成功
+- lint / typecheck：`npm run typecheck` → 0 error；`git diff --check` → 0 error
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
+- 验收证据：Codex 内置浏览器 1440×1000 实测：三栏均为 `blur(24px) saturate(1.38)`，PDF 保持不透明阅读面，项目/预约/认证表面可读；900×800 实测 `desktop-app=none`、`desktop-gate=flex`；控制台 0 warning / 0 error；页面无 Google Fonts 外链。
+- 变更预算实际值：3 / 4 files；生产样式净新增 270 行（271 增 / 1 删）≤450；测试 0 行≤20
+- 未解决风险：登录态管理端真实数据页未在本次浏览器会话完成视觉复验；本地 API `127.0.0.1:8000` 当时不可达，已验证其样式选择器、未登录认证页及 production build。
+- 是否偏离 TASK：否
 - 规范影响结论：none
 - spec_sync：clean
-- verified_commit：待回填
+- verified_commit：`695d1e6ecd3c2a4f16103b051ccf5c4a68f3119c`
 
 ## 关联
 - Change Request：无（不改变用户可观察业务行为）

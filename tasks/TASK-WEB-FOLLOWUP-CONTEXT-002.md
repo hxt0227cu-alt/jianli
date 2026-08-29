@@ -78,18 +78,18 @@
 - 冻结 Web 验收失败或超过 3 个文件时停止。
 
 ## 交付证据（任务关闭前必须填写，缺一不得关闭）
-- commit / PR：待填写
-- 修改文件清单：待填写
-- 测试命令及结果：待填写
-- lint / typecheck：待填写
+- commit / PR：`d39dcdf44c9715a14c09a487c8fdcb13cc7fd80b`
+- 修改文件清单：本任务单、`apps/web/main.tsx`、`tests/web-shell/shell.test.ts`；均在允许路径内。
+- 测试命令及结果：WSL `pnpm test` → 1 passed；`pnpm typecheck` → passed；`pnpm build` → passed（1793 modules transformed）。
+- lint / typecheck：TypeScript `tsc --noEmit` → passed；production build → passed；`git diff --check` → passed。
 - DB 迁移验证：无
-- 验收证据：待填写
-- 变更预算实际值：待填写
-- 未解决风险：待填写
-- 是否偏离 TASK：待填写
-- 规范影响结论：待填写
-- spec_sync：待填写
-- verified_commit：待填写
+- 验收证据：本地浏览器分别验收 Jianli、Sleep、Litchi。三个项目首屏均只显示本项目 3 条推荐题；各实问 1 题后均显示本项目 2 条技术追问 + 1 条通用职业追问，无跨项目专属题。Sleep 请求由 422 修复为 HTTP 200，真实回答 `grounded=true`；Jianli 与 Litchi 同样完成真实回答。
+- 变更预算实际值：3/3 文件；生产代码 +31/-4 行；测试 +9 行，未超预算。
+- 未解决风险：无
+- 是否偏离 TASK：否
+- 规范影响结论：none
+- spec_sync：clean
+- verified_commit：`d39dcdf44c9715a14c09a487c8fdcb13cc7fd80b`
 
 ## 关联
 - 前置任务：`TASK-WEB-FOLLOWUP-SCOPE-001`

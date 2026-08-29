@@ -68,15 +68,17 @@
 - 冻结断言失败、需要任务外文件或 API/DB/依赖/权限/Prompt/阈值变化、超过预算时立即停止报告。
 
 ## 交付证据（任务关闭前必须填写）
-- commit / PR：待回填
-- 修改文件清单：待回填
-- 测试命令及结果：待回填
-- lint / typecheck：待回填
+- commit / PR：`2804745`（实现）；`9719c9a`（获批的独立冻结测试维护）
+- 修改文件清单：`apps/api/app/aiqa/service.py`、`apps/api/tests/aiqa/test_agent_tools.py`、本任务单
+- 测试命令及结果：
+  - `pytest tests/aiqa/test_agent_tools.py -q` → 7 passed
+  - `pytest tests/aiqa/test_agent_tools.py tests/aiqa/test_agent_crud.py tests/aiqa/test_agent_lab.py -q` → 27 passed / 2 conditional skipped
+  - `pytest tests/aiqa/test_rag_eval.py -q` → 7 passed（真实 PG/Redis/BGE-M3，183.34s）
+- lint / typecheck：Ruff pass；mypy 0 errors；compileall pass；diff check pass
 - DB 迁移验证：无
-- 验收证据：待回填
-- 变更预算实际值：待回填
-- 未解决风险：待回填
-- 是否偏离 TASK：待回填
-- spec_sync：待回填
-- verified_commit：待回填
-
+- 验收证据：逐字复测原复合问题；真实 `deepseek-v4-flash` 产生 1 次未知工具并被 blocked，随后检索原问题，最终 `grounded=true` / `offtopic=false`，首引 `litchi-evidence-retrospective.md`，回答正确区分 93.75%/91.25%、80 张验证集及 `engine/demoMode` 边界
+- 变更预算实际值：3 文件；生产代码 +14 行，测试 +60 行，均未超预算
+- 未解决风险：2 个预约 CRUD 真栈用例因本轮未配置专用 `JIANLI_BOOKING_TEST_*` 环境按既有条件跳过；本次未修改任何合法预约工具分支，其 DB-free CRUD/多步回归已通过
+- 是否偏离 TASK：否
+- spec_sync：not_required（恢复既有安全与 grounded 不变量）
+- verified_commit：`2804745`

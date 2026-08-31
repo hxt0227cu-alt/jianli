@@ -1,6 +1,6 @@
-# 测试计划 v1.3（approved）
+# 测试计划 v1.4（approved）
 
-> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.6 / security 0.5 / OpenAPI-SSE 0.9（均 approved）。TC 总数为 78；v1.3 仅将 TC-UI-003 对齐已经用户验收的三项目页面结构，不改变其真实浏览器依赖级别或其他冻结阈值。
+> based_on：SRS 1.9 / domain-model 1.1.8 / UI 1.0.3 / architecture 0.6 / security 0.5 / OpenAPI-SSE 1.0（均 approved）。TC 总数为 78；v1.4 仅完成 Litchi `project_key` 契约追认的 impact review，不改变任何冻结断言、真实依赖级别或阈值。
 
 ## 1. 证据等级与门禁
 

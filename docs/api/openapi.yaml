@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: AI 面试协作站 API
-  version: 0.7.0
+  version: 0.8.0
   license: { name: Proprietary, identifier: LicenseRef-Proprietary }
   description: >-
     Approved contract based on SRS 1.6, domain-model 1.1.7, architecture 0.2
@@ -13,6 +13,8 @@ info:
     v0.6 adds enumeration-safe registration verification-code resend.
     v0.7 expands getSlotSnapshot week_offset to 0/1/2 for the approved
     15-day window spanning the remainder of the current week and two following weeks.
+    v0.8 records the existing Litchi project scope in AnswerRequest.project_key;
+    request fields, paths, status codes and runtime behavior are unchanged.
 servers:
   - url: /api/v1
 security: []
@@ -872,7 +874,7 @@ components:
       properties:
         question: { type: string, minLength: 1, maxLength: 2000 }
         page_key: { type: string, enum: [resume, projects] }
-        project_key: { type: string, enum: [jianli, sleep202603_an] }
+        project_key: { type: string, enum: [jianli, sleep202603_an, litchi] }
         conversation_id: { type: [string, 'null'], format: uuid }
     Conversation:
       type: object

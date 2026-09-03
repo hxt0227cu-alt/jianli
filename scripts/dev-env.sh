@@ -2,7 +2,7 @@
 # jianli 本地开发环境（WSL bash）
 #
 # 用法（每个终端都要跑一次，uvicorn 与 worker 共用同一份，保证 key 一致）：
-#   cd /mnt/c/Users/hxt02/Desktop/jianli
+#   cd /mnt/c/Users/<user>/Desktop/jianli
 #   source scripts/dev-env.sh
 #   export JIANLI_SMTP_PASSWORD='163授权码'          # 真实凭据只走运行时 export
 #   export JIANLI_LLM_API_KEY='sk-...'               # DeepSeek
@@ -32,8 +32,8 @@ export JIANLI_REDIS_URL='redis://127.0.0.1:63790/0'
 export JIANLI_KB_MIN_SCORE='0.47'
 export JIANLI_SMTP_HOST='smtp.163.com'
 export JIANLI_SMTP_PORT='465'
-export JIANLI_SMTP_USER='[邮箱已脱敏]'
-export JIANLI_SMTP_FROM='[邮箱已脱敏]'
+export JIANLI_SMTP_USER='owner@example.com'
+export JIANLI_SMTP_FROM='owner@example.com'
 EOF
 fi
 
@@ -45,4 +45,7 @@ set -a
 source <(sed 's/\r$//' "$ENV_FILE")
 set +a
 
-echo "env ready: DB=${JIANLI_DATABASE_URL:-<missing>} SMTP_HOST=${JIANLI_SMTP_HOST:-<missing>} ENC=${JIANLI_FIELD_ENCRYPTION_KEYS:+set}"
+DEV_DB_NAME="${JIANLI_DATABASE_URL##*/}"
+DEV_DB_NAME="${DEV_DB_NAME%%\?*}"
+echo "env ready: DB=${DEV_DB_NAME:-<missing>} SMTP_HOST=${JIANLI_SMTP_HOST:-<missing>} ENC=${JIANLI_FIELD_ENCRYPTION_KEYS:+set}"
+unset DEV_DB_NAME

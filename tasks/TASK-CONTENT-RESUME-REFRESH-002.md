@@ -14,7 +14,7 @@
 - `tasks/TASK-CONTENT-RESUME-001.md`
 
 ## 需求来源
-- 用户提供 `C:\Users\hxt02\Desktop\resume.pdf`，要求更新网站新简历。
+- 用户提供 `C:\Users\<user>\Desktop\resume.pdf`，要求更新网站新简历。
 
 ## 目标
 - 用用户提供的一页新 PDF 替换网站 `/resume.pdf`。

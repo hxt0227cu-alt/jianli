@@ -18,11 +18,50 @@ from __future__ import annotations
 
 import os
 import sys
+from urllib.parse import urlsplit
 
 import psycopg
 import redis
 from alembic import command
 from alembic.config import Config
+
+ALLOWED_DATABASES = {
+    "jianli_test",
+    "jianli_auth_001_db",
+    "jianli_tc_ops_002_db",
+    "jianli_tc_aiqa_001_db",
+    "jianli_tc_feishu_001_db",
+}
+
+
+def _allowed_port(local_port: int, ci_port: int, actual: int | None) -> bool:
+    return actual == local_port or (
+        os.environ.get("CI", "").lower() == "true" and actual == ci_port
+    )
+
+
+def _safe_target(url: str) -> bool:
+    parsed = urlsplit(url)
+    return (
+        parsed.scheme == "postgresql+psycopg"
+        and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        and _allowed_port(55432, 5432, parsed.port)
+        and parsed.path.removeprefix("/") in ALLOWED_DATABASES
+        and not parsed.query
+        and not parsed.fragment
+    )
+
+
+def _safe_redis(url: str) -> bool:
+    parsed = urlsplit(url)
+    return (
+        parsed.scheme == "redis"
+        and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        and _allowed_port(63790, 6379, parsed.port)
+        and parsed.path == "/15"
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 def _normalize(url: str) -> str:
@@ -47,6 +86,14 @@ def main() -> int:
     if not target:
         print("[harness_setup_db] HARNESS_TARGET_DATABASE_URL 未设置", file=sys.stderr)
         return 2
+    if not _safe_target(target):
+        print("[harness_setup_db] 拒绝非 loopback/allowlist 测试库", file=sys.stderr)
+        return 2
+
+    redis_url = os.environ.get("JIANLI_REDIS_URL")
+    if not redis_url or not _safe_redis(redis_url):
+        print("[harness_setup_db] 拒绝非 loopback Redis db15", file=sys.stderr)
+        return 2
 
     maintenance = _normalize(_maintenance_url(target))
 
@@ -69,13 +116,11 @@ def main() -> int:
         return 1
 
     # Redis reachability (fail fast with a clear message).
-    redis_url = os.environ.get("JIANLI_REDIS_URL")
-    if redis_url:
-        try:
-            redis.from_url(redis_url).ping()
-        except redis.exceptions.RedisError as exc:
-            print(f"[harness_setup_db] Redis 不可达（是否启动？）: {exc}", file=sys.stderr)
-            return 1
+    try:
+        redis.from_url(redis_url).ping()
+    except redis.exceptions.RedisError as exc:
+        print(f"[harness_setup_db] Redis 不可达（是否启动？）: {exc}", file=sys.stderr)
+        return 1
 
     # Migrate the target to head. env.py reads JIANLI_DATABASE_URL from the environment,
     # so point it at the target for the duration of the upgrade.

@@ -20,8 +20,11 @@ pointing at the test instances before invoking pytest.
 
 from __future__ import annotations
 
+import logging
 import os
+from collections.abc import Iterator
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -30,10 +33,80 @@ from app.config import Settings
 API_ROOT = Path(__file__).resolve().parent.parent  # apps/api
 
 
+@pytest.fixture(autouse=True)
+def isolate_jianli_logging() -> Iterator[None]:
+    """Keep application logging configuration from leaking across tests.
+
+    Importing an API entry point configures the process-wide ``jianli`` logger.  That
+    state must not make later ``caplog`` assertions order-dependent, so every test gets
+    a neutral, propagating application logger and the pre-test state is restored after
+    the test finishes.
+    """
+
+    parent = logging.getLogger("jianli")
+    registered = {
+        name: logger
+        for name, logger in list(logging.root.manager.loggerDict.items())
+        if (name == "jianli" or name.startswith("jianli.")) and isinstance(logger, logging.Logger)
+    }
+    registered["jianli"] = parent
+    states = {
+        name: (
+            logger.level,
+            logger.disabled,
+            logger.propagate,
+            list(logger.handlers),
+            list(logger.filters),
+        )
+        for name, logger in registered.items()
+    }
+
+    for logger in registered.values():
+        logger.handlers.clear()
+        logger.filters.clear()
+        logger.setLevel(logging.NOTSET)
+        logger.disabled = False
+        logger.propagate = True
+
+    try:
+        yield
+    finally:
+        for name, logger in list(logging.root.manager.loggerDict.items()):
+            if not isinstance(logger, logging.Logger) or not name.startswith("jianli."):
+                continue
+            if name not in states:
+                logger.handlers.clear()
+                logger.filters.clear()
+                logger.setLevel(logging.NOTSET)
+                logger.disabled = False
+                logger.propagate = True
+        for name, state in states.items():
+            level, disabled, propagate, handlers, filters = state
+            logger = logging.getLogger(name)
+            logger.handlers[:] = handlers
+            logger.filters[:] = filters
+            logger.setLevel(level)
+            logger.disabled = disabled
+            logger.propagate = propagate
+
+
 def _db_name(url: str | None) -> str:
     """Return the database name from a SQLAlchemy/psycopg URL (last path segment)."""
 
     return (url or "").rstrip("/").rsplit("/", 1)[-1]
+
+
+def _is_safe_harness_database(url: str) -> bool:
+    parsed = urlsplit(url)
+    allowed_ports = {55432}
+    if os.environ.get("CI", "").lower() == "true":
+        allowed_ports.add(5432)
+    return (
+        parsed.scheme == "postgresql+psycopg"
+        and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+        and parsed.port in allowed_ports
+        and parsed.path == "/jianli_test"
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -41,14 +114,20 @@ def ensure_test_schema() -> None:
     """Idempotently migrate the *test* database to head via Alembic.
 
     Autouse so that ``pytest`` is self-sufficient even without the verify pre-step, but
-    strictly guarded: it only acts when ``JIANLI_DATABASE_URL`` points at a database whose
-    name contains ``test``. Anything else (dev DB, the dedicated TC DB) is left untouched
-    and the fixture is a no-op.
+    strictly guarded: it only acts when ``JIANLI_DATABASE_URL`` points at the exact
+    loopback ``jianli_test`` database on the CI or development-Compose port. Anything
+    else (dev DB or a dedicated TC DB) is left untouched. An unsafe URL that still names
+    ``jianli_test`` fails closed instead of migrating a remote database.
     """
 
     url = os.environ.get("JIANLI_DATABASE_URL")
-    if not url or "test" not in _db_name(url):
+    if not url or _db_name(url) != "jianli_test":
         return
+    if not _is_safe_harness_database(url):
+        raise pytest.UsageError(
+            "JIANLI_DATABASE_URL for jianli_test must use loopback PostgreSQL "
+            "on port 55432 (or CI port 5432)"
+        )
 
     from alembic import command
     from alembic.config import Config

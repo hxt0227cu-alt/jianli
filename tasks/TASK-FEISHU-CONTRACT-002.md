@@ -97,7 +97,7 @@
 - 测试命令及结果：**用户 WSL 2026-08-18 全绿**——`pytest tests/admin/test_owner_contact_config.py` **5 passed**；回归 `pytest tests/test_feishu.py tests/test_worker.py` **8 passed + 1 skipped**；前端 `npm run build` **通过**
 - lint / typecheck：ruff ✅ / mypy 47 files 0 error ✅ / py_compile ✅ / tsc 0 error ✅（本机沙箱）
 - DB 迁移验证：无（0001 已建表）
-- 验收证据：**用户 WSL 2026-08-18 全链验证通过**——① 集成测试 5 passed + 回归 8 passed + build 通过；② **R13 真连端到端闭环**：`update_owner_contact_config("ou_56e2b64ace422de23952fffbfd18dd77")` 加密落库（密文 67 字节非明文）+ `FeishuAPIGateway.send_message` 返回 message_id + **用户飞书实收应用机器人消息**（2026-08-18 18:10 确认）。
+- 验收证据：**用户 WSL 2026-08-18 全链验证通过**——① 集成测试 5 passed + 回归 8 passed + build 通过；② **R13 真连端到端闭环**：`update_owner_contact_config("YOUR_OWNER_OPEN_ID")` 加密落库（密文 67 字节非明文）+ `FeishuAPIGateway.send_message` 返回 message_id + **用户飞书实收应用机器人消息**（2026-08-18 18:10 确认）。
 - 变更预算实际值：max_files=6 实际 5（未超）/ 生产 ~100 行（≤180）✅ / 测试 ~240 行（≤250）✅
 - 未解决风险：无
 - 是否偏离 TASK：否
@@ -108,5 +108,5 @@
 
 ## 关联
 - Change Request：`docs/change-requests/CR-FEISHU-OPENID-001.md`（已批准）
-- 前置：OpenAPI v0.3 approved；候选人 open_id=`ou_56e2b64ace422de23952fffbfd18dd77`（**自建应用 [飞书AppID已脱敏] 维度**，真连验证通过）
+- 前置：OpenAPI v0.3 approved；候选人 open_id=`YOUR_OWNER_OPEN_ID`（**自建应用 YOUR_FEISHU_APP_ID 维度**，真连验证通过）
 - 完成后：**R13 候选人飞书消息端到端真连闭环，TASK-FEISHU-001 遗留风险已闭合**

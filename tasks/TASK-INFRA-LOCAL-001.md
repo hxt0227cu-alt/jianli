@@ -30,7 +30,7 @@
 - commit / PR：`8a76936`（任务建立）；被验证实现快照=`2179821`
 - 环境：PostgreSQL 17.6 官方 Windows 页面指向的 EDB portable archive；SHA-256=`D378882ABD001A186735ACD6F6BA716BCA6CCD192E800412D4FD15ED25376B3E`；Python 3.12.13 临时 venv；实例仅监听 `127.0.0.1` 随机高端口
 - 测试与迁移结果：`pytest tests/migrations -q -ra` → 10 passed / 0 skipped；真实 `upgrade → downgrade → upgrade` 通过；降级残留检查与最终 revision/6 表重建通过；Ruff/format/mypy/pip check 全部通过
-- 实例停止/数据目录删除：最终 PostgreSQL PID、监听端口、关联进程均为 0；临时根目录 `C:\Users\hxt02\AppData\Local\Temp\jianli-task-infra-local-001-7b037ffbc9c94b64a6bc14ee11aedef5` 已删除，data、归档、解压二进制、venv、口令文件和日志均不存在
+- 实例停止/数据目录删除：最终 PostgreSQL PID、监听端口、关联进程均为 0；临时根目录 `C:\Users\<user>\AppData\Local\Temp\jianli-task-infra-local-001-7b037ffbc9c94b64a6bc14ee11aedef5` 已删除，data、归档、解压二进制、venv、口令文件和日志均不存在
 - 敏感信息：数据库 URL 与随机口令未提交、未回填到仓库；未连接公网或生产数据库
 - 未解决风险：无
 - 是否偏离 TASK：否

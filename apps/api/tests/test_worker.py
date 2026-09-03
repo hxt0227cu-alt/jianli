@@ -273,7 +273,7 @@ def test_worker_smtp_path_claims_renders_marks() -> None:
 # Real SMTP E2E (optional): really send over smtp.163.com to the owner's email
 # ---------------------------------------------------------------------------
 
-E2E_RECIPIENT = "[邮箱已脱敏]"
+E2E_RECIPIENT = "owner@example.com"
 
 
 def _seed_user_with_email(engine: Engine, email: str, role: str = "interviewer") -> UUID:

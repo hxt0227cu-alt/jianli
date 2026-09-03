@@ -1,10 +1,13 @@
 # TASK-DEPLOY-001: exclude dev/test/runtime artifacts from the image context.
 __pycache__/
 *.pyc
+.git/
+.coverage
+.venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 tests/
 var/
 .env*
-!app/__init__.py
+*.log

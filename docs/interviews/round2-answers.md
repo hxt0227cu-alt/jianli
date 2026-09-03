@@ -169,9 +169,9 @@
 - **数据平台**：骨架级——dbt 模型 SQL + Airflow DAG 亲手写、Kafka 仅 Debezium source 配置、ClickHouse 仅建表 SQL、**Flink 无**；未生产验证，口径"写了模板，未跑通"。
 - **Docker/Helm/CI**：3 个 Dockerfile + 根 docker-compose（MySQL/Neo4j/Milvus/Ollama/后端/前端/诊断 7 服务）+ CI 3 job（frontend npm / backend mvn / python py_compile）；Helm 未实机验证；Terraform/GitOps 无。
 
-### D-3 泰益智（✅ 2026-08-18 直接查 `C:\Users\hxt02\Desktop\sleep202603-an` 仓库升级为仓库证据）
+### D-3 泰益智（✅ 2026-08-18 直接查 `C:\Users\<user>\Desktop\sleep202603-an` 仓库升级为仓库证据）
 > 重要：泰益智仓库就在桌面 jianli **平级目录**，AI 可直接查证。所有 D-3 数字与文件名均经 `find / ls / wc` 实时核验。
-- **仓库根路径**：`C:\Users\hxt02\Desktop\sleep202603-an`（独立项目，**非 git**）。
+- **仓库根路径**：`C:\Users\<user>\Desktop\sleep202603-an`（独立项目，**非 git**）。
 - **NestJS**：**21 个 module**（实查）—— `agent-run / alarm / algorithm-proposal / assistant / auth / dashboard / data-processor / database / device / integration / knowledge / mqtt / observability / ota / redis / sleep / tenant / user / voice / websocket` + `app.module.ts`；点名实证：`backend/src/tenant/tenant-scope.ts` + `tenant-scope.interceptor.ts`（多租户安全核心，对应 `ADR-017-multitenant-enforcement.md`），含 2 个 spec（`tenant-scope.spec.ts` + `tenant-scope.interceptor.spec.ts`）。控制面 115 REST / 35 表 / 2.3 万行 TS（语料）。
 - **ADR 全集 20 个**（实查 `202607worklog/decisions/ADR-001..ADR-020`）—— **B/C/D 部分多次引用的 ADR 全部对得上**：
   - ADR-003 agent-runtime（双协调器）、ADR-005 no-hardware-validation（B7 引用的"无真机验证"**原文**：*"Software items are complete when they have automated tests and reproducible simulation evidence. Absence of physical hardware is not a blocker for software completion."*）、**ADR-006 reliable-telemetry-ingestion**（B5 引用的"ADR-006 明文：失败测试通过前不得声称端到端零丢失"）、ADR-009 partition-ownership-and-rebalance-idempotency（rebalance 设计）、ADR-010 flink-event-time-and-governed-late-data、**ADR-017 multitenant-enforcement**（NestJS 租户隔离 ADR）、ADR-020 lint-ratchet-gate。

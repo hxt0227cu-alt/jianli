@@ -499,3 +499,26 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .project-view .project-depth-head h2,
   .project-view .proof-head h2{font-size:25px}
 }
+
+/* TASK-WEB-PRELAUNCH-RECOVERY-011：SRS 要求 1024px 横屏可用，收窄三栏并避免顶栏换行裁切。 */
+@media(min-width:1024px) and (max-width:1279px){
+  .desktop-app{grid-template-columns:clamp(176px,16vw,200px) minmax(0,1fr) clamp(280px,26vw,320px);padding:6px;gap:6px}
+  .app-shell.no-chat .desktop-app{grid-template-columns:clamp(176px,16vw,200px) minmax(0,1fr)}
+  .history-rail{padding:16px 10px}
+  .topbar{padding:0 10px;gap:8px}
+  .topbar .top-title,.topbar .top-status{display:none}
+  .topbar nav{margin:0 auto;flex-wrap:nowrap;gap:2px}
+  .topbar nav button{padding:7px 8px;font-size:11px}
+  .workspace{padding:24px 18px 48px}
+  .project-heading{display:block}
+  .project-actions{align-items:flex-start;margin-top:16px}
+  .project-tabs{max-width:100%;overflow-x:auto}
+  .project-tabs button{padding:8px 9px}
+  .evidence-grid{grid-template-columns:1fr}
+  .agent-scenarios{grid-template-columns:1fr}
+  .eval-suite-grid,.replay-flow,.lane-flow,.proof-grid{grid-template-columns:1fr}
+  .project-depth-head,.proof-head{display:block}
+  .depth-badge,.proof-head>strong{display:inline-block;margin-top:12px}
+  .chat-panel>.chat-body{padding-left:10px;padding-right:10px}
+  .chat-panel>.composer{margin-left:8px;margin-right:8px;padding-left:8px;padding-right:8px}
+}

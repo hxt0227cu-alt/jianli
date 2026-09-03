@@ -43,7 +43,7 @@
 ## 禁止修改路径
 - `apps/api/app/aiqa/service.py`、`retrieval.py`、`persona.py`、`gateway.py`、`embeddings.py`、`sse.py`
 - `apps/api/app/**` 其他域、`migrations/`、`docs/api/**`
-- 泰益智仓库 `C:\Users\hxt02\Desktop\sleep202603-an`（只读）
+- 泰益智仓库 `C:\Users\<user>\Desktop\sleep202603-an`（只读）
 - 用户并行工作区文件：`apps/api/tests/test_worker.py`、`apps/api/var/`、`tasks/TASK-M3-WORKER-SMTP-TEST.md`
 
 ## 已批准的 DB / API / 依赖变更
@@ -73,7 +73,7 @@
 
 ## 必须运行的测试命令
 - WSL：`python3 -m pytest tests/aiqa/test_rag_eval.py -v`（评测回归）
-- WSL：`cd /mnt/c/Users/hxt02/Desktop/jianli && python3 scripts/measure_fact_consistency.py`（FQ-01..26 保持 + FQ-27+ 全绿）
+- WSL：`cd /mnt/c/Users/<user>/Desktop/jianli && python3 scripts/measure_fact_consistency.py`（FQ-01..26 保持 + FQ-27+ 全绿）
 - WSL：`set -a; source .env.local; set +a; cd apps/api && python3 scripts/seed_kb.py`（live KB 灌库，先清理 10 篇 failed）
 
 ## 回滚方法

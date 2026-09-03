@@ -25,7 +25,7 @@
 
 ## 目标
 一期交付「飞书通道」两条路径（R14+R13，用户 2026-08-18 选定一起做）：
-1. **R14 多维表格同步**：预约创建/改期/取消 → 实时同步写飞书多维表格「面试预约台账（jianli）·预约记录」（`base_token=Z3TubDheZaYpfcsySDecWqXcnlg`，`table_id=tbl6439HzzrFfW4Y`），行 upsert 幂等（`channel_metadata.feishu_record_id`），取消后行状态同步为 `cancelled`。
+1. **R14 多维表格同步**：预约创建/改期/取消 → 实时同步写飞书多维表格「面试预约台账（jianli）·预约记录」（`base_token=YOUR_BITABLE_BASE_TOKEN`，`table_id=YOUR_BITABLE_TABLE_ID`），行 upsert 幂等（`channel_metadata.feishu_record_id`），取消后行状态同步为 `cancelled`。
 2. **R13 候选人双通道提醒（feishu 侧）**：`appointment_created/rescheduled/cancelled/reminder_due` → 候选人（owner_admin）`email` + `feishu` 两行独立投递（收件人 = 活跃 owner_admin → `OwnerContactConfig.candidate_feishu_open_id_ciphertext` 解密）。
 
 ## 非目标（明确排除）
@@ -129,6 +129,6 @@
 
 ## 关联
 - Change Request：无（已批准 R13/R14/R21 的实现）
-- 前置外部依赖：飞书自建应用（App ID=`[飞书AppID已脱敏]`，权限已开；App Secret 待用户提供，仅运行时 env）
-- 多维表格：base_token=`Z3TubDheZaYpfcsySDecWqXcnlg` / table_id=`tbl6439HzzrFfW4Y`（2026-08-18 已建模板，字段经用户确认）
+- 前置外部依赖：飞书自建应用（App ID=`YOUR_FEISHU_APP_ID`，权限已开；App Secret 待用户提供，仅运行时 env）
+- 多维表格：base_token=`YOUR_BITABLE_BASE_TOKEN` / table_id=`YOUR_BITABLE_TABLE_ID`（2026-08-18 已建模板，字段经用户确认）
 - 相关既有：`TASK-M3-WORKER-SMTP-TEST`（SMTP 真发信已闭合，本任务复用 Outbox/EmailSender）

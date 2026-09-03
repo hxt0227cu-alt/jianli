@@ -1,0 +1,8 @@
+* text=auto
+
+# Linux entrypoints must remain executable and LF-only when checked out on Windows.
+*.sh text eol=lf
+scripts/git-hooks/* text eol=lf
+
+# Preserve Windows-native helper scripts.
+*.ps1 text eol=crlf

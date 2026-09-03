@@ -1,11 +1,25 @@
-# TASK-DEPLOY-001: production stack for the Aliyun lightweight server.
-# Usage:
-#   cp apps/api/.env.prod.example .env          # fill real secrets (server-side, gitignored)
-#   docker compose -f docker-compose.prod.yml up -d --build
-# Frontend dist/ is built on the host (npm run build) and served by nginx.
+# Candidate stack for the approved deployment workflow.
+# Production entrypoint: copy apps/api/.env.prod.example to a 0600 .env, fill
+# real values, then run ./scripts/deploy.sh. Do not use a bare `compose up`:
+# deploy.sh enforces environment/SMTP/HTTPS/secret checks, locking and health waits.
+# The Web image builds the frontend from pnpm-lock.yaml; host dist/ is not mounted.
 # API + Worker share the same image; Worker is a separate process (architecture §6).
 
 name: jianli-prod
+
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-api-image: &api-image
+  image: ${JIANLI_API_IMAGE:-jianli-api:local}
+  build:
+    context: ./apps/api
+  mem_limit: 640m
+  cpus: "0.80"
+  pids_limit: 256
 
 services:
   postgres:
@@ -17,25 +31,38 @@ services:
       POSTGRES_PASSWORD: ${JIANLI_POSTGRES_PASSWORD:?must be set in .env}
     volumes:
       - jianli_pgdata:/var/lib/postgresql/data
+    logging: *json-logging
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${JIANLI_POSTGRES_USER:-jianli} -d $${JIANLI_POSTGRES_DB:-jianli_prod}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 20
+    networks: [backend]
+    mem_limit: 640m
+    cpus: "0.65"
+    pids_limit: 256
 
   redis:
     image: redis:7.4-alpine
     restart: always
+    environment:
+      REDIS_PASSWORD: ${JIANLI_REDIS_PASSWORD:?must be set in .env}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - jianli_redisdata:/data
+    logging: *json-logging
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -qx PONG"]
       interval: 5s
       timeout: 3s
       retries: 20
+    networks: [backend]
+    mem_limit: 192m
+    cpus: "0.20"
+    pids_limit: 128
 
   migrate:
-    build: ./apps/api
+    <<: *api-image
     restart: "no"
     env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
@@ -44,9 +71,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging: *json-logging
+    networks: [backend]
 
   slots:
-    build: ./apps/api
+    <<: *api-image
     restart: "no"
     env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
@@ -55,14 +84,26 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    logging: *json-logging
+    networks: [backend]
+
+  knowledge-init:
+    <<: *api-image
+    user: "0:0"
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /srv/jianli/var/knowledge && chown -R 10001:10001 /srv/jianli/var/knowledge && chmod 0700 /srv/jianli/var/knowledge"]
+    volumes:
+      - jianli_knowledge:/srv/jianli/var/knowledge
+    logging: *json-logging
+    network_mode: none
 
   api:
-    build: ./apps/api
+    <<: *api-image
     restart: always
     env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
       JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
-      JIANLI_REDIS_URL: redis://redis:6379/0
+      JIANLI_REDIS_URL: redis://:${JIANLI_REDIS_PASSWORD}@redis:6379/0
       JIANLI_ALLOWED_ORIGINS: ${JIANLI_ALLOWED_ORIGINS}
       JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
       JIANLI_OBSERVABILITY_ENABLED: "true"
@@ -70,12 +111,14 @@ services:
       JIANLI_OTEL_SERVICE_NAME: jianli-api
     volumes:
       - jianli_knowledge:/srv/jianli/var/knowledge
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=${JIANLI_FRONTEND_SUBNET:-172.30.10.0/24}", "--no-access-log"]
     depends_on:
       slots:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      knowledge-init:
+        condition: service_completed_successfully
     expose:
       - "8000"
     healthcheck:
@@ -84,6 +127,26 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    logging: *json-logging
+    networks: [frontend, backend, observability, egress]
+
+  seed-kb:
+    profiles: ["tools"]
+    <<: *api-image
+    restart: "no"
+    env_file: ${JIANLI_ENV_FILE:-.env}
+    environment:
+      JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
+      JIANLI_REDIS_URL: redis://:${JIANLI_REDIS_PASSWORD}@redis:6379/0
+      JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
+    volumes:
+      - jianli_knowledge:/srv/jianli/var/knowledge
+    command: ["python", "scripts/seed_kb.py", "--no-clear"]
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *json-logging
+    networks: [backend, egress]
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.140.0
@@ -93,6 +156,11 @@ services:
       - ./deploy/observability/otel-collector.yml:/etc/otelcol/config.yml:ro
     expose:
       - "4318"
+    logging: *json-logging
+    networks: [observability]
+    mem_limit: 192m
+    cpus: "0.20"
+    pids_limit: 128
 
   prometheus:
     image: prom/prometheus:v3.7.3
@@ -106,6 +174,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    logging: *json-logging
+    networks: [observability, admin]
+    mem_limit: 384m
+    cpus: "0.30"
+    pids_limit: 128
 
   grafana:
     image: grafana/grafana:12.3.0
@@ -122,38 +195,58 @@ services:
       - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
+    logging: *json-logging
+    networks: [observability, admin]
+    mem_limit: 320m
+    cpus: "0.30"
+    pids_limit: 128
 
   worker:
-    build: ./apps/api
+    <<: *api-image
     restart: always
     env_file: ${JIANLI_ENV_FILE:-.env}
     environment:
       JIANLI_DATABASE_URL: postgresql+psycopg://${JIANLI_POSTGRES_USER:-jianli}:${JIANLI_POSTGRES_PASSWORD}@postgres:5432/${JIANLI_POSTGRES_DB:-jianli_prod}
-      JIANLI_REDIS_URL: redis://redis:6379/0
-      JIANLI_KNOWLEDGE_STORAGE_DIR: /srv/jianli/var/knowledge
-    volumes:
-      - jianli_knowledge:/srv/jianli/var/knowledge
+      JIANLI_REDIS_URL: redis://:${JIANLI_REDIS_PASSWORD}@redis:6379/0
     command: ["python", "-m", "app.worker"]
     depends_on:
       slots:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      knowledge-init:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "python", "-c", "import pathlib,sys; sys.exit(0 if b'app.worker' in pathlib.Path('/proc/1/cmdline').read_bytes() else 1)"]
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import pathlib, psycopg, redis;
+          from app.config import Settings;
+          s=Settings.from_env();
+          assert b'app.worker' in pathlib.Path('/proc/1/cmdline').read_bytes();
+          c=psycopg.connect(s.database_url.replace('postgresql+psycopg://','postgresql://',1),connect_timeout=3);
+          c.execute('SELECT 1').fetchone(); c.close();
+          r=redis.Redis.from_url(s.redis_url,socket_connect_timeout=3,socket_timeout=3);
+          assert r.ping(); r.close()
       interval: 15s
       timeout: 5s
       retries: 4
       start_period: 10s
+    logging: *json-logging
+    networks: [backend, egress]
 
   nginx:
-    image: nginx:1.27-alpine
+    image: ${JIANLI_WEB_IMAGE:-jianli-web:local}
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.nginx
     restart: always
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./dist:/usr/share/nginx/html:ro
       - ./deploy/runtime:/etc/nginx/conf.d:ro
       - ./deploy/certbot/conf:/etc/letsencrypt:ro
       - ./deploy/certbot/www:/var/www/certbot:ro
@@ -161,10 +254,15 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/nginx-health"]
+      test: ["CMD-SHELL", "test -s /usr/share/nginx/html/index.html && wget -q -O /dev/null http://127.0.0.1/nginx-health"]
       interval: 10s
       timeout: 3s
       retries: 6
+    logging: *json-logging
+    networks: [frontend]
+    mem_limit: 128m
+    cpus: "0.20"
+    pids_limit: 128
 
   certbot:
     image: certbot/certbot:v3.2.0
@@ -172,6 +270,36 @@ services:
     volumes:
       - ./deploy/certbot/conf:/etc/letsencrypt
       - ./deploy/certbot/www:/var/www/certbot
+    logging: *json-logging
+    networks: [acme]
+    mem_limit: 128m
+    cpus: "0.20"
+    pids_limit: 128
+
+networks:
+  frontend:
+    ipam:
+      config:
+        - subnet: ${JIANLI_FRONTEND_SUBNET:-172.30.10.0/24}
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${JIANLI_BACKEND_SUBNET:-172.30.20.0/24}
+  egress:
+    ipam:
+      config:
+        - subnet: ${JIANLI_EGRESS_SUBNET:-172.30.30.0/24}
+  admin:
+    ipam:
+      config:
+        - subnet: ${JIANLI_ADMIN_SUBNET:-172.30.40.0/24}
+  observability:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${JIANLI_OBSERVABILITY_SUBNET:-172.30.50.0/24}
+  acme:
 
 volumes:
   jianli_pgdata:

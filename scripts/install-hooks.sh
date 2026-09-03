@@ -3,12 +3,12 @@
 #
 # .git/hooks/ 不被 git 跟踪（不入库）；hook 源文件在 scripts/git-hooks/ 受版本控制。
 # 幂等：重复运行会覆盖，不影响其他已存在的 hook。
-set -uo pipefail
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT" || exit 1
 SRC="$ROOT/scripts/git-hooks"
-HOOKS="$ROOT/.git/hooks"
+HOOKS="$(git rev-parse --git-path hooks)"
 
 if [[ ! -d "$SRC" ]]; then
   echo "[install-hooks] 缺少 $SRC" >&2
@@ -23,7 +23,15 @@ for h in pre-commit pre-push; do
     echo "[install-hooks] 已安装 $h -> $HOOKS/$h"
   else
     echo "[install-hooks] 缺少 $SRC/$h" >&2
+    exit 1
   fi
+done
+
+for h in pre-commit pre-push; do
+  cmp -s "$SRC/$h" "$HOOKS/$h" && [[ -x "$HOOKS/$h" ]] || {
+    echo "[install-hooks] 安装校验失败: $h" >&2
+    exit 1
+  }
 done
 
 echo ""

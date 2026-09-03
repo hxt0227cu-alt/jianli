@@ -53,14 +53,14 @@
 
 ## 功能验收
 - 真 SMTP E2E（`JIANLI_SMTP_PASSWORD` 存在时启用，缺失则 skip）：
-  - 预约 owner 注册邮箱 = `[邮箱已脱敏]`（用户指定，便于真收信核对）。
+  - 预约 owner 注册邮箱 = `owner@example.com`（用户指定，便于真收信核对）。
   - 经 API 创建预约 → Outbox 写入 `appointment_created`。
   - worker 真连 `smtp.163.com:465` SSL → `smtplib` login + send 无异常 → 事件 `status=processed`。
   - 发送失败（认证/网络）会留 `failed`，断言不通过，从而真实暴露发送路径问题。
 
 ## 安全与隐私验收
 - SMTP 授权码**绝不写入测试源码 / 记忆 / 配置**，仅经运行时环境变量 `JIANLI_SMTP_PASSWORD` 读取（`_smtp_settings` 用 `os.environ[...]`）。
-- 收件人 `[邮箱已脱敏]` 是用户本人运营邮箱（非加密字段），用于真 E2E 收信核对，不落任何明文敏感字段（住址/工资等）。
+- 收件人 `owner@example.com` 是用户本人运营邮箱（非加密字段），用于真 E2E 收信核对，不落任何明文敏感字段（住址/工资等）。
 
 ## 性能验收
 - 无新增生产路径；真 E2E 单用例，SMTP 网络往返约 1–3s，超时 40s 兜底。
@@ -92,10 +92,10 @@
   - 真 E2E 首次（用户 WSL）：`pytest tests/test_worker.py::test_worker_real_smtp_e2e -v` → **FAILED**：`AttributeError: 'str' object has no attribute 'get_secret_value'`（email.py:141）。
   - **根因**：`_smtp_settings()` 用 `model_copy(update=...)` 塞 `smtp_password` 为普通 `str`，pydantic `model_copy` 不做类型校验（str 不会自动转 `SecretStr`），而 `EmailSender` 期望 `SecretStr.get_secret_value()`。
   - **修复**：`"smtp_password": SecretStr(os.environ["JIANLI_SMTP_PASSWORD"])` 显式包装 + `from pydantic import SecretStr`。沙箱本地验证 `EmailSender(updated)` 构造通过，ruff ✅ / py_compile ✅。
-  - **真 E2E 终跑（用户 WSL 2026-08-18）**：`pytest tests/test_worker.py::test_worker_real_smtp_e2e -v` → **PASSED（1 passed in 5.73s）**——真连 `smtp.163.com:465` SSL，事件达 `processed`，确认函实发到 `[邮箱已脱敏]`（用户本人邮箱）。
+  - **真 E2E 终跑（用户 WSL 2026-08-18）**：`pytest tests/test_worker.py::test_worker_real_smtp_e2e -v` → **PASSED（1 passed in 5.73s）**——真连 `smtp.163.com:465` SSL，事件达 `processed`，确认函实发到 `owner@example.com`（用户本人邮箱）。
 - lint / typecheck：`ruff check tests/test_worker.py` → All checks passed ✅；`python -m py_compile tests/test_worker.py` → OK ✅；`mypy` → Success, no issues found in 45 source files ✅（tests 不在 mypy 范围，属项目既有配置）
 - DB 迁移验证：无
-- 验收证据：真 E2E 事件达 `processed` ✅（用户 WSL 2026-08-18，`1 passed in 5.73s`）；用户邮箱 `[邮箱已脱敏]` **收信核对通过 ✅**（用户 2026-08-18 确认收到确认函，主题含「面试预约确认」+「Example, Inc.」，正文含会议号 123-456-789）。
+- 验收证据：真 E2E 事件达 `processed` ✅（用户 WSL 2026-08-18，`1 passed in 5.73s`）；用户邮箱 `owner@example.com` **收信核对通过 ✅**（用户 2026-08-18 确认收到确认函，主题含「面试预约确认」+「Example, Inc.」，正文含会议号 123-456-789）。
 - 变更预算实际值：max_files=2（实际 2）/ 生产行数 0（实际 0）/ 测试行数 +119（预算 ≤130，未超）
 - 未解决风险：
   - **安全提醒（高优先，非关闭阻塞）**：用户 2026-08-18 已**两次**在 WSL 终端把 163 SMTP 授权码明文贴进对话（`export JIANLI_SMTP_PASSWORD=...`）。授权码已两次出现在对话记录，**建议作废并重新生成**（163 邮箱设置→POP3/SMTP/IMAP→关闭再开启或重置授权码），新授权码只在本机 WSL `export`，**绝不贴入对话/文件/记忆**。此提醒已随任务单留痕，作废与否由用户操作，不阻塞本任务关闭。

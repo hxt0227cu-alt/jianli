@@ -71,7 +71,7 @@
 ## 交付证据（任务完成时回填）
 
 - **关闭结论（2026-08-18 用户显式授权关闭）**：**Closed（Closed，2026-08-18）**——harness 验证全绿（`bash scripts/verify.sh --quick` 退出码 0）+ 两项存量债务已由 **TASK-QA-CLEANUP-001（`df65179`）清零**（前端 main.tsx TS1005 + pytest 12 例存量失败，PYTEST_BASELINE 现为空）+ 坑已提炼为 Skill（`jianli-wsl-verify-pitfalls`，见下）。
-- **坑提炼为 Skill（用户 2026-08-18 拍板）**：`docs/devlog/pitfalls/pitfalls.md` 中 6 项带「Skill 候选：是」的坑已提炼为项目级 Skill `jianli-wsl-verify-pitfalls`（`C:\Users\hxt02\Desktop\jianli\.workbuddy\skills\jianli-wsl-verify-pitfalls\SKILL.md`）：① venv 平台错位→评测全走 WSL；② Git Bash rm 被 safe-delete 拦截→wsl rm；③ .env.local CRLF→source 前 sed 去回车；④ 建测试库幂等（先查再建）；⑤ bash 门禁 `$?` 捕获时机+禁 `|| true`；⑥ 新 pip 依赖显式安装+import 冒烟；⑦ ruff 跨目录 `--config`；⑧ 接手红套件→PYTEST_BASELINE 登记而非静默 skip。Skill 为 `.workbuddy/` 本机资产，**不入库**（治理纪律 12）。
+- **坑提炼为 Skill（用户 2026-08-18 拍板）**：`docs/devlog/pitfalls/pitfalls.md` 中 6 项带「Skill 候选：是」的坑已提炼为项目级 Skill `jianli-wsl-verify-pitfalls`（`C:\Users\<user>\Desktop\jianli\.workbuddy\skills\jianli-wsl-verify-pitfalls\SKILL.md`）：① venv 平台错位→评测全走 WSL；② Git Bash rm 被 safe-delete 拦截→wsl rm；③ .env.local CRLF→source 前 sed 去回车；④ 建测试库幂等（先查再建）；⑤ bash 门禁 `$?` 捕获时机+禁 `|| true`；⑥ 新 pip 依赖显式安装+import 冒烟；⑦ ruff 跨目录 `--config`；⑧ 接手红套件→PYTEST_BASELINE 登记而非静默 skip。Skill 为 `.workbuddy/` 本机资产，**不入库**（治理纪律 12）。
 - **修改文件清单**（实际 13 个，预算 max_files=14 未超）：
   - 新增：`scripts/verify.sh`、`scripts/git-hooks/pre-commit`、`scripts/git-hooks/pre-push`、`scripts/install-hooks.sh`、`scripts/devlog.sh`、`scripts/record_pit.py`、`docs/HARNESS.md`
   - 修改：`apps/api/tests/conftest.py`、`apps/api/scripts/harness_setup_db.py`、`apps/api/pyproject.toml`（mypy pypdf override）、`docs/devlog/pitfalls/pitfalls.md`、`docs/devlog/pitfalls/pitfalls.jsonl`、`tasks/TASK-HARNESS-001.md`、`PROJECT_STATE.md`（滞后锚点同步 + 登记 harness 主线）

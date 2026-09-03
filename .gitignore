@@ -6,6 +6,10 @@
 *.local
 secrets.*.yml
 credentials*
+backups/
+deploy/certbot/conf/
+deploy/certbot/www/
+deploy/runtime/
 
 # 依赖 / 构建产物
 node_modules/

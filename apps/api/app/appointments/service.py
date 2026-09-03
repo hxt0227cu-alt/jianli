@@ -443,6 +443,7 @@ class BookingService:
                         "company_name_fingerprint,meeting_platform_ciphertext,"
                         "meeting_number_ciphertext,contact_ciphertext,notes_ciphertext "
                         "FROM appointments WHERE user_id=:user_id "
+                        "AND status IN ('active','completed') "
                         "ORDER BY start_at DESC"
                     ),
                     {"user_id": principal.id},

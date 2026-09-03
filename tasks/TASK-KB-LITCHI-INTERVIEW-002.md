@@ -34,7 +34,7 @@
 - `tasks/TASK-KB-LITCHI-INTERVIEW-002.md`
 
 ## 禁止修改路径
-- Litchi 仓库 `C:\Users\hxt02\Desktop\hxt-bishe`
+- Litchi 仓库 `C:\Users\<user>\Desktop\hxt-bishe`
 - `apps/api/app/aiqa/reranker.py`、运行配置、数据库迁移、OpenAPI、SSE、前端页面与其他项目语料
 
 ## 已批准的 DB / API / 依赖变更

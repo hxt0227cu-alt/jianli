@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 # ruff: noqa: RUF002  # Chinese operator guide intentionally uses full-width punctuation.
-"""Re-seed the LIVE knowledge base from the canonical CORPUS (test_rag_eval.py).
+"""Seed the knowledge base from the production canonical corpus.
 
-修复版（TASK-AIQA-KB-EXPAND-014）：上轮（2026-08-18）因未加载 ``.env.local`` 误连空库、
-embedding key 缺失，导致 10 篇文档全部 failed。本次脚本内先解析 ``apps/api/.env.local``
-（``export KEY='value'`` 行）写入 os.environ，再 ``Settings.from_env()`` 连 live 库
-（``jianli_dev``），进程内 ASGI 客户端上传 CORPUS——与 pytest 上传同一机制，绕开
-secure-cookie / HTTP 限制。
+本地运行时可加载 ``apps/api/.env.local``；生产容器只使用继承的运行时环境。脚本通过
+进程内 ASGI 客户端走与管理端相同的上传路径，并要求真实 ``owner_admin`` 已先初始化。
 
 用法（WSL，uvicorn 已在跑）：
-    cd /mnt/c/Users/hxt02/Desktop/jianli/apps/api
+    cd /mnt/c/Users/<user>/Desktop/jianli/apps/api
     python3 scripts/seed_kb.py            # 清理现存 docs（含 failed）+ 上传 CORPUS（20 篇）
     python3 scripts/seed_kb.py --no-clear # 只上传（新 checksum 新建 doc，旧 doc 保留）
 
@@ -30,16 +27,14 @@ from uuid import UUID, uuid4
 import httpx
 from sqlalchemy import Engine, create_engine, text
 
-# Make ``app`` and ``tests`` importable (scripts/ lives under apps/api).
+# Make ``app`` importable (scripts/ lives under apps/api).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.auth.passwords import PasswordHasher
+from app.aiqa.canonical_corpus import CANONICAL_CORPUS as CORPUS
 from app.auth.runtime import build_auth_runtime
 from app.config import Settings
 from app.factory import create_app
-from tests.aiqa.test_rag_eval import CORPUS
 
-SEED_EMAIL = os.environ.get("JIANLI_SEED_ADMIN_EMAIL", "seed-kb@jianli.local")
 # Bare `KEY=value` (the .env.local format) with an optional `export ` prefix
 # (TASK-AIQA-KB-DOMAIN-015: the previous regex required `export ` and loaded 0 vars
 # from the real .env.local — it only worked when the shell already had the env).
@@ -68,11 +63,10 @@ def _load_env_local(env_path: Path) -> None:
     print(f"[env] loaded {loaded} var(s) from {env_path.name}")
 
 
-def _seed_owner(engine: Engine) -> UUID:
-    with engine.begin() as conn:
-        # uq_active_owner_admin allows at most ONE active owner_admin. On an already
-        # initialized DB the real owner_admin already exists, so reuse it instead of
-        # inserting a second row (which would violate the unique constraint).
+def _require_owner(engine: Engine) -> UUID:
+    """Reuse the real owner; never create a production account with a known password."""
+
+    with engine.connect() as conn:
         row = conn.execute(
             text(
                 "SELECT id FROM users "
@@ -80,26 +74,8 @@ def _seed_owner(engine: Engine) -> UUID:
                 "LIMIT 1"
             )
         ).fetchone()
-        if row is not None:
-            return UUID(str(row[0]))
-        # Fresh DB (no owner yet): create the seed owner_admin.
-        user_id = uuid4()
-        conn.execute(
-            text(
-                "INSERT INTO users (id,email,password_hash,role,verified) "
-                "VALUES (:id,:email,:password_hash,'owner_admin',true) "
-                "ON CONFLICT (email) DO UPDATE SET role='owner_admin', verified=true"
-            ),
-            {
-                "id": user_id,
-                "email": SEED_EMAIL,
-                "password_hash": PasswordHasher().hash("seed-kb-not-used"),
-            },
-        )
-        row = conn.execute(
-            text("SELECT id FROM users WHERE email = :email"), {"email": SEED_EMAIL}
-        ).fetchone()
-    assert row is not None
+    if row is None:
+        raise RuntimeError("create the real owner_admin before seeding the canonical corpus")
     return UUID(str(row[0]))
 
 
@@ -142,7 +118,11 @@ async def _main(clear: bool) -> int:
     auth_runtime = build_auth_runtime(settings)
     app = create_app(settings, auth_runtime)
 
-    owner = _seed_owner(engine)
+    try:
+        owner = _require_owner(engine)
+    except RuntimeError as error:
+        print(f"[ERR] {error}", file=sys.stderr)
+        return 2
     session_token = secrets.token_urlsafe(32)
     with engine.begin() as conn:
         conn.execute(
@@ -185,7 +165,7 @@ async def _main(clear: bool) -> int:
         resp = await client.post("/admin/knowledge-documents", files=payload)
         print(f"== upload CORPUS ({len(CORPUS)} docs) -> HTTP {resp.status_code}")
         if resp.status_code != 202:
-            print(f"[ERR] upload failed: {resp.text[:500]}", file=sys.stderr)
+            print(f"[ERR] upload failed with HTTP {resp.status_code}", file=sys.stderr)
             return 1
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         active = _active_documents(engine)

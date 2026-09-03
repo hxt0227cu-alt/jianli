@@ -45,7 +45,7 @@
 - `apps/api/app/**`、`apps/web/**`
 - 已批准 PRD/SRS/domain/security/OpenAPI/test-plan/architecture 正文
 - `infra/**`、`.github/**`、生产配置与云资源
-- `C:\Users\hxt02\Desktop\sleep202603-an\**`
+- `C:\Users\<user>\Desktop\sleep202603-an\**`
 
 ## 已批准的 DB / API / 依赖变更
 

@@ -27,7 +27,7 @@
 - `docs/**`（本任务交付证据除外）
 - `PROJECT_STATE.md`、`docs/baseline.yml`
 - 后端、迁移、鉴权、加密、基础设施
-- `C:\Users\hxt02\Desktop\sleep202603-an\**`
+- `C:\Users\<user>\Desktop\sleep202603-an\**`
 
 ## 已批准 DB / API / 依赖变更
 - DB：无

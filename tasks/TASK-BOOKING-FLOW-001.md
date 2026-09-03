@@ -36,7 +36,7 @@
 ## 禁止修改路径
 - `docs/**`、`apps/api/migrations/**`、`docs/baseline.yml`
 - `apps/api/app/auth/**`、依赖清单与锁文件
-- `C:/Users/hxt02/Desktop/sleep202603-an/**`
+- `C:/Users/<user>/Desktop/sleep202603-an/**`
 
 ## 已批准的 DB / API / 依赖变更
 - DB schema / migration：无；只读写既有 `users`、`auth_sessions`、`appointment_slots`、`appointments` 及 BOOKING-001 已批准表。

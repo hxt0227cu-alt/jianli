@@ -43,7 +43,7 @@
 
 ## 必须运行的测试命令
 - 前端构建门禁仅在 WSL 可跑（沙箱缺 win32 rolldown 原生包）：
-  `cd /mnt/c/Users/hxt02/Desktop/jianli/apps/web && npm run build`
+  `cd /mnt/c/Users/<user>/Desktop/jianli/apps/web && npm run build`
 - 并人工核对页面二 01-04 四页渲染与右侧问答过滤正常。
 
 ## 回滚方法

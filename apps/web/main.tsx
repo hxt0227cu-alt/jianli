@@ -315,6 +315,8 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   const [followups, setFollowups] = useState<FollowupQuestion[]>([]);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const contextGenerationRef = useRef(0);
+  const selfCreatedConversationIdRef = useRef<string | null>(null);
   // Prevent the conversationId-change effect from wiping the in-flight assistant placeholder
   // while send() is creating a new conversation and streaming the first answer.
   const skipHistoryLoadRef = useRef(false);
@@ -332,9 +334,20 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
   }, []);
 
   useEffect(() => {
+    const internalConversationAdvance = skipHistoryLoadRef.current
+      && conversationId !== null
+      && conversationId === selfCreatedConversationIdRef.current;
+    if (internalConversationAdvance) {
+      selfCreatedConversationIdRef.current = null;
+      return;
+    }
+    contextGenerationRef.current += 1;
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    skipHistoryLoadRef.current = false;
+    setBusy(false);
     // While send() is creating a new conversation and streaming its first answer,
     // do not wipe the local assistant placeholder nor reload from the server.
-    if (skipHistoryLoadRef.current) return;
     setMessages([]);
     setFollowups([]);
     setRecommendations([]);
@@ -384,12 +397,19 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     setDraft('');
     setFollowups([]);
     setBusy(true);
+    const requestGeneration = contextGenerationRef.current;
     let activeConversationId = conversationId ?? null;
     if (canPersist && !activeConversationId) {
       try {
         skipHistoryLoadRef.current = true;
         const created = await api<{ id: string }>('/conversations', { method: 'POST', headers: { 'X-CSRF-Token': csrfCookie() } });
+        if (requestGeneration !== contextGenerationRef.current) {
+          skipHistoryLoadRef.current = false;
+          setBusy(false);
+          return;
+        }
         activeConversationId = created.id;
+        selfCreatedConversationIdRef.current = created.id;
         onConversationCreated?.(created.id);
       } catch { /* 会话创建失败则本次按匿名处理 */ }
     }
@@ -402,10 +422,15 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
     if (activeConversationId) body.conversation_id = activeConversationId;
     setMessages((prev) => [...prev, { role: 'user', text }, { role: 'assistant', text: '', pending: true }]);
     const controller = new AbortController();
+    streamAbortRef.current?.abort();
     streamAbortRef.current = controller;
+    const isCurrentStream = () => streamAbortRef.current === controller
+      && !controller.signal.aborted
+      && contextGenerationRef.current === requestGeneration;
     try {
       let assistantText = '';
       await streamAnswer(body, (event, data) => {
+        if (!isCurrentStream()) return;
         if (event === 'answer.delta') {
           assistantText += String(data.text ?? '');
           setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, text: assistantText }; return next; });
@@ -450,8 +475,15 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
         }
       }, controller.signal);
     } catch (reason) {
+      if (!isCurrentStream()) return;
       setMessages((prev) => { const next = [...prev]; const last = next[next.length - 1]; if (last?.role === 'assistant') next[next.length - 1] = { ...last, pending: false, error: true, text: reason instanceof Error ? reason.message : '回答失败，请稍后重试' }; return next; });
-    } finally { skipHistoryLoadRef.current = false; setBusy(false); }
+    } finally {
+      if (streamAbortRef.current === controller) {
+        streamAbortRef.current = null;
+        skipHistoryLoadRef.current = false;
+        setBusy(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -665,7 +697,14 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
   };
 
   useEffect(() => {
-    api<User>('/auth/me').then(async (me) => { setCsrf(csrfCookie()); setUser(me); await loadSlots(); setStep('slots'); }).catch(() => undefined);
+    let active = true;
+    api<User>('/auth/me').then(async (me) => {
+      if (!active) return;
+      setCsrf(csrfCookie()); setUser(me); setStep('slots');
+      try { await loadSlots(); }
+      catch { if (active) setError('已登录，但时段加载失败，请点击“重新加载时段”。'); }
+    }).catch(() => undefined);
+    return () => { active = false; };
   }, []);
 
   // SSE 实时刷新（sse.md v0.1 / architecture §5）：订阅 slot.changed，按 resource_version 收敛；
@@ -673,6 +712,10 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
   const loadSlotsRef = useRef(loadSlots);
   loadSlotsRef.current = loadSlots;
   useEffect(() => {
+    if (!user) return;
+    let closed = false;
+    let fallbackInFlight = false;
+    let lastFallbackAt = 0;
     const source = new EventSource('/slots/events');
     const onChanged = (event: MessageEvent) => {
       try {
@@ -681,12 +724,19 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
         setSlots((prev) => prev.map((slot) => (slot.id === incoming.id && incoming.resource_version > slot.resource_version ? { ...slot, ...incoming } : slot)));
       } catch { /* 忽略畸形帧 */ }
     };
-    const onResync = () => { loadSlotsRef.current().catch(() => undefined); };
+    const refreshSnapshot = () => {
+      const now = Date.now();
+      if (closed || fallbackInFlight || now - lastFallbackAt < 5000) return;
+      lastFallbackAt = now;
+      fallbackInFlight = true;
+      loadSlotsRef.current().catch(() => undefined).finally(() => { fallbackInFlight = false; });
+    };
+    const onResync = () => { refreshSnapshot(); };
     source.addEventListener('slot.changed', onChanged as EventListener);
     source.addEventListener('resync.required', onResync as EventListener);
-    source.onerror = () => { loadSlotsRef.current().catch(() => undefined); };
-    return () => source.close();
-  }, [setSlots]);
+    source.onerror = refreshSnapshot;
+    return () => { closed = true; source.close(); };
+  }, [user?.id]);
 
   const performLogin = async (email: string, password: string, rememberMe = false) => {
     let response: Response;
@@ -709,7 +759,13 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
       throw new Error(message);
     }
     setCsrf(response.headers.get('X-CSRF-Token') || csrfCookie());
-    const me = await api<User>('/auth/me'); setUser(me); await loadSlots(); setStep('slots'); await onAuthChange();
+    let me: User;
+    try { me = await api<User>('/auth/me'); }
+    catch { throw new Error('登录已成功，但会话信息加载失败，请刷新页面后重试。'); }
+    setUser(me); setStep('slots');
+    try { await loadSlots(); }
+    catch { setError('已登录，但时段加载失败，请点击“重新加载时段”。'); }
+    void onAuthChange().catch(() => undefined);
   };
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setBusy(true); setError('');
@@ -836,11 +892,17 @@ function InterviewView({ onAuthChange }: { onAuthChange: () => Promise<void> }) 
     catch { setError('日历刷新失败，预约已成功保存，请重试。'); }
     finally { setBusy(false); }
   };
+  const retrySlots = async () => {
+    setBusy(true); setError('');
+    try { await loadSlots(); }
+    catch { setError('已登录，但时段加载仍然失败，请稍后重试。'); }
+    finally { setBusy(false); }
+  };
   const stageIndex = step === 'login' ? 0 : step === 'slots' ? 1 : 2;
   const stages = [{ icon: UserRound, title: '账号验证', detail: user ? user.email : '登录后进入选时' }, { icon: CalendarDays, title: '选择时间', detail: '连续 3 格，共 90 分钟' }, { icon: CheckCircle2, title: '确认预约', detail: '预览确认后原子提交' }];
   return <main className="workspace interview-view"><div className="workspace-heading"><div><span className="eyebrow">INTERVIEW / 03</span><h1>预约一次有准备的交流。</h1><p>登录后选择真实可用时段，填写会议信息并在三分钟内确认。</p></div><span className="placeholder-badge">真实预约流程</span></div>
     <div className="booking-steps">{stages.map((item, index) => { const Icon = item.icon; return <div className={index === stageIndex ? 'booking-step active' : 'booking-step'} key={item.title}><span className="step-icon"><Icon size={18} /></span><div><small>STEP 0{index + 1}</small><b>{item.title}</b><p>{item.detail}</p></div></div>; })}</div>
-    {error && <div className="booking-error">{error}</div>}
+    {error && <div className="booking-error">{error}{step === 'slots' && slots.length === 0 && <button type="button" className="text-command" disabled={busy} onClick={() => void retrySlots()}>{busy ? '正在重新加载…' : '重新加载时段'}</button>}</div>}
     {step === 'login' && <section className="login-panel"><div><span className="eyebrow">{authMode === 'register' ? 'CREATE ACCOUNT' : authMode === 'verify' ? 'VERIFY EMAIL' : authMode === 'forgot' ? 'RESET PASSWORD' : 'SECURE SIGN IN'}</span><h2>{authMode === 'register' ? '注册账号' : authMode === 'verify' ? '验证邮箱' : authMode === 'forgot' ? '找回密码' : '面试官登录'}</h2><p>{authMode === 'register' ? '注册后前往邮箱输入验证码，即可预约面试。' : authMode === 'verify' ? `验证码已发送至 ${verifyEmail}，10 分钟内有效。` : authMode === 'forgot' ? '输入注册邮箱获取验证码，设置新密码。' : '使用已验证账号进入预约日历。'}</p></div>{notice && <div className="booking-success">{notice}</div>}{authMode === 'login' && <form onSubmit={login}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码<input name="password" type="password" required autoComplete="current-password" /></label><label className="check-row"><input name="remember" type="checkbox" /> 14 天内保持登录</label><button disabled={busy}>{busy ? '正在登录…' : '登录并查看时段'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('register'); }}>没有账号？注册</button><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('forgot'); }}>忘记密码？</button></div></form>}{authMode === 'register' && <form onSubmit={register}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>密码（10-72 字符）<input name="password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={busy}>{busy ? '正在注册…' : '注册并发送验证码'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>已有账号？返回登录</button></div></form>}{authMode === 'verify' && <form onSubmit={verifyAccount}><label>验证码<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6 位数字" required value={verifyCode} onChange={(event) => setVerifyCode(event.currentTarget.value.replace(/\D/g, '').slice(0, 6))} /></label><button disabled={busy}>{busy ? '验证中…' : '验证并继续'}</button><div className="auth-switch"><button type="button" className="text-command" disabled={busy || cooldown > 0} onClick={() => void resendVerification()}>{cooldown > 0 ? `${cooldown}s 后可重发` : '重新发送验证码'}</button><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>返回登录</button></div></form>}{authMode === 'forgot' && <form name="forgot-form" onSubmit={resetPassword}><label>邮箱<input name="email" type="email" required autoComplete="email" /></label><label>验证码<div className="code-row"><input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6 位数字" required /><button type="button" className="text-command" disabled={busy || cooldown > 0} onClick={() => void sendResetCode()}>{cooldown > 0 ? `${cooldown}s 后重发` : '发送验证码'}</button></div></label><label>新密码<input name="new_password" type="password" minLength={10} maxLength={72} required autoComplete="new-password" /></label><button disabled={busy}>{busy ? '提交中…' : '重置密码'}</button><div className="auth-switch"><button type="button" className="text-command" onClick={() => { setError(''); setNotice(''); setAuthMode('login'); }}>返回登录</button></div></form>}</section>}
     {step === 'slots' && <section className="booking-board"><div className="booking-calendar"><div className="calendar-head"><span><CalendarDays size={17} /> 从明天起 15 天可预约时间</span><span className="muted">绿色可选 · 红色不可约 · 深红色为本人预约</span></div><div className="slot-grid">{dayGroups.map(([day, items]) => <div className="slot-day" key={day}><b>{new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', weekday: 'short', timeZone: 'Asia/Shanghai' }).format(new Date(items[0].start_at))}</b><div>{items.map((slot) => { const ownBooking = slot.status === 'booked' && slot.ownership === 'self'; const slotLabel = ownBooking ? '已预约（本人）' : slot.status === 'booked' ? '已预约' : ''; return <button key={slot.id} className={`${slot.status} ${ownBooking ? 'own-booking' : ''} ${selected.includes(slot.id) ? 'selected' : ''}`} disabled={slot.status !== 'available'} title={slotLabel || undefined} aria-label={slotLabel ? `${new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))} ${slotLabel}` : undefined} onClick={() => choose(slot)}>{new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Shanghai' }).format(new Date(slot.start_at))}</button>; })}</div></div>)}</div></div><aside className="booking-summary"><span className="eyebrow">BOOKING SUMMARY</span><h2>预约摘要</h2><dl><div><dt>账号</dt><dd>{user?.email}</dd></div><div><dt>时长</dt><dd>90 分钟</dd></div><div><dt>时间</dt><dd>{selectedSlots[0] ? `${new Date(selectedSlots[0].start_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 起` : '尚未选择'}</dd></div></dl><button className="primary-command" disabled={selected.length !== 3} onClick={() => setStep('details')}>填写预约信息</button></aside></section>}
     {step === 'details' && <section className="details-panel"><button className="text-command" onClick={() => setStep('slots')}><ArrowLeft size={15} /> 返回选时</button><form onSubmit={submitDetails}><h2>填写会议信息</h2><div className="form-grid"><label>公司名称<input name="company_name" required maxLength={200} /></label><label>会议平台<input name="meeting_platform" defaultValue="腾讯会议" required /></label><label>会议号<input name="meeting_number" required /></label><label>联系人姓氏<input name="contact_last_name" required /></label><label>称呼<select name="contact_salutation"><option>老师</option><option>先生</option><option>女士</option></select></label><label>联系电话<input name="contact_phone" required /></label><label className="wide">备注<textarea name="notes" maxLength={2000} /></label></div><button className="primary-command" disabled={busy}>{busy ? '正在生成预览…' : '下一步：确认信息'}</button></form></section>}

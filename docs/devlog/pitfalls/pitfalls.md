@@ -90,3 +90,13 @@
 - **规避**：接手一套红着的套件时，**登记已知失败基线**而非静默 skip/改宽断言；新失败才触发门禁。基线债务需单独 TASK 清理（本任务禁止改 tests/** 行为）。
 - **上下文**：TASK-HARNESS-001 存量债务基线化
 - **Skill 候选**：是 → pytest-baseline-gate
+## 2026-08-31T09:57:31Z · HIGH · verify.sh
+
+- **现象**：清洗外部 Provider 凭据后，真实栈门禁的 extreme semantic RAG 用例仅命中 6/9。
+- **根因**：冻结用例用于判别 BGE-M3 语义能力，却被默认离线门禁用无语义的本地哈希 Embedding 执行；测试层级与运行 Provider 不匹配。
+- **修复**：只把单独 `--quick` 定义为非发布离线预检并明确报告四项未执行；完整/`--tc` 发布门禁与 CI 均强制真实 Embedding、原冻结断言和零 skip，缺凭据或网络即失败。
+- **规避**：可以给 pre-commit 提供明确标识的离线预检，但冻结 TC 不能从发布门禁移除；不得用 fallback 或 deselect 冒充发布证据。
+- **上下文**：TASK-EXTERNAL-RAG-GATE-005；stage=pytest；commit=465b6cc
+- **Skill 候选**：否（待复盘拍板）
+
+---

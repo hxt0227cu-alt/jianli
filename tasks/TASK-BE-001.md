@@ -48,7 +48,7 @@
 - `docs/**`、`PROJECT_STATE.md`、`tasks/**`（除本任务交付证据）
 - `apps/web/**`、根目录前端配置与锁文件
 - `migrations/**`、`infra/**`、`.github/**`
-- `C:\Users\hxt02\Desktop\sleep202603-an\**`
+- `C:\Users\<user>\Desktop\sleep202603-an\**`
 
 ## 已批准的 DB / API / 依赖变更
 - DB：无；禁止数据库连接、schema、migration、表、字段或索引变更。

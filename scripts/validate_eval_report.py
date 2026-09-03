@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,27 @@ FORBIDDEN_KEYS = {
     "secret",
     "api_key",
 }
+EVIDENCE_PATHS = (
+    "docs/baseline.yml",
+    "docs/fact-consistency",
+    "docs/test/test-plan.md",
+    "apps/api",
+    "apps/web",
+    "tests/web-shell",
+    ".github/workflows",
+    "package.json",
+    "pnpm-lock.yaml",
+    "playwright.config.ts",
+    "vite.config.ts",
+    "tsconfig.json",
+    "scripts/verify.sh",
+    "scripts/prepush.sh",
+    "scripts/git-hooks",
+    "scripts/install-hooks.sh",
+    "scripts/measure_fact_consistency.py",
+    "scripts/validate_eval_report.py",
+)
+REPORT_RELATIVE = REPORT.relative_to(ROOT).as_posix()
 
 
 def _walk(value: Any) -> None:
@@ -105,9 +127,7 @@ def validate(report: dict[str, Any]) -> None:
             raise ValueError(f"comparison schema mismatch: {comparison.get('id', '<unknown>')}")
         if comparison["evidence_level"] != "real_provider_component_benchmark":
             raise ValueError(f"invalid comparison evidence: {comparison['id']}")
-        if comparison["sample_size"] < 1 or not COMMIT.fullmatch(
-            comparison["verified_commit"]
-        ):
+        if comparison["sample_size"] < 1 or not COMMIT.fullmatch(comparison["verified_commit"]):
             raise ValueError(f"invalid comparison evidence: {comparison['id']}")
 
     cases = report["cases"]
@@ -121,12 +141,70 @@ def validate(report: dict[str, Any]) -> None:
     _walk(report)
 
 
+def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=check,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _resolve_commit(commit: str) -> str:
+    result = _git("rev-parse", "--verify", f"{commit}^{{commit}}", check=False)
+    if result.returncode != 0:
+        raise ValueError(f"evaluation commit does not resolve: {commit}")
+    return result.stdout.strip()
+
+
+def _require_ancestor(ancestor: str, descendant: str, label: str) -> None:
+    result = _git("merge-base", "--is-ancestor", ancestor, descendant, check=False)
+    if result.returncode != 0:
+        raise ValueError(f"{label} is not an ancestor of the candidate: {ancestor}")
+
+
+def validate_freshness(report: dict[str, Any]) -> None:
+    report_commit = _resolve_commit(str(report["verified_commit"]))
+    head = _resolve_commit("HEAD")
+    _require_ancestor(report_commit, head, "report verified_commit")
+    for suite in report["suites"]:
+        suite_commit = _resolve_commit(str(suite["verified_commit"]))
+        _require_ancestor(suite_commit, report_commit, f"suite {suite['id']} commit")
+    for comparison in report["comparisons"]:
+        comparison_commit = _resolve_commit(str(comparison["verified_commit"]))
+        _require_ancestor(
+            comparison_commit,
+            report_commit,
+            f"comparison {comparison['id']} commit",
+        )
+
+    changed = set(
+        _git(
+            "diff", "--name-only", "--no-renames", report_commit, "--", *EVIDENCE_PATHS
+        ).stdout.splitlines()
+    )
+    untracked = set(
+        _git(
+            "ls-files", "--others", "--exclude-standard", "--", *EVIDENCE_PATHS
+        ).stdout.splitlines()
+    )
+    stale_paths = sorted((changed | untracked) - {REPORT_RELATIVE})
+    if stale_paths:
+        preview = ", ".join(stale_paths[:8])
+        suffix = f" (+{len(stale_paths) - 8} more)" if len(stale_paths) > 8 else ""
+        raise ValueError(
+            "evaluation report is historical for this candidate; relevant paths changed "
+            f"after {report_commit[:12]}: {preview}{suffix}"
+        )
+
+
 def main() -> int:
     size = REPORT.stat().st_size
     if size > MAX_BYTES:
         raise ValueError(f"report is {size} bytes; limit is {MAX_BYTES}")
     report = json.loads(REPORT.read_text(encoding="utf-8"))
     validate(report)
+    validate_freshness(report)
     print(
         f"eval report valid: {report['overall']['passed']}/{report['overall']['total']} "
         f"checks, {len(report['cases'])} boundary cases, {size} bytes"

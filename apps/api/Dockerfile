@@ -18,34 +18,28 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /srv/jianli
 
-# Runtime dependencies (must stay in sync with apps/api/pyproject.toml [project].
-# dependencies). httpx is a runtime dep since TASK-FEISHU-001; dev extras like
-# pytest/ruff are intentionally excluded.
-COPY pyproject.toml alembic.ini ./
-RUN python -m pip install --upgrade pip && \
-    python -m pip install \
-        alembic==1.16.5 \
-        bcrypt==5.0.0 \
-        cryptography==46.0.7 \
-        fastapi==0.141.1 \
-        httpx==0.28.1 \
-        psycopg==3.2.10 \
-        python-multipart==0.0.20 \
-        pypdf==6.15.0 \
-        redis==8.1.0 \
-        SQLAlchemy==2.0.43 \
-        uvicorn==0.52.1 \
-        pydantic==2.13.4 \
-        prometheus-client==0.26.0 \
-        opentelemetry-sdk==1.44.0 \
-        opentelemetry-exporter-otlp-proto-http==1.44.0
+# psycopg's non-binary production installation dynamically links libpq.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq5 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install the exact production dependency closure. ``--no-deps`` prevents pip
+# from resolving a newer transitive version behind the lock; ``pip check`` then
+# proves that the handoff image contains a complete compatible runtime graph.
+# Dev-only pytest/ruff/mypy packages are intentionally excluded.
+COPY pyproject.toml requirements.runtime.lock alembic.ini ./
+RUN python -m pip install --no-deps -r requirements.runtime.lock && \
+    python -m pip check
 
 # Application code + migrations (alembic.ini copied above).
 COPY app ./app
 COPY migrations ./migrations
+COPY scripts/seed_kb.py ./scripts/seed_kb.py
 
-# Non-root user for defense in depth (no write access to image layers).
-RUN useradd --create-home --uid 10001 appuser
+# Non-root user for defense in depth. The init container applies the same ownership
+# to a brand-new named volume before API/Worker startup.
+RUN useradd --create-home --uid 10001 --user-group appuser && \
+    install -d -o appuser -g appuser -m 0700 /srv/jianli/var/knowledge
 USER appuser
 
 EXPOSE 8000

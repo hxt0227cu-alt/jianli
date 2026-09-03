@@ -73,12 +73,12 @@
   先 CR → 更新并 approve 规范 → 再 implementation」；此处以 TASK 批准 + 文档同任务内更新达成）。
 
 ## 功能验收
-- 前置：面试官（`1561705364@qq.com`）已登录且名下有 1 条 active 预约。
+- 前置：面试官（`candidate@example.com`）已登录且名下有 1 条 active 预约。
   - 对话「我的预约有哪些」→ 模型调 `list_my_appointments` → 返回该预约 id/时间/公司。
   - 对话「取消上面那条」→ 模型调 `cancel_appointment(id)` → 返回 cancelled，预约状态变更。
   - 「我的预约」页确认该条已取消。
 - 改期：对话「把 8/24 14:00 改到 8/25 10:00」→ `reschedule_appointment` → 时段校验通过则 rescheduled，slots 转移。
-- owner_admin（`[邮箱已脱敏]`）登录：`list_my_appointments` 返回**全部**预约（含他人 + candidate_email）；`cancel_appointment(他人id)` / `reschedule_appointment(他人id)` 成功。
+- owner_admin（`owner@example.com`）登录：`list_my_appointments` 返回**全部**预约（含他人 + candidate_email）；`cancel_appointment(他人id)` / `reschedule_appointment(他人id)` 成功。
 - 异常：
   - 面试官 `cancel_appointment(他人id)` → PERM_DENIED → 优雅提示「这不是你名下的预约」，预约不变。
   - `reschedule_appointment` 到不可用时段 → failed → 提示「该时段未开放或已被预约」。

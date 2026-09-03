@@ -148,6 +148,14 @@ describe('web shell acceptance surface', () => {
     expect(source).toContain('工作台');
     expect(source).toContain('登录后显示历史对话');
     expect(source).toContain("'/auth/resend-verification'");
+    expect(source).toContain("if (!user) return;");
+    expect(source).toContain("source.onerror = refreshSnapshot;");
+    expect(source).toContain("登录已成功，但会话信息加载失败");
+    expect(source).toContain("已登录，但时段加载失败");
+    expect(source).toContain("streamAbortRef.current?.abort();");
+    expect(source).toContain("const isCurrentStream = () => streamAbortRef.current === controller");
+    expect(styles).toContain('@media(min-width:1024px) and (max-width:1279px)');
+    expect(styles).toContain('.topbar .top-title,.topbar .top-status{display:none}');
     expect(source).toContain("'/auth/logout'");
     expect(source).toContain("'app-shell no-chat'");
     expect(source).toContain('[0, 1, 2]');

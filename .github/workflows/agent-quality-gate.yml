@@ -21,6 +21,17 @@ jobs:
         working-directory: apps/api
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Committed whitespace gate
+        working-directory: .
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA="$(git hash-object -t tree /dev/null)"
+          fi
+          git -c core.autocrlf=true diff --check "$BASE_SHA" HEAD
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -31,19 +42,20 @@ jobs:
       - name: Validate public evaluation evidence
         working-directory: .
         run: python scripts/validate_eval_report.py
-      - name: Agent and trace regression
+      - name: Full DB-free API regression
         env:
           PYTHONPATH: .
-        run: >-
-          pytest tests/aiqa/test_agent_lab.py tests/aiqa/test_agent_tools.py
-          tests/aiqa/test_aiqa.py tests/aiqa/test_resilience.py
-          tests/aiqa/test_distributed_resilience.py tests/aiqa/test_semantic_cache.py
-          tests/test_observability.py -q
+        run: pytest -q -ra
       - name: Python quality gates
-        run: >-
-          ruff check app tests/aiqa/test_agent_lab.py tests/aiqa/test_resilience.py
-          tests/aiqa/test_distributed_resilience.py tests/aiqa/test_semantic_cache.py
-          tests/test_observability.py && mypy app
+        run: |
+          ruff check .
+          ruff format --check ../../scripts/record_pit.py tests/conftest.py scripts/harness_setup_db.py
+          mypy app
+      - name: Shell gate syntax
+        working-directory: .
+        run: |
+          git ls-files -z '*.sh' | xargs -0 bash -n
+          bash -n scripts/git-hooks/pre-commit scripts/git-hooks/pre-push
 
   rag-integration:
     needs: backend-agent
@@ -55,11 +67,11 @@ jobs:
         env:
           POSTGRES_USER: jianli
           POSTGRES_PASSWORD: jianli-ci
-          POSTGRES_DB: jianli_test
+          POSTGRES_DB: jianli_dev
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U jianli -d jianli_test"
+          --health-cmd "pg_isready -U jianli -d jianli_dev"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -73,10 +85,27 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      JIANLI_AIQA_TEST_DATABASE_URL: postgresql+psycopg://jianli:jianli-ci@127.0.0.1:5432/jianli_test
+      JIANLI_DATABASE_URL: postgresql+psycopg://jianli:jianli-ci@127.0.0.1:5432/jianli_test
+      JIANLI_REDIS_URL: redis://127.0.0.1:6379/15
+      JIANLI_AIQA_TEST_DATABASE_URL: postgresql+psycopg://jianli:jianli-ci@127.0.0.1:5432/jianli_tc_aiqa_001_db
       JIANLI_AIQA_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      JIANLI_BOOKING_TEST_DATABASE_URL: postgresql+psycopg://jianli:jianli-ci@127.0.0.1:5432/jianli_test
+      JIANLI_BOOKING_TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      JIANLI_AUTH_TEST_DATABASE_URL: postgresql+psycopg://jianli:jianli-ci@127.0.0.1:5432/jianli_auth_001_db
+      JIANLI_AUTH_TEST_REDIS_URL: redis://127.0.0.1:6379/15
       JIANLI_CSRF_HMAC_KEY: ci-csrf-key-32-bytes-minimum-value
       JIANLI_RATE_LIMIT_HMAC_KEY: ci-rate-key-32-bytes-minimum-value
+      JIANLI_FIELD_ENCRYPTION_CURRENT_KEY_ID: k1
+      JIANLI_FIELD_ENCRYPTION_KEYS: '{"k1":"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="}'
+      JIANLI_COMPANY_FINGERPRINT_HMAC_KEY: AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=
+      JIANLI_APPOINTMENT_CONFIRMATION_HMAC_KEY: AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM=
+      JIANLI_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      JIANLI_ENVIRONMENT: test
+      JIANLI_EMAIL_MODE: console
+      JIANLI_LLM_EMBEDDING_BASE_URL: ${{ secrets.JIANLI_LLM_EMBEDDING_BASE_URL }}
+      JIANLI_LLM_EMBEDDING_API_KEY: ${{ secrets.JIANLI_LLM_EMBEDDING_API_KEY }}
+      JIANLI_LLM_EMBEDDING_MODEL: ${{ secrets.JIANLI_LLM_EMBEDDING_MODEL }}
+      JIANLI_LLM_EMBEDDING_DIM: "1024"
     defaults:
       run:
         working-directory: apps/api
@@ -89,21 +118,80 @@ jobs:
           cache-dependency-path: apps/api/pyproject.toml
       - name: Install existing API dependencies
         run: python -m pip install -e ".[dev]"
-      - name: Migrate isolated evaluation database
-        env:
-          JIANLI_DATABASE_URL: ${{ env.JIANLI_AIQA_TEST_DATABASE_URL }}
-        run: alembic upgrade head
-      - name: Real pgvector and Redis RAG evaluation
+      - name: Require frozen real-RAG gate credentials
+        run: |
+          for key in JIANLI_LLM_EMBEDDING_BASE_URL JIANLI_LLM_EMBEDDING_API_KEY JIANLI_LLM_EMBEDDING_MODEL; do
+            test -n "${!key:-}" || { echo "missing required GitHub secret: $key" >&2; exit 1; }
+          done
+      - name: Prepare isolated application and migration databases
+        run: |
+          for database in \
+            jianli_test \
+            jianli_auth_001_db \
+            jianli_tc_ops_002_db \
+            jianli_tc_aiqa_001_db \
+            jianli_tc_feishu_001_db
+          do
+            HARNESS_TARGET_DATABASE_URL="${JIANLI_DATABASE_URL%/*}/$database" \
+              python scripts/harness_setup_db.py
+          done
+      - name: Migration acceptance on three dedicated databases
         env:
           PYTHONPATH: .
-        run: >-
-          pytest
-          tests/aiqa/test_rag_eval.py::test_rag_literal_hit_cases
-          tests/aiqa/test_rag_eval.py::test_rag_reject_cases
-          tests/aiqa/test_rag_eval.py::test_privacy_questions_refused
-          tests/aiqa/test_rag_eval.py::test_rag_false_reject_cases
-          tests/aiqa/test_distributed_resilience.py::test_real_redis_cross_instance_atomic_probe
-          -q
+        run: |
+          set -o pipefail
+          run_no_skip() {
+            report="$RUNNER_TEMP/pytest-$RANDOM.txt"
+            "$@" | tee "$report"
+            if grep -Eq '(^|, )[0-9]+ skipped([,[:space:]]|$)' "$report"; then
+              echo "unexpected skipped migration test" >&2
+              return 1
+            fi
+          }
+          JIANLI_TEST_DATABASE_URL="${JIANLI_DATABASE_URL%/*}/jianli_tc_ops_002_db" \
+            run_no_skip pytest -q -ra \
+              tests/migrations/test_identity_schema.py \
+              tests/migrations/test_booking_schema.py \
+              tests/migrations/test_booking_constraints.py \
+              tests/migrations/test_booking_referential.py \
+              tests/migrations/test_outbox_audit_schema.py
+          JIANLI_TEST_DATABASE_URL="${JIANLI_DATABASE_URL%/*}/jianli_tc_aiqa_001_db" \
+            run_no_skip pytest -q -ra \
+              tests/migrations/test_aiqa_schema.py \
+              tests/migrations/test_aiqa_observations.py
+          JIANLI_TEST_DATABASE_URL="${JIANLI_DATABASE_URL%/*}/jianli_tc_feishu_001_db" \
+            run_no_skip pytest -q -ra tests/migrations/test_feishu_schema.py
+      - name: Real PostgreSQL, pgvector and Redis regression
+        env:
+          PYTHONPATH: .
+        run: |
+          set -o pipefail
+          report="$RUNNER_TEMP/pytest-real-stack.txt"
+          pytest -q -ra \
+            --deselect=tests/test_worker.py::test_worker_real_smtp_e2e \
+            tests/appointments \
+            tests/admin \
+            tests/auth/test_account_lifecycle.py \
+            tests/auth/test_auth.py \
+            tests/test_feishu.py \
+            tests/test_worker.py \
+            tests/aiqa/test_conversations.py \
+            tests/aiqa/test_knowledge.py \
+            tests/aiqa/test_agent_booking.py \
+            tests/aiqa/test_agent_crud.py \
+            tests/aiqa/test_rag_eval.py::test_rag_literal_hit_cases \
+            tests/aiqa/test_rag_eval.py::test_rag_semantic_hit_cases \
+            tests/aiqa/test_rag_eval.py::test_rag_extreme_semantic_hit_cases \
+            tests/aiqa/test_rag_eval.py::test_pure_vector_ranking \
+            tests/aiqa/test_rag_eval.py::test_rag_reject_cases \
+            tests/aiqa/test_rag_eval.py::test_privacy_questions_refused \
+            tests/aiqa/test_rag_eval.py::test_rag_false_reject_cases \
+            tests/aiqa/test_distributed_resilience.py::test_real_redis_cross_instance_atomic_probe \
+            | tee "$report"
+          if grep -Eq '(^|, )[0-9]+ skipped([,[:space:]]|$)' "$report"; then
+            echo "unexpected skipped real-stack test" >&2
+            exit 1
+          fi
 
   web-delivery:
     needs: rag-integration
@@ -113,7 +201,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 9.15.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -122,3 +210,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test, typecheck and build
         run: pnpm test && pnpm typecheck && pnpm build
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser end-to-end gate
+        run: pnpm exec playwright test

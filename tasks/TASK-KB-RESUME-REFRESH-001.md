@@ -126,7 +126,7 @@
 - 是否偏离 TASK：否
 - 规范影响结论：updated（用户批准）
 - spec_sync：已按用户四条决策同步（①B 新简历+NDA 口径 / ②A 保留 jianli / ③A 保留荣誉 / ④ 身份全隐藏）
-- verified_commit：<push 后回填>
+- verified_commit：`269118a382f033ca937d8a14d5e88025fb9a347d`（已推送 origin/master，local==origin，工作树干净）
 
 ## 关联
 - Change Request：用户 2026-09-04 四条决策（等效批准）

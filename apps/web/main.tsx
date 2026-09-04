@@ -112,8 +112,8 @@ const FOLLOWUP_POOL: FollowupQuestion[] = [
   { question: 'Litchi 如何在本地小模型条件下保证 Agent 可控？', pageKey: 'projects', projectKey: 'litchi' },
   { question: '你做的 pgvector 多租户 RAG 怎么做的隔离？', pageKey: 'projects', projectKey: 'sleep' },
   { question: '泰益智项目里 LangGraph 和 Temporal 各负责什么？', pageKey: 'projects', projectKey: 'sleep' },
-  { question: 'Sleep 的 Kafka 重平衡如何保证事件不丢失？', pageKey: 'projects', projectKey: 'sleep' },
-  { question: 'Sleep 如何用受控工具和人工确认约束设备操作？', pageKey: 'projects', projectKey: 'sleep' },
+  { question: 'Sleep 的 Agent Runtime 怎么实现长任务断点恢复？', pageKey: 'projects', projectKey: 'sleep' },
+  { question: 'Sleep 的模型与工具治理做了什么？', pageKey: 'projects', projectKey: 'sleep' },
   { question: '你最有成就感的一段工程经历是哪一段？', pageKey: 'resume' },
   { question: '你适合什么样的团队和岗位？', pageKey: 'resume' },
   { question: '实习经历对正式工作的帮助有多大？', pageKey: 'resume' },
@@ -259,33 +259,31 @@ const projects: Record<ProjectId, ProjectInfo> = {
   },
   sleep: {
     label: '项目 02', name: 'Sleep AIoT Agent', accent: 'khaki',
-    tags: ['实习主项目', 'Agent Governance', 'AIoT'],
+    tags: ['泰益智 · AI 应用开发工程师', 'Agent Runtime', 'AIoT'],
     headline: '让会操作设备的 Agent 可控、可恢复、可评测。',
-    problem: '模型错误可能转化为真实设备操作，因此权限、审批、预算和恢复必须由确定性系统控制。',
+    problem: '模型错误可能转化为真实设备操作，因此权限、审批、恢复与评测必须由确定性系统控制。',
     evidence: [
-      { label: '受控执行', value: '6 TOOLS · 15 APIs', detail: 'L0–L4 风险分级、工具白名单、参数边界与 Human-in-the-loop 审批。' },
-      { label: '安全评测', value: '84/84 · 0 BYPASS', detail: '84 条确定性回归全部通过；120 条红队中恶意设备写入绕过 0 次。' },
-      { label: '性能治理', value: '+393.9% · 229ms', detail: '有界异步接纳实现背压，HTTP 接纳吞吐提升，P95 从 1.35s 降至 229ms。' },
-      { label: '数据可靠性', value: '18,720 · LAG 0', detail: '双 Worker 重平衡三轮各 6240/6240，300 次重放全部抑制；证据限于本地数据链路。' },
-      { label: '租户检索', value: '2/2 · 8/8', detail: 'pgvector 按 global + tenant 过滤；真实 PostgreSQL 隔离 2/2，确定性 RAG 契约 8/8。' },
-      { label: '云端边界', value: 'MIGRATION OK · APP FAIL', detail: '阿里云基础设施和数据库迁移跑通过，但应用启动失败，因此不包装成生产上线。' },
+      { label: '运行时编排', value: '5 AGENTS · P-E-V', detail: 'LangGraph + Temporal 统一 Agent Runtime，Planner-Executor-Validator 协作，PostgreSQL 长任务断点恢复。' },
+      { label: '受控执行', value: '92.0% · 4.1%', detail: '工具白名单 + HITL 审批 + 超时熔断；QLoRA + DPO 对齐后工具调用准确率 92.0%，非法调用率 4.1%。' },
+      { label: '数据可靠性', value: '≈13S', detail: 'MQTT→Kafka→ClickHouse 遥测链路，幂等去重 + 死信队列，故障恢复中位数约 13 秒。' },
+      { label: '工程评测', value: '80+ · >99%', detail: '单元测试、场景回归、语义校验三层 Agent 评测体系，80+ 回归用例通过率超 99%。' },
+      { label: '治理与隔离', value: 'RBAC · PGVECTOR', detail: 'OpenAI 兼容模型网关 + SSO/OIDC 细粒度 RBAC；pgvector 租户级知识隔离与分层记忆。' },
     ],
-    boundary: '229ms 是接纳层而非 LLM 推理延迟；公开 Harness 的设备 ACK 为模拟，真实硬件日志与内部 RC 受 NDA 约束。',
+    boundary: '量化指标来自内部 NDA 验证，可追问口径、不公开原始证据；不表述为生产上线。',
   },
   litchi: {
     label: '项目 03', name: 'Litchi 荔枝问答平台', accent: 'sun',
-    tags: ['优秀毕业设计 90.4', '独立开发', 'Java AI 全栈'],
+    tags: ['优秀毕设', '独立开发', '受控 Agent'],
     headline: '在无 GPU、单人开发约束下，完成可控 Agent 与农技协同闭环。',
     problem: '不依赖模型堆料，转而用确定性编排、人工审批和降级机制保证系统可运行、可演示。',
     evidence: [
-      { label: '受控编排', value: '4 STAGES · 4 STEPS', detail: 'Planner、Guard、Executor、Synthesizer 分层；写操作必须由技术员审批。' },
-      { label: '独立交付', value: '3 ROLES · 22 PAGES', detail: 'Spring Boot、Vue 3 与 Python 串起农户、门店、技术员协同主链路。' },
-      { label: '工程验证', value: '38/38 · 119 RUNS', detail: '后端测试 38/38；建立 60 条评测集；30 分钟 119 轮巡检全部成功。' },
-      { label: '本地 AI 栈', value: 'MILVUS · NEO4J · OLLAMA', detail: '三套完整环境实际同时运行并在答辩现场演示；数据平台、可观测性与 Helm 属于实验模板。' },
-      { label: '检索管线', value: '480/120 · 1024D', detail: '多格式抽取与重叠切块、确定性哈希向量、启发式重排，再补 Neo4j 关系证据。' },
+      { label: '受控编排', value: 'P-G-E-S · 7 状态', detail: 'Planner、Guard、Executor、Synthesizer 分层；5 类工具、4 步规划、7 类运行状态；写操作 HITL 审批。' },
+      { label: '独立交付', value: 'B2B2C · 22 PAGES', detail: 'Spring Boot、Vue 3 与 Python 串起农技公司、合作社、门店与技术员协同主链路。' },
+      { label: '评测与工程化', value: '60 条 · 5 CI', detail: '60 条固定评测集（30 RAG + 20 Agent + 10 安全）；Prometheus 指标 + 5 类 CI + k6 压测。' },
+      { label: 'RAG 与降级', value: '480/120 · 159.88ms', detail: '1024 维哈希向量（Milvus COSINE）+ 词法召回 + Neo4j 关系；外部模型不可用时降级问答平均 159.88ms。' },
       { label: '压力边界', value: '50C · P95 11.2S', detail: '历史 50 并发请求全部成功；升至 100 并发后最低仅 19%，明确保留扩容短板。' },
     ],
-    boundary: '38/38 与 119 轮来自未提交本地报告；60 条已提交数据不等于全部模型效果，1024 维哈希也不是语义 Embedding。',
+    boundary: '1024 维哈希是 CPU 本地演示方案而非语义 Embedding；数据平台、可观测性与容器编排属于实验模板。',
   },
 };
 
@@ -557,7 +555,7 @@ function ChatPanel({ live, pageKey, projectKey, conversationId, canPersist, onCo
 function TopBar({ page, onPage, user }: { page: Page; onPage: (page: Page) => void; user: User | null }) {
   const isOwner = user?.role === 'owner_admin';
   const title = page === 'dashboard' ? '工作台' : page === 'resume' ? '简历问答' : page === 'projects' ? '项目说明' : page === 'mine' ? '我的预约' : page === 'admin' ? '知识库管理' : '预约面试';
-  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 全栈开发工程师 · Agent 方向</small></div><nav>{isOwner && <button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button>}<button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>简历问答</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>项目说明</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约面试</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button>{isOwner && <button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button>}</nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
+  return <header className="topbar"><div className="top-title"><LayoutDashboard size={17} /><b>{title}</b><span>/</span><small>AI 应用开发工程师 · Agent 方向</small></div><nav>{isOwner && <button className={page === 'dashboard' ? 'active' : ''} onClick={() => onPage('dashboard')}>工作台</button>}<button className={page === 'resume' ? 'active' : ''} onClick={() => onPage('resume')}>简历问答</button><button className={page === 'projects' ? 'active' : ''} onClick={() => onPage('projects')}>项目说明</button><button className={page === 'interview' ? 'active' : ''} onClick={() => onPage('interview')}>预约面试</button><button className={page === 'mine' ? 'active' : ''} onClick={() => onPage('mine')}>我的预约</button>{isOwner && <button className={page === 'admin' ? 'active' : ''} onClick={() => onPage('admin')}>知识库</button>}</nav><div className="top-status"><span className="live-dot" /> 仅桌面端</div></header>;
 }
 
 function PdfView() {
@@ -590,7 +588,7 @@ function PdfView() {
 }
 
 function ResumeView({ onInterview }: { onInterview: () => void }) {
-  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF 的高清预览；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><a className="placeholder-badge" href="/resume.pdf" download="resume.pdf">下载 PDF</a><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> [姓名已脱敏] · 简历</span><a href="/resume.pdf" target="_blank" rel="noreferrer">打开原始 PDF ↗</a></div><PdfView /></div></div></main>;
+  return <main className="workspace resume-view"><div className="workspace-heading"><div><span className="eyebrow">RESUME / 01</span><h1>先看简历，再聊项目。</h1><p>左侧展示真实简历 PDF 的高清预览；右侧对话用于追问经历、判断取舍和定位面试重点。</p></div><div className="heading-actions"><a className="placeholder-badge" href="/resume.pdf" download="resume.pdf">下载 PDF</a><button className="appointment-cta" onClick={onInterview}><CalendarDays size={15} /> 预约面试</button></div></div><div className="resume-stage"><div className="pdf-placeholder"><div className="pdf-toolbar"><span><FileText size={16} /> 简历</span><a href="/resume.pdf" target="_blank" rel="noreferrer">打开原始 PDF ↗</a></div><PdfView /></div></div></main>;
 }
 
 function EvaluationEvidence() {
@@ -603,29 +601,29 @@ function EvaluationEvidence() {
 function SleepReliabilityReplay() {
   return <section className="project-depth-panel khaki-light" aria-labelledby="sleep-replay-title">
     <div className="project-depth-head">
-      <div><span className="eyebrow">RELIABILITY REPLAY / DATA PATH</span><h2 id="sleep-replay-title">不是“接了 Kafka”，而是把 51 条幽灵重复追到类型边界。</h2><p>从故障现象、静默根因到重放验收，展示一条可复盘的数据可靠性闭环。</p></div>
-      <span className="depth-badge">真实硬件日志参与联调</span>
+      <div><span className="eyebrow">RELIABILITY REPLAY / DATA PATH</span><h2 id="sleep-replay-title">设备数据到分析结果，链路每一跳都有重试与幂等。</h2><p>从实时接入、去重存储到故障恢复，展示一条可复盘的端到端遥测链路。</p></div>
+      <span className="depth-badge">本地双进程 · 单 Kafka · 单 ClickHouse</span>
     </div>
     <div className="replay-flow">
-      <article><span>01 · 发现</span><strong>6,291 / 6,240</strong><p>Worker 重平衡后总写入多出 51 条，但唯一事件数仍是 6,240。</p></article>
-      <article><span>02 · 定位</span><strong>ARRAY(UUID) → ∅</strong><p>ClickHouse 查重参数静默返回空集，没有报错，导致重复写入被放行。</p></article>
-      <article><span>03 · 修复</span><strong>STRING → UUID</strong><p>改为字符串数组并在 SQL 内显式转换，避免驱动层类型绑定陷阱。</p></article>
-      <article><span>04 · 验收</span><strong>3 × 6,240 · LAG 0</strong><p>三轮重平衡全部无重复，300 次显式重放全抑制，恢复中位数 12.605s。</p></article>
+      <article><span>01 · 接入</span><strong>MQTT → Kafka</strong><p>多源设备数据实时接入，先落消息队列再做时序存储。</p></article>
+      <article><span>02 · 去重</span><strong>幂等 · 时序存储</strong><p>ClickHouse 幂等去重，避免重复写入污染分析结果。</p></article>
+      <article><span>03 · 保障</span><strong>RETRY · OFFSET · DLQ</strong><p>消息重试、显式 Offset 提交与死信队列兜底异常。</p></article>
+      <article><span>04 · 恢复</span><strong>≈13S</strong><p>故障恢复中位数约 13 秒；口径来自内部 NDA 验证。</p></article>
     </div>
-    <div className="depth-boundary"><b>证据边界</b><p>这是本地双进程、单 Kafka、单 ClickHouse 的可靠性验证；不能外推为跨区域生产容灾。</p></div>
+    <div className="depth-boundary"><b>证据边界</b><p>量化指标来自内部 NDA 验证，可追问但不公开原始证据；不表述为生产上线。</p></div>
   </section>;
 }
 
 function SleepDeliveryEvidence() {
   return <section className="project-proof-panel khaki-dark" aria-labelledby="sleep-proof-title">
-    <div className="proof-head"><div><span className="eyebrow">DELIVERY LEDGER / HONEST EVIDENCE</span><h2 id="sleep-proof-title">安全、性能和上云，按证据等级拆开说。</h2><p>通过的、失败的、受 NDA 约束的，不混成一句“生产可用”。</p></div><strong>4 层证据</strong></div>
+    <div className="proof-head"><div><span className="eyebrow">DELIVERY LEDGER / HONEST EVIDENCE</span><h2 id="sleep-proof-title">运行时、治理与评测，按证据口径拆开说。</h2><p>受 NDA 约束的指标带口径说明，不混成一句“生产可用”。</p></div><strong>5 AGENTS · P-E-V</strong></div>
     <div className="proof-grid">
-      <article><span>确定性工程集</span><strong>84/84</strong><p>11 个 case group；固定 Provider，公开 Harness 的设备 ACK 为模拟。</p><small>已提交源码与测试</small></article>
-      <article><span>协作红队</span><strong>96/120</strong><p>危险写工具调用 0 次；仍有 17 条输入守卫漏检和 7 条运行边界问题。</p><small>本人和同事协同，未提交 RC</small></article>
-      <article><span>租户检索</span><strong>PG 2/2 · RAG 8/8</strong><p>验证 global + tenant 过滤；固定向量不等于生产级语义质量。</p><small>本地真实 PostgreSQL</small></article>
-      <article className="known-gap"><span>云端交付</span><strong>迁移成功 · 应用失败</strong><p>阿里云基础设施和数据库迁移跑通，应用最终未启动，候选未重新部署。</p><small>明确保留失败证据</small></article>
+      <article><span>运行时编排</span><strong>5 AGENTS · P-E-V</strong><p>LangGraph + Temporal 统一 Agent Runtime，Planner-Executor-Validator 协作，PostgreSQL 长任务断点恢复。</p><small>统一运行时</small></article>
+      <article><span>受控执行</span><strong>92.0% · 4.1%</strong><p>工具白名单 + HITL 审批 + 超时熔断；QLoRA + DPO 对齐后工具调用准确率 92.0%、非法调用率 4.1%。</p><small>口径：内部 NDA 验证</small></article>
+      <article><span>工程评测</span><strong>80+ · &gt;99%</strong><p>单元测试、场景回归、语义校验三层 Agent 评测体系，80+ 回归用例通过率超 99%。</p><small>口径：内部 NDA 验证</small></article>
+      <article className="known-gap"><span>治理与隔离</span><strong>网关 · RBAC</strong><p>OpenAI 兼容模型网关 + SSO/OIDC 细粒度 RBAC；pgvector 租户级知识隔离与分层记忆。</p><small>可观测与治理</small></article>
     </div>
-    <footer>下一版优先级：事务 Outbox、服务身份、可信设备归属、请求幂等和真实 Temporal 中断演练。</footer>
+    <footer>下一版优先级：事务 Outbox、服务身份、可信设备归属、持久执行、请求幂等与中断演练。</footer>
   </section>;
 }
 
@@ -656,13 +654,13 @@ function LitchiEngineeringMap() {
 
 function LitchiAcceptanceEvidence() {
   return <section className="project-proof-panel sun-dark" aria-labelledby="litchi-proof-title">
-    <div className="proof-head"><div><span className="eyebrow">THESIS REVIEW / EVIDENCE & LIMITS</span><h2 id="litchi-proof-title">答辩分数之外，更值钱的是我知道数据能证明什么。</h2><p>独立交付、运行证据与失败边界同时摆在台面上。</p></div><strong>90.4</strong></div>
+    <div className="proof-head"><div><span className="eyebrow">THESIS REVIEW / EVIDENCE & LIMITS</span><h2 id="litchi-proof-title">完整业务闭环之外，更值钱的是我知道数据能证明什么。</h2><p>独立交付、运行证据与失败边界同时摆在台面上。</p></div><strong>B2B2C</strong></div>
     <div className="proof-grid litchi-proof-grid">
-      <article><span>独立交付</span><strong>3 角色 · 22 页面</strong><p>Java 后端、Vue 前端、Python 诊断、语料与评测由本人完成。</p><small>优秀毕业设计</small></article>
-      <article><span>完整 AI 环境</span><strong>3 ENGINES · LIVE</strong><p>Milvus、Neo4j、Ollama 同时真实运行并在答辩现场演示。</p><small>数据平台 / 可观测 / Helm 为实验模板</small></article>
-      <article><span>历史稳定性</span><strong>38/38 · 119 RUNS</strong><p>来自未提交本地报告；不能替代干净提交和正式质量门禁。</p><small>证据等级主动标注</small></article>
+      <article><span>独立交付</span><strong>B2B2C · 22 页面</strong><p>Java 后端、Vue 前端、Python 诊断、语料与评测由本人完成。</p><small>优秀毕业设计</small></article>
+      <article><span>受控编排</span><strong>P-G-E-S · 7 状态</strong><p>5 类工具、最多 4 步规划、RBAC 权限过滤；写操作 HITL 审批后落库。</p><small>受约束编排器</small></article>
+      <article><span>评测集</span><strong>60 条</strong><p>30 RAG + 20 Agent + 10 安全，覆盖召回、工具选择、越权与拒答。</p><small>固定评测集</small></article>
+      <article><span>RAG 降级</span><strong>159.88MS</strong><p>外部模型不可用时 20 次降级问答平均响应 159.88ms；哈希向量非语义 Embedding。</p><small>本地 AI 栈</small></article>
       <article><span>并发边界</span><strong>50C OK · 100C FAIL</strong><p>50 并发历史全成功；100 并发/200 请求多轮最低成功率约 19%。</p><small>高并发稳定性未达标</small></article>
-      <article><span>评测校准</span><strong>3/30 → 24/30</strong><p>主要是修正错误 evidenceIds，不是模型能力提升八倍；仍有 6 条未命中。</p><small>先修评测，再谈优化</small></article>
       <article><span>图像实验</span><strong>93.75% BEST</strong><p>五类 300/80 小样本验证，只证明实验链路，不能外推真实果园。</p><small>部署使用 best checkpoint</small></article>
     </div>
     <footer>尚未落地：事务 Outbox、职责分离审批、Last-Event-ID 重放、全链 deadline 与 Token/成本预算。</footer>

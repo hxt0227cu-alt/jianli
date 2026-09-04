@@ -52,22 +52,24 @@ pytestmark = pytest.mark.skipif(
 # Literal hit cases: the question contains words literally present in the doc
 # (both BM25 and vector embeddings can ground them).
 LITERAL_CASES: list[tuple[str, str]] = [
-    ("[姓名已脱敏]在哪个大学读书？", "profile.md"),
+    ("你本科学的什么专业？", "profile.md"),
     ("你的技术栈包括哪些？", "profile.md"),
     ("你获得过什么荣誉？", "credentials.md"),
     ("Litchi Copilot 的 Agent 架构是什么？", "litchi-agent-rag.md"),
     ("Litchi 用了什么向量数据库？", "litchi-agent-rag.md"),
-    ("Litchi 的 outbox 是事务 Outbox 吗？", "litchi-evidence-retrospective.md"),
+    ("Litchi 的 outbox 是事务 Outbox 吗？", "litchi-evolution.md"),
     ("Litchi RAG 怎么切块和生成哈希向量？", "litchi-agent-rag.md"),
-    ("Litchi 为什么不是完整业务闭环？", "litchi-overview.md"),
+    ("Litchi 是一个什么类型的平台？", "litchi-overview.md"),
     ("泰益智项目用什么做任务编排？", "sleep-agent-runtime.md"),
-    ("你的 RAG 是怎么做租户隔离的？", "sleep-rag-governance.md"),
-    ("泰益智项目怎么防 Prompt Injection？", "sleep-rag-governance.md"),
-    ("Sleep 的 HTTP 202 表示执行完成了吗？", "sleep-agent-runtime.md"),
-    ("Sleep 的 Temporal 做过真实中断恢复吗？", "sleep-agent-runtime.md"),
-    ("Sleep 的 device_control 设备白名单有什么缺口？", "sleep-rag-governance.md"),
-    ("Sleep 的 84 条评测实际有多少个 case group？", "sleep-evidence-retrospective.md"),
+    ("Sleep 的工具调用准确率是多少？", "sleep-rag-governance.md"),
+    ("Sleep 的 Agent Runtime 怎么做断点恢复？", "sleep-agent-runtime.md"),
+    ("Sleep 的 Planner-Executor-Validator 是怎么协作的？", "sleep-agent-runtime.md"),
+    ("Sleep 的分层记忆是怎么做的？", "sleep-rag-governance.md"),
+    ("Sleep 的三层评测体系是什么？", "sleep-evidence-retrospective.md"),
     ("Sleep 是否已经在阿里云正式上线？", "sleep-evolution.md"),
+    ("MCP 数据分析引擎的 NL2SQL 幻觉率控制在多少？", "mcp-analytics-engine.md"),
+    ("极氪座舱助手的意图识别准确率是多少？", "zeekr-cockpit-assistant.md"),
+    ("慧眼识蚁的下位机用什么实时系统？", "anteye-robot.md"),
     ("Jianli 的 Agent Lab 有哪些挑战场景？", "jianli-agent-lab.md"),
     ("Jianli 评测中心和 CI 门禁是怎么做的？", "jianli-evaluation-ci.md"),
     ("Jianli 怎么用 OpenTelemetry 和 Prometheus 做可观测性？", "jianli-observability.md"),
@@ -75,21 +77,23 @@ LITERAL_CASES: list[tuple[str, str]] = [
 ]
 
 # Semantic hit cases (EVAL-002, the discriminator): the question paraphrases the
-# doc's meaning WITHOUT its core low-frequency keywords (e.g. [学校已脱敏]/荔枝/Temporal).
+# doc's meaning WITHOUT its core low-frequency keywords (e.g. 荔枝/Temporal/MCP).
 # Under a semantic embedding (BGE-M3) the expected doc should rank top; under the
 # local hash embedding it typically ranks lower (BM25 single-char overlap still
 # pulls it in, but weaker). Rank = index+1 in citations, 99 when missing.
 SEMANTIC_CASES: list[tuple[str, str]] = [
-    ("你本科是在哪所高校念的？", "profile.md"),
+    ("你本科学的专业是什么？", "profile.md"),
     ("平时的工程部署和环境管理用什么？", "profile.md"),
     ("你实习时主要在团队里做什么？", "profile.md"),
     ("有没有专业上的资格证明？", "credentials.md"),
     ("模型规划出来的工具为什么还要由服务端重新过滤？", "litchi-agent-rag.md"),
     ("取消运行能不能停掉已经发出的模型和数据库调用？", "litchi-agent-rag.md"),
     ("为什么有事件表还不能叫可靠的事务事件投递？", "litchi-evolution.md"),
-    ("收到接纳响应是不是代表睡眠分析已经完成？", "sleep-agent-runtime.md"),
-    ("设备可操作范围应该由谁提供才可信？", "sleep-rag-governance.md"),
-    ("红队八成通过能不能说明系统已经安全？", "sleep-evidence-retrospective.md"),
+    ("模型执行长任务中途断了还能接着跑吗？", "sleep-agent-runtime.md"),
+    ("怎么约束模型只能调用允许的工具？", "sleep-rag-governance.md"),
+    ("对外讲的指标是不是都来自内部验证？", "sleep-evidence-retrospective.md"),
+    ("电商查数需求怎么被编排成 SQL 和 Python 任务？", "mcp-analytics-engine.md"),
+    ("车载助手怎么把用户意图路由到不同技能？", "zeekr-cockpit-assistant.md"),
     ("检索效果不理想时你一般从哪几个方面调？", "jianli-agent-rag.md"),
     ("智能体怎么做才不会乱调用东西？", "jianli-agent-lab.md"),
     ("模型把搜索词改偏以后，原始问题的证据会不会丢？", "jianli-agent-rag.md"),
@@ -115,9 +119,9 @@ EXTREME_SEMANTIC_CASES: list[tuple[str, str]] = [
     ("手上有没有能证明水平的证照？", "credentials.md"),
     ("搜索结果不对的时候会从哪下手排查？", "jianli-agent-rag.md"),
     ("工具调用失败重试时，怎么避免重复执行产生副作用？", "jianli-reliability.md"),
-    ("文档抽出来就是空的，为什么继续调相似度没有意义？", "litchi-agent-rag.md"),
+    ("本地跑不动大模型时，检索和生成分别靠什么兜底？", "litchi-agent-rag.md"),
     (
-        "Litchi 项目评测命中从三道变成二十四道，为什么不能说模型提升了八倍？",
+        "并发升高以后为什么还不能说系统已经稳定？",
         "litchi-evidence-retrospective.md",
     ),
     (
@@ -148,12 +152,12 @@ REJECT_CASES: list[str] = [
 # proven retrievable by LITERAL/SEMANTIC cases (resume/honors/litchi/skills/
 # profile/credentials/behavior stories and project documents) so they stay stable.
 #
-# In-scope questions that MUST be answered (offtopic=False). "你叫什么名字？" is
-# included because profile.md explicitly states "我叫[姓名已脱敏]", so the query retrieves it
+# In-scope questions that MUST be answered (offtopic=False). "你现在在哪个城市？" is
+# included because profile.md states the current city (深圳南山), so the query retrieves it
 # above the 0.47 threshold
-# (BM25 single-char 名/字 overlap + semantic match). Pairs with REJECT_CASES.
+# (BM25 single-char 城市/深圳 overlap + semantic match). Pairs with REJECT_CASES.
 FALSE_REJECT_CASES: list[str] = [
-    "你叫什么名字？",
+    "你现在在哪个城市？",
     "你大学念的什么专业？",
     "你拿过国家奖学金吗？",
     "Litchi Copilot 是做什么的？",

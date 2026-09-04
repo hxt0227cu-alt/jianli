@@ -84,7 +84,7 @@ def test_positive_few_shots_do_not_volunteer_negative_boundaries() -> None:
         "你的毕设做了什么？",
         "你做工程时最看重什么？",
     }
-    negative_markers = ("不足也如实", "局限也如实", "未验证", "仅 19%", "只过 67/84")
+    negative_markers = ("不足也如实", "局限也如实", "未验证", "仅 19%")
     for question, answer in STYLE_FEW_SHOT:
         if question not in positive_questions:
             continue
@@ -94,7 +94,8 @@ def test_positive_few_shots_do_not_volunteer_negative_boundaries() -> None:
 
 def test_few_shot_numbers_traceable() -> None:
     numbers = [
-        "90.4", "0.47", "119 轮", "5.6 万", "12.6", "84/84", "60 条", "50 并发"
+        "0.47", "60 条", "50 并发", "3/153", "13 秒", "99%",
+        "92.0", "4.1", "159.88ms", "0.91", "0.88", "90.2", "92.5",
     ]
     for num in numbers:
         assert num in _TRACEABLE, f"示例数字不可溯源（不在 CORPUS/content.py）: {num}"

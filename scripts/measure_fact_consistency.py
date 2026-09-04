@@ -65,10 +65,10 @@ QUESTION_BANK = [
     {"id": "FQ-28", "q": "litchi 的四段受控 Agent 是怎么实现的？", "page_key": "projects", "project_key": "litchi"},
     {"id": "FQ-29", "q": "litchi 的 LLM 和向量是怎么选的？", "page_key": "projects", "project_key": "litchi"},
     {"id": "FQ-30", "q": "litchi 的并发压测结果如何？", "page_key": "projects", "project_key": "litchi"},
-    # ---- D 组 · sleep 泰益智域 ----
-    {"id": "FQ-31", "q": "泰益智的 84 例评测怎么分类？", "page_key": "projects", "project_key": "sleep202603_an"},
-    {"id": "FQ-32", "q": "泰益智 51 条重复的根因是什么？", "page_key": "projects", "project_key": "sleep202603_an"},
-    {"id": "FQ-33", "q": "泰益智同一套代码出了几个端？", "page_key": "projects", "project_key": "sleep202603_an"},
+    # ---- D 组 · sleep 泰益智域（TASK-KB-RESUME-REFRESH-001 重写为 NDA 口径）----
+    {"id": "FQ-31", "q": "泰益智睡眠 AI Agent 平台怎么做的？", "page_key": "projects", "project_key": "sleep202603_an"},
+    {"id": "FQ-32", "q": "泰益智睡眠平台的核心指标如何？", "page_key": "projects", "project_key": "sleep202603_an"},
+    {"id": "FQ-33", "q": "泰益智睡眠平台的数据链路怎么做？", "page_key": "projects", "project_key": "sleep202603_an"},
     # ---- E 组 · 行为/动机/竞赛（interview-story.md）----
     {"id": "FQ-34", "q": "你在泰益智是怎么带人的？", "page_key": "resume", "project_key": None},
     {"id": "FQ-35", "q": "你工程上最大的教训是什么？", "page_key": "resume", "project_key": None},

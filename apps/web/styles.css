@@ -522,3 +522,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .chat-panel>.chat-body{padding-left:10px;padding-right:10px}
   .chat-panel>.composer{margin-left:8px;margin-right:8px;padding-left:8px;padding-right:8px}
 }
+
+/* TASK-CI-*：1280px+ 顶栏自适应——title 副标题可收缩省略，nav 不换行，
+   避免 title(280px)+4 按钮+status 在 650px 顶栏内放不下导致 nav 换行溢出。 */
+@media(min-width:1280px){
+  .topbar{flex-wrap:nowrap}
+  .topbar .top-title{min-width:0;flex:0 1 auto}
+  .topbar .top-title small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .topbar nav{flex-wrap:nowrap;flex:0 1 auto;min-width:0}
+  .topbar nav button{white-space:nowrap;flex:0 0 auto}
+}

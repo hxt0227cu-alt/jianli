@@ -119,10 +119,10 @@
 - 验收证据：新简历全文经 WSL pypdf 重新提取核实；resume.pdf 2 页 / pymupdf 渲染第 1、2 页视觉核验无裁剪无身份；语料 23 篇 import 断言通过；全仓身份扫描（[姓名已脱敏]/[学校已脱敏]/[手机号已脱敏]/[邮箱已脱敏]/专利号）零泄漏
 - 变更预算实际值：max_files=16，实际 13 改 + 1 新增 = 14（含 TASK 单），未超预算
 - 未解决风险：
-  - fact-bank 测量运行（FQ-01~38）需真实 PG/Redis + 已更新语料灌库后跑 `measure_fact_consistency.py` 验证 SLO ≥94%（本环境无 DB，未能实跑）
-  - 历史文档（docs/interviews/round2-answers.md、scripts/fact_consistency_results.json、docs/fact-consistency/scored-2026-08-18.md 等）含旧身份/旧指标，属历史记录，未清理（用户未要求）
+  - fact-bank 测量运行（FQ-01~38）：2026-09-04 已在 WSL 集成环境跑通（PG16+pgvector 0010 / Redis7 / 23 篇语料 indexed），38/38 grounded、0 误拒；**严格一致率（✅≥36/38）需真实 LLM（`JIANLI_LLM_BASE_URL`+`API_KEY`+`MODEL`）组合答案后按 rubric 评分**，Stub 网关仅回显 chunk 标题无法评分——待用户提供 LLM 配置复跑
+  - 历史文档（docs/interviews/round2-answers.md、round2-interview-questions.md、docs/fact-consistency/scored-2026-08-18.md）含旧身份/旧指标，**2026-09-04 经用户确认已删除**；`scripts/fact_consistency_results.json` 已由 2026-09-04 新运行覆盖（旧内容留 git 历史）；PROJECT_STATE.md 旧身份行已改写；旧 tasks/TASK-*.md 保留
   - 匿名简历保留 CSDN 博客链接（blog.csdn.net/m0_73429744），不在用户指定的隐藏清单（姓名/学校/手机/邮箱）内；如需一并隐藏请告知
-  - 前端项目 tab 仍为 3 个（jianli/sleep/litchi），MCP/极氪/慧眼识蚁仅在 AI 问答与简历素材中体现，未新增 UI tab（避免超出"更新知识库"范围）
+  - 前端项目 tab 仍为 3 个（jianli/sleep/litchi），MCP/极氪/慧眼识蚁仅在 AI 问答与简历素材中体现，未新增 UI tab（用户 2026-09-04 确认保留原样）
 - 是否偏离 TASK：否
 - 规范影响结论：updated（用户批准）
 - spec_sync：已按用户四条决策同步（①B 新简历+NDA 口径 / ②A 保留 jianli / ③A 保留荣誉 / ④ 身份全隐藏）

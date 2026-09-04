@@ -2,7 +2,7 @@
   "schema_version": 2,
   "report_id": "agent-quality-2026-09-04",
   "generated_at": "2026-09-04T12:00:00+08:00",
-  "verified_commit": "b133bb1",
+  "verified_commit": "c92f47c",
   "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
     "passed": 79,

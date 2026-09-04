@@ -148,7 +148,7 @@
 - **结果（5/5 全绿）**：REJECT 10/10、EXTREME 9/9、FALSE_REJECT 10/10、LITERAL 22/22、SEMANTIC 22/22。
 - **发现并修复一处由覆盖修复引入的误召回**：轮次2 给 `jianli-evaluation-ci.md` 补的"越界集 10/10 拒答…无依据问题不再静默编造"表述 + 分块边界位移，使越界用例"今天天气怎么样？"在真实 BGE-M3 下 top1 命中 eval-ci 达 0.4713（≥ 0.47）→ 被放行，REJECT 跌到 9/10。改写（10/10 锚定改"版本化报告含越界用例结果"、删行为描述句、尾部 CI 句改写）后天气题 top1 回落 0.4496 < 0.47，REJECT 恢复 10/10。d79ceb9 对照探针确认回归**由覆盖修复引入**（非语料刷新遗留）。
 - **锚定回归确认**：改写后定向复跑 FQ-18/22（真实 LLM）均 OK（拒答率 100%/10/10、79/79 六类仍可点到）；DB-free 86 passed、ruff、mypy（53 files）全过。
-- verified_commit：见下方关联（本收尾 commit 已推送后回填）。
+- verified_commit：`7abc549`（reject/extreme 硬断言验证 + 天气误召回修复，已推送 origin/master）。
 
 ## 关联
 - Change Request：用户 2026-09-04 四条决策（等效批准）

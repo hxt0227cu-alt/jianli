@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-04T06:59:43.395442+00:00",
+  "generated_at": "2026-09-04T08:09:30.704902+00:00",
   "endpoint": "http://127.0.0.1:8000/answers:stream",
   "question_count": 38,
   "records": [
@@ -8,11 +8,15 @@
       "question": "你主要是什么技术方向的工程师？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 个人档案｜教育、能力与求职方向",
+      "answer_text": "我是 AI 应用开发工程师，主要聚焦业务落地的 AI Agent 工程、RAG 与云边端系统。具体来说，我做过 Agent Runtime 编排、MCP 工具协议、RAG 工程化，还有 AIoT 设备协同这类方向。\n\n技术栈上，Python、TypeScript 用得比较多，框架层面熟悉 LangGraph 和 Temporal，能独立做状态编排、任务拆解、工具调用、长任务恢复这些。数据侧常用 PostgreSQL、Redis、Kafka 这些。项目经历覆盖智能数据分析、睡眠 AIoT、智能座舱和嵌入式机器人，算是从云端到边缘都有落地。\n\n求职方向是 AI 应用开发工程师，意向深圳南山，长期想往架构师走。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7285,
+        "completion_tokens": 202,
+        "total_tokens": 7487
+      },
       "error": null
     },
     {
@@ -20,11 +24,15 @@
       "question": "你平时重点关注哪些技术领域？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：的混合检索，结合标题/来源/关键词去重规则重排，融合 Neo4j 品种/病虫害/药剂/栽培关系查询；外部模型不可用时 20 次降级问答平均响应 159.88ms。哈希向量是 CPU 本地演示方案，不是语义 embedding。",
+      "answer_text": "我平时重点关注的是业务落地的 AI Agent 工程、RAG 与云边端系统。具体来说，我关注 Agent Runtime 的状态编排与长任务恢复、工具调用的安全治理（比如工具白名单、Human-in-the-loop、预算约束），以及 RAG 的工程化落地——从向量检索、重排到评测门禁这一整套。\n\n这几个方向我在实际项目里都做过：泰益智的睡眠健康 Agent 平台用 LangGraph + Temporal 做统一运行时，极氪座舱助手做过多 Agent 编排和 RAG，毕设里也落地了受控编排和双路检索。我比较倾向确定性可评测的设计，把安全边界放在模型之外，而不是靠模型自觉。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7239,
+        "completion_tokens": 236,
+        "total_tokens": 7475
+      },
       "error": null
     },
     {
@@ -32,11 +40,15 @@
       "question": "你做过哪些类型的系统后端架构？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 慧眼识蚁——红火蚁智能追踪与靶向灭治装备（国家级大创项目）",
+      "answer_text": "做过几类，跨度从云到端都有。最核心的是 AI Agent 后端——泰益智的睡眠健康 AI Agent 平台，用 LangGraph + Temporal 做统一 Agent Runtime，固定 DAG 编排、工具白名单、租户上下文、HITL 审批和预算约束，把安全边界放在模型之外；还有 MCP 智能数据分析引擎，LangGraph 意图分类 + MCP-Server 封装，NL2SQL / NL2Python 双引擎跑电商查数。\n\n另外两类：一类是 RAG 服务后端，比如这个站点 jianli 用 FastAPI + PostgreSQL 16 + pgvector + Redis 7，SSE 流式响应，知识库按 page/project 域检索，模型只有有依据才回答；毕设 Litchi Copilot 是 Java 17 + Spring Boot 3.2 单体后端，21 个业务页面，Milvus + Neo4j 双路检索。还有一类偏云边端——极氪座舱助手和慧眼识蚁机器人，涉及 MQTT、Kafka、FreeRTOS 那套链路。\n\n共同点是先设计后编码，重视可观测性、可演进性与契约测试，评测、故障注入、数据校验和结果留痕串成统一证据链。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7211,
+        "completion_tokens": 357,
+        "total_tokens": 7568
+      },
       "error": null
     },
     {
@@ -44,11 +56,15 @@
       "question": "你在预约系统里落地过哪些关键设计？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi 受控 Agent 与 RAG 调用链",
+      "answer_text": "预约系统里我落地了几个关键设计，核心是把概率模型限制在确定性边界内。\n\n预约预览令牌绑定登录人和规范化表单，有效 3 分钟且不占 Slot；确认时在一个事务里锁公司与三个连续 30 分钟 Slot，检查状态后写 appointment、更新 Slot、Outbox 和审计。并发冲突映射为业务错误，改期同样先锁记录和新 Slot 再释放旧 Slot。Slot 竞争靠行锁和事务内复核，活动用户/公司部分唯一索引独立约束重复业务预约。敏感字段用带表/列/记录 AAD 的 AES-256-GCM，去重只存 HMAC 指纹。Worker 用 FOR UPDATE SKIP LOCKED 抢 Outbox，投递是 at-least-once，delivery 唯一键防重复尝试行。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7286,
+        "completion_tokens": 260,
+        "total_tokens": 7546
+      },
       "error": null
     },
     {
@@ -56,11 +72,15 @@
       "question": "你的工程方法论是什么？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 个人档案｜教育、能力与求职方向",
+      "answer_text": "我的工程方法论是先设计后编码，加上确定性验证。核心判断是：能被复跑、能被接手的工程结果才真正有价值。\n\n具体落地是把评测、故障注入、数据校验和结果留痕串成统一证据链。比如在泰益智，我建了 80+ 条工程回归用例，通过率超 99%，三轮 Kafka 重平衡事件零丢失——这套闭环不仅能演示，也能交给下一位工程师继续维护。\n\n我重视可观测性、可演进性与契约测试，因为工程交付物要能被接手。失败记录是证据而不是污点，像 ClickHouse 静默空结果那次就说明零报错不等于正确。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7322,
+        "completion_tokens": 186,
+        "total_tokens": 7508
+      },
       "error": null
     },
     {
@@ -68,11 +88,15 @@
       "question": "你做工程时特别看重什么？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 行为故事、协作与职业动机",
+      "answer_text": "我做工程时最看重可观测性、可演进性与契约测试。原因是工程交付物要能被接手——我最有成就感的一段经历，就是建立一套可复现、可交接的确定性验证闭环：80+ 条工程回归用例通过率超 99%，三轮 Kafka 重平衡事件零丢失。\n\n核心做法是把评测、故障注入、数据校验和结果留痕串成统一证据链，让结果能被复跑、被核验，也能交给下一位工程师继续维护。我偏好先设计后编码，把失败记录当证据而不是污点。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7352,
+        "completion_tokens": 167,
+        "total_tokens": 7519
+      },
       "error": null
     },
     {
@@ -80,11 +104,15 @@
       "question": "你的主要技术栈有哪些？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi Copilot｜荔枝智能农技协同平台（优秀毕设）",
+      "answer_text": "我的技术栈主要分几块：Python、Java、TypeScript 是主力语言，框架上常用 FastAPI、NestJS、Spring Boot。AI 工程这块用 LangGraph、Temporal 做 Agent 编排，RAG 相关用过 pgvector、Milvus、Neo4j，也熟悉 MCP 工具协议。数据链路涉及 MQTT、Kafka、Flink、ClickHouse，存储用 PostgreSQL、Redis。\n\n具体到项目里，泰益智的睡眠健康平台是 Python/TypeScript + LangGraph/Temporal + PostgreSQL/TimescaleDB + Kafka/Flink/ClickHouse 这套组合；毕设 Litchi Copilot 是 Java 17 + Spring Boot 3.2 + Vue 3 + Milvus + Neo4j；极氪座舱助手偏 Python + LangChain + Qwen3。整体上我关注的是业务落地的 AI Agent 工程，能独立完成状态编排、任务拆解、工具调用和评测治理。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7050,
+        "completion_tokens": 294,
+        "total_tokens": 7344
+      },
       "error": null
     },
     {
@@ -92,11 +120,15 @@
       "question": "你熟悉哪些 AI 问答相关技术？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi Copilot｜荔枝智能农技协同平台（优秀毕设）",
+      "answer_text": "我做过几个项目的 RAG 问答，选型不太一样。极氪座舱助手用父子切块 + BM25 + BGE-M3 做 RRF 融合检索，再用 BGE-Reranker 精排，Ragas Faithfulness 0.91、Answer Relevancy 0.88；毕设 Litchi Copilot 用 Milvus 哈希向量 + Neo4j 图谱双路，因为要在无 GPU 笔记本本地演示；睡眠平台用 pgvector 做租户级知识隔离。\n\n取舍依据主要是部署约束：有云资源的项目用语义向量，本地演示就选零依赖哈希。另外我比较强调可控性——问答不只靠模型自觉，像毕设里 Planner-Guard-Executor-Synthesizer 那套管线，只允许基于检索证据作答，从架构上避免幻觉。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6905,
+        "completion_tokens": 266,
+        "total_tokens": 7171
+      },
       "error": null
     },
     {
@@ -104,11 +136,15 @@
       "question": "除了后端架构，你还做过什么方向的功能？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 行为故事、协作与职业动机",
+      "answer_text": "除了后端架构，我其实做过不少偏前端和全栈的方向。比如 Litchi Copilot 毕设里，我独立完成了 21 个业务页面的 Vue 3 + TypeScript 前端，还有病害识别的诊断服务；Jianli 面试站也是我自己写的 React 19 页面，通过 SSE 接 FastAPI。\n\n另外在极氪智能座舱助手那段，也涉及车机端的前端交互逻辑。整体上我习惯把前后端串起来看，因为做 AI Agent 这类产品，交互链路和状态流转经常要前后端一起设计，只盯后端容易割裂。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7215,
+        "completion_tokens": 228,
+        "total_tokens": 7443
+      },
       "error": null
     },
     {
@@ -116,11 +152,15 @@
       "question": "你做的这个站点本质是用来做什么的？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 行为故事、协作与职业动机",
+      "answer_text": "这个站点是我做的数字分身，本质是用来承接关于我经历的问答和面试预约的。它不是一个展示页，而是一个完整的业务闭环——访客可以问我问题，我基于知识库有依据地回答；如果聊得合适，面试官可以直接预约面试。\n\n核心设计是把概率模型限制在确定性边界内：模型只负责规划，代码负责授权。比如预约工具必须登录，面试官只能操作本人记录，模型不能直接写库；回答必须过证据门，没有依据就拒答，不会让模型凭常识编造我的经历。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 8020,
+        "completion_tokens": 171,
+        "total_tokens": 8191
+      },
       "error": null
     },
     {
@@ -128,11 +168,15 @@
       "question": "jianli 这个项目是做什么的？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "jianli 是我独立开发、准备挂正式域名上线的 AI 面试协作站。核心思路是把概率模型限制在确定性边界内：模型只负责规划，代码负责授权。\n\n具体来说，Agent 最多循环 4 步，只注册 5 个白名单工具，未知工具确定性拒绝；预约这类写操作必须登录，且复用 BookingService 的校验、事务和审计，模型不能直接写库。知识库先按 page/project 域检索，模型只有在有依据时才生成回答并返回引用，无依据就返回 offtopic，不会让模型凭常识补齐个人经历。\n\n技术栈是 React 19 + FastAPI，PostgreSQL 16 + pgvector + Redis 7，模型链路是 DeepSeek V4 Flash、BGE-M3，可选 Qwen3-Reranker-8B。目前评测中心 79/79 全过，但那是冻结检查全过，不等于生产准确率；正式域名、远端 CI 和完整观测栈 smoke 还是上线验收项。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6724,
+        "completion_tokens": 266,
+        "total_tokens": 6990
+      },
       "error": null
     },
     {
@@ -140,11 +184,15 @@
       "question": "jianli 处理越界或无依据问题的原则是什么？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli Agent Lab｜模型负责规划，代码负责授权",
+      "answer_text": "jianli 处理越界或无依据问题的原则是「宁可不答、不可编造」——拒答代价是 0，误答代价无限。\n\n具体落地是两层确定性门槛：第一层，服务端同时检索模型生成的检索词和用户原问题，按文档与片段去重合并，避免模型改写把原始证据裁掉；第二层，每一路先做 BGE-M3 向量 top10，若没有达到 0.47 的向量候选，即使 BM25 有中文单字重叠也拒绝据此硬答。通过证据门后才用 RRF 融合、可选 Cross-Encoder 重排，最终无依据时返回 offtopic，模型不会凭常识补齐个人经历。\n\n这套逻辑在评测中心有对应门禁：79/79 套件里 RAG 事实一致性 38 项，专门验证命中、拒答、隐私和误拒。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6610,
+        "completion_tokens": 244,
+        "total_tokens": 6854
+      },
       "error": null
     },
     {
@@ -152,11 +200,15 @@
       "question": "jianli 的后端技术栈是什么？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli Reranker 对照实验",
+      "answer_text": "jianli 的后端是 FastAPI 单服务，数据层用 SQLAlchemy/Alembic（迁移到 0010）+ PostgreSQL 16 + pgvector 存知识向量，Redis 7 做语义缓存和熔断状态。模型链路是 DeepSeek V4 Flash 生成、BGE-M3 做 embedding，可选 Qwen3-Reranker-8B 做重排。\n\n核心设计是把概率模型限制在确定性边界里：证据门决定能不能答，服务端白名单和 RBAC 决定能不能操作，数据库事务和 Outbox 保证副作用落地。观测走 OpenTelemetry + Prometheus/Grafana，指标走私网 /internal/metrics，公网 Nginx 返回 404。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6212,
+        "completion_tokens": 205,
+        "total_tokens": 6417
+      },
       "error": null
     },
     {
@@ -164,11 +216,15 @@
       "question": "jianli 用什么模型和 embedding？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli AI 面试协作站｜从聊天入口到可靠业务闭环",
+      "answer_text": "jianli 的模型链路是 DeepSeek V4 Flash 做对话生成，embedding 用 BGE-M3（1024 维），rerank 可选 Qwen3-Reranker-8B。检索是混合的：BGE-M3 向量 top10 为主，BM25 做辅助，RRF(k=60) 融合后最多 12 条，再经 Cross-Encoder 排到 top6。\n\n有个细节：模型输出不被直接信任，服务端会同时检索模型生成的词和用户原问题，按文档和片段去重合并，避免模型改写把原始证据裁掉。向量候选要过 0.47 阈值才放行，本地哈希 embedding 只是离线 fallback——对照里 BGE-M3 纯向量 avg-rank 1.3，哈希是 1.8。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6602,
+        "completion_tokens": 228,
+        "total_tokens": 6830
+      },
       "error": null
     },
     {
@@ -176,11 +232,15 @@
       "question": "jianli 的检索是怎么做的？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "jianli 的检索是「双路召回 + 证据门 + 融合重排」的混合 RAG。核心思路是：模型生成的检索词不被直接信任，服务端同时用模型词和用户原问题去检索，按文档和片段去重合并，避免模型改写失真把原始证据裁掉。\n\n具体链路是：每一路先做 1024 维 BGE-M3 向量 top10，如果向量候选没达到 0.47 的相似度阈值，即使 BM25 有中文单字重叠也拒绝硬答——这是证据门，宁可不答也不编造。通过门禁后，BM25 top10 和向量结果用 RRF(k=60) 融合成最多 12 条，再由可选的 Qwen3-Reranker-8B 排到 top6，全程保持 page/project 域隔离。\n\n有个细节：本地哈希 embedding 只是确定性离线 fallback，对照实验里 BGE-M3 纯向量 avg-rank 是 1.3，哈希是 1.8，所以线上主路径用语义向量。回答流严格走 started→trace/delta→citations→completed，无依据就返回 offtopic，不会让模型凭常识补个人经历。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6602,
+        "completion_tokens": 315,
+        "total_tokens": 6917
+      },
       "error": null
     },
     {
@@ -188,11 +248,15 @@
       "question": "jianli 把 embedding 换成 BGE-M3 后检索质量有什么变化？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 受控 Agent 与混合 RAG｜检索词失败也不丢证据",
+      "answer_text": "换了 BGE-M3 之后，检索质量提升挺明显的。对照实验里，纯向量检索的 avg-rank 从哈希的 1.8 降到了 1.3，说明相关文档排得更靠前了。\n\n这个提升主要来自语义向量对文本含义的捕捉能力，哈希只能做字面匹配。不过要注意，BGE-M3 是线上主路径，本地哈希只是离线 fallback，防止模型不可用时整个链路断掉。\n\n另外，向量检索不是唯一依据——服务端会同时检索模型生成的词和用户原问题，两路结果合并后再过 0.47 的相似度门槛，不达标就拒答，避免模型改写失真导致误答。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6622,
+        "completion_tokens": 202,
+        "total_tokens": 6824
+      },
       "error": null
     },
     {
@@ -200,11 +264,15 @@
       "question": "jianli 怎么判断一个问题该拒答？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 评测中心与 CI 门禁",
+      "answer_text": "jianli 的拒答判断核心是\"证据门\"：模型不能凭常识补，只有检索到依据才答。\n\n具体机制是服务端同时检索模型生成的检索词和用户原问题，两路都先做 BGE-M3 向量 top10。如果向量候选没达到 0.47 的相似度阈值，就算 BM25 有中文单字重叠，也拒绝据此硬答，直接返回 offtopic。这个阈值是我基于实际语料校准的，不是拍脑袋定的。\n\n另外从架构上，Agent 最多循环 4 步，只注册五个白名单工具，未知工具确定性拒绝。所以拒答不是靠模型自觉，而是代码层面的确定性规则——面试场景\"拒答代价 0、误答代价无限\"，我宁可让它不答，也不能让它编造。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6333,
+        "completion_tokens": 225,
+        "total_tokens": 6558
+      },
       "error": null
     },
     {
@@ -212,11 +280,15 @@
       "question": "jianli 的拒答率现在是多少？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "关于 jianli 的拒答率，目前没有直接的线上生产数据——因为产品还没正式上线，没有真实流量统计。\n\n我能提供的是评测集里的确定性验证结果：79/79 全部通过，其中 RAG 事实一致性 38 条、Agent/Trace 22 条，这些用例里包含无依据拒答和越权攻击场景。但要注意，79/79 是冻结检查集全过，不等于生产环境拒答率。\n\n如果你问的是设计目标，我的原则是「拒答代价 0、误答代价无限」——宁可拒绝也不编造。等正式上线后，我会在观测面板里加拒答率指标，到时候才有真实数字可看。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6606,
+        "completion_tokens": 200,
+        "total_tokens": 6806
+      },
       "error": null
     },
     {
@@ -224,11 +296,15 @@
       "question": "jianli 的 Agent 能调用哪些工具？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli Agent Lab｜模型负责规划，代码负责授权",
+      "answer_text": "jianli 的 Agent 只注册了五个工具：search_knowledge、创建预约、查询本人预约、取消本人预约、改期本人预约。模型最多循环 4 步，未知工具会被确定性拒绝，不能靠 Prompt 约束就放行。\n\n预约类工具都要求登录，而且面试官只能操作本人记录，所有写操作走 BookingService 的校验、事务和审计，模型不能直接写库。管理员管理他人的能力在独立的管理端服务边界里，模型自称管理员也不会放权。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6408,
+        "completion_tokens": 159,
+        "total_tokens": 6567
+      },
       "error": null
     },
     {
@@ -236,11 +312,15 @@
       "question": "jianli 的 Agent 是怎么决定要不要检索的？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli AI 面试协作站｜从聊天入口到可靠业务闭环",
+      "answer_text": "jianli 的 Agent 决定要不要检索，核心是「模型提议、代码把关」：模型通过 function calling 自主选择 search_knowledge 并生成检索词，但服务端不会直接信任模型输出。\n\n具体有两层约束。第一层是工具白名单——Agent 最多循环 4 步，只注册 search_knowledge 和预约相关五个工具，未知工具确定性拒绝，所以模型根本没法乱调。第二层是证据门——服务端会同时检索模型生成的检索词和用户原问题，按文档与片段去重合并，避免模型改写失真把原始证据裁掉；每一路先做 BGE-M3 向量 top10，如果没达到 0.47 的向量候选，即使 BM25 有中文单字重叠也拒绝硬答。\n\n过了证据门之后，BM25 top10 和向量结果用 RRF(k=60) 融合成最多 12 条，再由可选 Cross-Encoder 排到 top6，并保持 page/project 域隔离。无依据时直接返回 offtopic，不会让模型凭常识补齐个人经历。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6401,
+        "completion_tokens": 326,
+        "total_tokens": 6727
+      },
       "error": null
     },
     {
@@ -248,11 +328,15 @@
       "question": "jianli 用什么来量化检索质量？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 受控 Agent 与混合 RAG｜检索词失败也不丢证据",
+      "answer_text": "jianli 用一套版本化评测报告来量化检索质量，当前是 79/79 全过。具体分两块：一是 RAG 事实一致性 38 项，会真实上传语料、分块、BGE-M3 入 pgvector，再验证命中、拒答、隐私和误拒；二是 Reranker 对照实验，真实 provider 5 题组件对照 MRR 0.3333→1.0000、Hit@1 0/5→5/5。\n\n另外还有两个辅助指标：BGE-M3 纯向量 avg-rank 1.3，本地哈希 fallback 是 1.8；向量候选阈值 0.47，没过这个门槛即使 BM25 有中文重叠也拒答。\n\n需要说明的是，79/79 只是这组冻结检查全过，不等于生产准确率或线上可用性；Reranker 那 5 题样本也很小，只能证明组件排序改善，不能外推端到端质量。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6451,
+        "completion_tokens": 268,
+        "total_tokens": 6719
+      },
       "error": null
     },
     {
@@ -260,11 +344,15 @@
       "question": "jianli 的检索评测达到了什么水平？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli Reranker 对照实验",
+      "answer_text": "jianli 的检索评测是 79/79 全过，分六类：Agent/Trace 22、RAG 事实一致性 38、Web 交付 1、Cross-Encoder 协议 4、语义缓存与 Provider 韧性 8、多副本共享熔断 6。真实 RAG 测试会上传 canonical corpus、分块、BGE-M3 embedding 入 pgvector，再验证命中、拒答、隐私和误拒。\n\nReranker 对照实验里，真实 provider 的 5 题组件对照是 MRR 0.3333→1.0000、Hit@1 0/5→5/5。不过样本很小，只能证明组件排序改善，不能外推端到端生产质量。\n\n要说明边界：79/79 只是这组冻结检查全过，不等于生产准确率或线上可用性；目前只有本地等价门禁证据，远端 Actions run 还没跑绿。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6244,
+        "completion_tokens": 288,
+        "total_tokens": 6532
+      },
       "error": null
     },
     {
@@ -272,11 +360,15 @@
       "question": "jianli 的预约业务闭环有哪些关键保障？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "预约闭环的保障分三层：确定性边界、事务一致性和可追溯性。核心是把概率模型限制在确定性边界内——证据门决定能否回答，服务端白名单与 RBAC 决定能否操作，数据库事务和 Outbox 决定副作用如何落地。\n\n具体到预约链路：预览令牌绑定登录人和规范化表单，有效 3 分钟且不占 Slot；确认时在一个事务中锁公司与三个连续 30 分钟 Slot，检查状态后写 appointment、更新 Slot、Outbox 和审计。并发冲突映射为业务错误，Slot 竞争靠行锁和事务内复核，不是靠模型自觉。改期同样先锁记录和新 Slot，再释放旧 Slot。\n\nWorker 侧用 FOR UPDATE SKIP LOCKED 抢 Outbox，投递是 at-least-once；delivery 唯一键防重复尝试行，但不能宣称外部邮件/飞书 exactly-once。敏感字段用带表/列/记录 AAD 的 AES-256-GCM，去重只存 HMAC 指纹。过期 active 状态由幂等 CTE 自动完成并取消旧提醒。\n\n这套设计的关键判断是：预约是副作用操作，不能依赖模型概率输出，必须由代码在事务边界内保证。79/79 版本化检查覆盖了 Agent/Trace 22 项，但那是冻结检查全过，不等于生产准确率。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6399,
+        "completion_tokens": 381,
+        "total_tokens": 6780
+      },
       "error": null
     },
     {
@@ -284,11 +376,15 @@
       "question": "jianli 的集成测试情况如何？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 评测中心与 CI 门禁",
+      "answer_text": "jianli 的集成测试目前是本地等价门禁全绿，但还没有远端 Actions run。评测中心是版本化 JSON 报告，当前 79/79：Agent/Trace 22、RAG 事实一致性 38、Web 交付 1、Cross-Encoder 协议 4、语义缓存与 Provider 韧性 8、多副本共享熔断 6。\n\nAgent Quality Gate 定义了 backend-agent→rag-integration→web-delivery 三个串行 job，后两段分别带真实 PG/Redis 和前端测试/typecheck/build。真实 RAG 测试会上传 canonical corpus、分块、BGE-M3 embedding 入 pgvector，再验证命中、拒答、隐私和误拒。\n\n需要说明的是，79/79 只是这组冻结检查全过，不等于生产准确率或线上可用性，所以不能说云端流水线已经跑绿。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6331,
+        "completion_tokens": 274,
+        "total_tokens": 6605
+      },
       "error": null
     },
     {
@@ -296,11 +392,15 @@
       "question": "jianli 的 embedding 经历过什么演进？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "jianli 的 embedding 演进分三个阶段：最早是本地哈希 embedding 做确定性 fallback，后来换成 BGE-M3 的 1024 维语义向量做主检索，最后在对照实验里验证了纯向量方案的收益。\n\n具体数据是：BGE-M3 纯向量 avg-rank 1.3，本地哈希是 1.8，所以最终选了 BGE-M3 作为主路径。哈希 embedding 现在只保留为离线 fallback，防止外部模型不可用时整个检索链路挂掉。\n\n选型约束是部署环境——jianli 要挂正式域名上线，没有 GPU 资源，所以 BGE-M3 走的是 API 调用而不是本地推理。向量检索用 pgvector 的余弦距离（<=> 算子），阈值 0.47 是基于实际语料校准的，不是拍脑袋定的。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6369,
+        "completion_tokens": 271,
+        "total_tokens": 6640
+      },
       "error": null
     },
     {
@@ -308,11 +408,15 @@
       "question": "jianli 开发中有过什么值得记录的坑？",
       "page_key": "projects",
       "project_key": "jianli",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli OpenTelemetry + Prometheus/Grafana",
+      "answer_text": "jianli 里最值得记录的坑是「模型改写检索词把原始证据裁掉」——模型自主生成检索词时，可能把用户原问题里的关键实体改掉，导致检索结果里丢了原始证据。我当时的解法是服务端同时检索模型词和用户原问题，按文档与片段去重合并，保证模型改写失真不会把原始证据裁掉。\n\n另一个坑是「向量候选不过阈值时，BM25 有中文单字重叠也不能硬答」——一开始容易觉得 BM25 有重叠就能答，但后来发现单字重叠不代表语义相关，所以设了 0.47 的向量阈值，不过就拒绝回答，避免幻觉。\n\n还有个印象深的坑是「预约并发冲突不能靠行锁兜底」——行锁只能防同一 Slot 的并发写，但重复业务预约（比如同一用户对同一公司重复约）得靠部分唯一索引独立约束，不然会出现重复预约。这个我一开始没想清楚，后来才补上。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6408,
+        "completion_tokens": 304,
+        "total_tokens": 6712
+      },
       "error": null
     },
     {
@@ -320,11 +424,15 @@
       "question": "litchi 毕设用了什么技术栈？",
       "page_key": "projects",
       "project_key": "litchi",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi Copilot｜荔枝智能农技协同平台（优秀毕设）",
+      "answer_text": "Litchi 毕设的技术栈分前后端和 AI 两块。后端是 Java 17 + Spring Boot 3.2，前端 Vue 3 + TypeScript，共 21 个业务页面；AI 侧用 Python 做 Agent 和 RAG，模型走 Ollama/vLLM/OpenAI-compatible API。\n\n存储和检索上用了 Milvus（1024 维哈希向量 + COSINE）+ Neo4j 图谱 + MySQL，监控用 Prometheus，容器化是 Docker。核心是 Planner–Guard–Executor–Synthesizer 受控编排器，接 5 类工具，支持 HITL 审批和 7 类运行状态。\n\n需要说明的是，Milvus、Neo4j 和本地 Ollama 是完整跑通并在答辩现场演示的；但数据平台、可观测性和容器编排属于实验模板，不算生产部署。哈希向量是 CPU 本地演示方案，不是语义 embedding。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5975,
+        "completion_tokens": 258,
+        "total_tokens": 6233
+      },
       "error": null
     },
     {
@@ -332,11 +440,15 @@
       "question": "litchi 的四段受控 Agent 是怎么实现的？",
       "page_key": "projects",
       "project_key": "litchi",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi 受控 Agent 与 RAG 调用链",
+      "answer_text": "Litchi 的四段受控管线是 Planner–Guard–Executor–Synthesizer，核心思路是把 Agent 的每一步都变成可拦截、可审计的确定性流程，而不是让模型自由发挥。\n\nPlanner 负责最多 4 步任务规划，接入果园上下文、知识检索、知识图谱、方案推荐、待审批方案 5 类工具；Guard 做 RBAC 权限过滤、未知/重复工具拦截和参数校验；Executor 只执行白名单内的工具，从协议层禁止 Shell/SQL/URL 和动态代码执行；Synthesizer 只基于证据作答，不允许模型自己编内容。整个过程覆盖创建、规划、执行、等待审批、完成、失败、取消 7 类运行状态，并记录全轨迹。\n\n针对农技方案写入，我加了 Human-in-the-loop：生成预览 → 暂停审批 → 技术员确认 → 正式落库，防止 AI 直接改业务数据。异常侧有超时、冷却和 degraded 状态兜底，外部模型不可用时 20 次降级问答平均响应 159.88ms。这套设计在 60 条评测集里覆盖了工具选择、越权和拒答场景，核心判断是：农技场景误答代价高，所以宁可拒答也不让模型越界。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5979,
+        "completion_tokens": 375,
+        "total_tokens": 6354
+      },
       "error": null
     },
     {
@@ -344,11 +456,15 @@
       "question": "litchi 的 LLM 和向量是怎么选的？",
       "page_key": "projects",
       "project_key": "litchi",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：的混合检索，结合标题/来源/关键词去重规则重排，融合 Neo4j 品种/病虫害/药剂/栽培关系查询；外部模型不可用时 20 次降级问答平均响应 159.88ms。哈希向量是 CPU 本地演示方案，不是语义 embedding。",
+      "answer_text": "Litchi 的 LLM 和向量选型主要是围绕“无 GPU 笔记本本地演示”这个硬约束来的。\n\nLLM 这边走的是 Ollama/vLLM/OpenAI-compatible API 这套兼容层，本地用 Ollama 跑开源模型，同时保留接外部 API 的能力。向量这块比较特殊——我用的是 1024 维哈希向量（Milvus COSINE）+ 词法召回的混合检索，不是语义 embedding。原因是毕设环境没有 GPU，哈希向量是纯 CPU 计算，能在本地完整跑通；语义向量模型在那种约束下跑不动。\n\n检索链路是 480 字符 Chunk + 120 Overlap 切块，混合检索后按标题/来源/关键词去重规则重排，再融合 Neo4j 图谱查询。外部模型不可用时，20 次降级问答平均响应 159.88ms。整套环境在答辩现场实际演示过。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5979,
+        "completion_tokens": 298,
+        "total_tokens": 6277
+      },
       "error": null
     },
     {
@@ -356,11 +472,15 @@
       "question": "litchi 的并发压测结果如何？",
       "page_key": "projects",
       "project_key": "litchi",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Litchi 评测、可观测与工程化",
+      "answer_text": "并发压测这块，我做过 k6 压测，结果分两档：\n\n50 并发 50 请求全成功，平均约 6.9s、P95 约 11.2s，这是当时能稳定扛住的边界。但往上加压到 100 并发/200 请求时，多轮成功率掉到约 50.5%/21%/19%，高并发稳定性没达标。\n\n压测暴露了两个关键瓶颈：一是 Agent 状态与 outbox 不在同一事务，二是前端主要靠轮询 SSE，异步线程池和快照持久化都有优化空间。这些是后续演进方案里要解决的，目前还没落地。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5975,
+        "completion_tokens": 237,
+        "total_tokens": 6212
+      },
       "error": null
     },
     {
@@ -368,11 +488,15 @@
       "question": "泰益智睡眠 AI Agent 平台怎么做的？",
       "page_key": "projects",
       "project_key": "sleep202603_an",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 睡眠健康 AI Agent 平台｜项目定位与职责（泰益智）",
+      "answer_text": "睡眠健康 AI Agent 平台是我在泰益智的核心项目，2026.01—2026.08 做的。背景是传统睡眠设备遥测数据割裂、设备控制缺少权限边界，目标是打通\"数据采集—分析解读—改善建议—设备执行—效果评估\"闭环。\n\n我主要负责四块：Agent 运行时编排、模型与工具治理、实时数据链路、Harness 工程治理。运行时这块用 LangGraph + Temporal 搭统一 Agent Runtime，落地 5 类业务 Agent，Planner-Executor-Validator 多智能体协作，PostgreSQL 做长任务断点恢复，配合工具白名单、HITL 审批和超时熔断。模型侧做了 OpenAI 兼容网关，QLoRA 微调 + DPO 对齐后工具调用准确率 92.0%、非法调用率 4.1%。数据链路是 MQTT→Kafka→ClickHouse，故障恢复中位数约 13 秒。工程治理上建了 80+ 回归用例，通过率超 99%，接进 CI/CD 门禁。\n\n指标都是内部 NDA 验证的，口径可以追问，原始证据不公开。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5704,
+        "completion_tokens": 305,
+        "total_tokens": 6009
+      },
       "error": null
     },
     {
@@ -380,11 +504,15 @@
       "question": "泰益智睡眠平台的核心指标如何？",
       "page_key": "projects",
       "project_key": "sleep202603_an",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 睡眠健康 AI Agent 平台｜项目定位与职责（泰益智）",
+      "answer_text": "睡眠平台的核心指标分几块：工具调用准确率 92.0%、非法调用率 4.1%，这是 QLoRA 微调 + DPO 对齐后的结果；工程回归 80+ 用例通过率超 99%；故障恢复中位数约 13 秒。数据链路是 MQTT→Kafka→ClickHouse，做了幂等去重和死信队列。\n\n指标口径是内部 NDA 验证，本地双进程/单 Kafka/单 ClickHouse 环境，原始证据不公开但可追问细节。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5700,
+        "completion_tokens": 173,
+        "total_tokens": 5873
+      },
       "error": null
     },
     {
@@ -392,11 +520,15 @@
       "question": "泰益智睡眠平台的数据链路怎么做？",
       "page_key": "projects",
       "project_key": "sleep202603_an",
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 睡眠健康 AI Agent 平台｜项目定位与职责（泰益智）",
+      "answer_text": "睡眠平台的数据链路是 MQTT→Kafka→ClickHouse 端到端遥测链路。多源设备数据先经 MQTT 接入，进 Kafka 做缓冲和削峰，最后落到 ClickHouse 做时序存储。\n\n可靠性上做了三件事：消息重试、显式 Offset 提交和死信队列。故障恢复中位数约 13 秒，这个数字是在本地双进程、单 Kafka、单 ClickHouse 环境下验证的，属于内部 NDA 口径。\n\n链路里还做了幂等去重，避免设备重复上报导致数据污染。整体设计思路是分层解耦——接入层、缓冲层、存储层各司其职，出问题能定位到具体环节。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 5790,
+        "completion_tokens": 251,
+        "total_tokens": 6041
+      },
       "error": null
     },
     {
@@ -404,11 +536,15 @@
       "question": "你在泰益智是怎么带人的？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# Jianli 可靠业务闭环｜不是只会聊天的 Demo",
+      "answer_text": "带人方式就是 1 对 1 实操演示，然后布置任务加验收，再不停改版。在泰益智实习时，我帮同事上手新工具和消息链路，基本是带着走一遍流程，再让他自己动手，我来盯结果。冲突处理上，如果设计和既有组件体系冲突，我会先列转换成本清单对齐，先还原核心页再迭代。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7658,
+        "completion_tokens": 143,
+        "total_tokens": 7801
+      },
       "error": null
     },
     {
@@ -416,11 +552,15 @@
       "question": "你工程上最大的教训是什么？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 行为故事、协作与职业动机",
+      "answer_text": "工程上最大的教训，我总结成三条，都来自真实踩坑：\n\n第一，配置漂移要靠确定性评测暴露，不能靠人肉检查。第二，ClickHouse 那次静默空结果让我明白——零报错不等于正确，错误不报不代表没问题，要养成对每个探针结果做语义核验的习惯。第三，性能修复到时间边界仍未达标时，应该登记风险而不是修改口径。\n\n这三条后来都沉淀成了我的工程习惯：把评测、故障注入、数据校验和结果留痕串成统一证据链，让结果能被复跑、被核验。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7082,
+        "completion_tokens": 209,
+        "total_tokens": 7291
+      },
       "error": null
     },
     {
@@ -428,11 +568,15 @@
       "question": "你的求职动机和职业规划是什么？",
       "page_key": "resume",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：# 个人档案｜教育、能力与求职方向",
+      "answer_text": "我的求职动机挺直接的：科班出身，2023 年起就开始用 AI 工具编程，在泰益智从 0 做项目，慢慢从实现功能转向思考架构、契约和交付，成长为 AI 应用开发工程师。意向深圳南山，AI 产业密集，和我的方向顺理成章。\n\n选公司看重更大平台，5 年目标是往架构师方向走。我偏好先设计后编码，重视可观测性、可演进性与契约测试——这些品质在更大平台上能发挥更大价值，也符合我长期做架构的规划。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 7360,
+        "completion_tokens": 170,
+        "total_tokens": 7530
+      },
       "error": null
     },
     {
@@ -440,11 +584,15 @@
       "question": "慧眼识蚁项目是做什么的？",
       "page_key": "projects",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：自主运动与动态避障；通过 SPI 将陀螺仪与雷达数据存入 W25Q64JV Flash 芯片。",
+      "answer_text": "慧眼识蚁是我 2024.05—2025.05 主持的国家级大创项目，做的是红火蚁智能追踪与靶向灭治装备。核心是一台\"下位机实时控制、上位机视觉识别、云端数据分析\"三级架构的自主巡检机器人，用来识别蚁巢并做靶向灭治。\n\n我主要负责下位机部分：FreeRTOS 实时系统移植，用信号量、互斥锁、消息队列做并发调度；MPU6500 DMP 解算四元数 + PID 闭环调速控制直流减速电机；驱动 RPLIDAR S2 激光雷达建图避障。云端这块用 EC800M 4G 模块走 MQTT 对接阿里云 IoT，配合树莓派 4B 上位机联调 YOLOv5s 蚁巢识别模型。项目拿了国家级大创立项，也拿到挑战杯科技发明制作 A 类路演资格。识别准确率 ≥95% 是申报书里的目标指标，不是实测数据，这点我不编。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6692,
+        "completion_tokens": 280,
+        "total_tokens": 6972
+      },
       "error": null
     },
     {
@@ -452,11 +600,15 @@
       "question": "慧眼识蚁做到了什么程度？",
       "page_key": "projects",
       "project_key": null,
-      "answer_text": "（本地演示回答，尚未接入大模型）根据资料：记忆，沉淀空调预设温度、座椅位置及常听歌单，通过滑动窗口压缩与关键信息抽取提升多轮交互一致性。",
+      "answer_text": "慧眼识蚁是我 2024.05—2025.05 主持的国家级大创项目，和机械与自动化院研究生合作，做的是\"下位机实时控制、上位机视觉识别、云端数据分析\"三级架构的自主巡检机器人。\n\n硬件上我参与了下位机方案设计，核心板+底板分层结构，器件选型、原理图绘制、板卡焊接和电路调试都做了。软件侧移植了 FreeRTOS，用信号量、互斥锁、消息队列做并发调度，基于 MPU6500 DMP 解算四元数加 PID 闭环调速，系统稳定运行 72 小时。感知部分驱动 RPLIDAR S2 激光雷达建局部栅格地图，实现自主运动和动态避障。云端用 EC800M 4G 模块走 MQTT 对接阿里云 IoT，配合树莓派 4B 跑 YOLOv5s 蚁巢识别模型联调。\n\n项目拿到了国家级大创立项和挑战杯科技发明制作 A 类路演资格。有一点要说明：识别准确率 ≥95% 是申报书里的目标指标，不是已经实测达到的数字，我不把它说成已验证结果。",
       "grounded": true,
       "offtopic": false,
-      "model": "stub",
-      "usage": null,
+      "model": "deepseek-v4-flash",
+      "usage": {
+        "prompt_tokens": 6972,
+        "completion_tokens": 309,
+        "total_tokens": 7281
+      },
       "error": null
     }
   ]

@@ -162,10 +162,18 @@ async def _main(clear: bool) -> int:
             ("files", (name, content.encode("utf-8"), "text/markdown"))
             for name, content in CORPUS.items()
         ]
-        resp = await client.post("/admin/knowledge-documents", files=payload)
-        print(f"== upload CORPUS ({len(CORPUS)} docs) -> HTTP {resp.status_code}")
-        if resp.status_code != 202:
-            print(f"[ERR] upload failed with HTTP {resp.status_code}", file=sys.stderr)
+        # The upload endpoint caps at 20 files per request (router `_MAX_UPLOAD_FILES`,
+        # product contract unchanged); the canonical corpus may exceed that, so upload
+        # in batches of 20 and require every batch to be accepted (202). Mirrors the
+        # batching already used by tests/aiqa/test_rag_eval.py `_upload`.
+        responses = []
+        for index in range(0, len(payload), 20):
+            batch = payload[index : index + 20]
+            resp = await client.post("/admin/knowledge-documents", files=batch)
+            print(f"== upload batch {index // 20 + 1} ({len(batch)} docs) -> HTTP {resp.status_code}")
+            responses.append(resp)
+        if any(resp.status_code != 202 for resp in responses):
+            print(f"[ERR] upload failed with HTTP {[r.status_code for r in responses]}", file=sys.stderr)
             return 1
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         active = _active_documents(engine)

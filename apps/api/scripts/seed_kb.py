@@ -170,10 +170,16 @@ async def _main(clear: bool) -> int:
         for index in range(0, len(payload), 20):
             batch = payload[index : index + 20]
             resp = await client.post("/admin/knowledge-documents", files=batch)
-            print(f"== upload batch {index // 20 + 1} ({len(batch)} docs) -> HTTP {resp.status_code}")
+            print(
+                f"== upload batch {index // 20 + 1} ({len(batch)} docs) "
+                f"-> HTTP {resp.status_code}"
+            )
             responses.append(resp)
         if any(resp.status_code != 202 for resp in responses):
-            print(f"[ERR] upload failed with HTTP {[r.status_code for r in responses]}", file=sys.stderr)
+            print(
+                f"[ERR] upload failed with HTTP {[r.status_code for r in responses]}",
+                file=sys.stderr,
+            )
             return 1
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         active = _active_documents(engine)

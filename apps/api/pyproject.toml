@@ -30,6 +30,13 @@ dev = [
     "mypy==2.3.0",
 ]
 
+# Explicit package discovery: only `app` is a runtime package.
+# `migrations/` is an Alembic script directory (no __init__.py) but contains
+# .py files, which trips setuptools flat-layout auto-discovery
+# ("Multiple top-level packages") on fresh installs (e.g. CI).
+[tool.setuptools]
+packages = ["app"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

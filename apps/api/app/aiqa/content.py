@@ -221,10 +221,10 @@ def build_pages() -> dict[str, PageContentData]:
                     "Jianli 评测中心读取带时间和 verified commit 的版本化报告；当前 79/79 分为"
                     "Agent/Trace 22、RAG 事实 38、Web 1、Reranker 协议 4、缓存/Provider 韧性 8、"
                     "跨实例熔断 6。真实 RAG 门禁上传语料并走 BGE-M3、pgvector、命中/拒答/隐私；"
-                    "越界集 10/10 拒答（拒答率 100%，从早期 0% 提升）在真实 embedding + 0.47 "
-                    "阈值下验收。GitHub workflow 定义 backend→RAG→Web 三个串行 job，但现有证据"
-                    "是本地等价门禁通过，没有远端 Actions run，不能说云端流水线已跑绿；79/79 也"
-                    "不等于生产准确率。"
+                    "版本化报告含越界用例结果 10/10 拒答（拒答率 100%，相对早期 0% 提升），在"
+                    "真实 embedding + 0.47 阈值下验收。GitHub workflow 定义 backend→RAG→Web 三个"
+                    "串行 job，但现有证据是本地等价门禁通过，没有远端 Actions run，不能说云端"
+                    "流水线已跑绿；79/79 也不等于生产准确率。"
                 ),
                 (
                     "Jianli 显式启用 OpenTelemetry 后覆盖完整 HTTP 流式响应，并观测 AIQA 结果/耗时/"

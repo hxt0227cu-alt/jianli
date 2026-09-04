@@ -140,8 +140,15 @@
   - `fact-bank.md`：FQ-26 溯源修正为 `jianli-agent-rag.md` / `persona.py` `is_greeting`（期望值未改）
 - **复跑结果（WSL 真实 LLM + BGE-M3 全量 38 题）**：38/38 grounded、0 error、严格 **38/38=100%（SLO 达标）**；FQ-03/09/17/18/22/26 全部 ✅。评分表 `docs/fact-consistency/scored-2026-09-04.md` 已追加轮次2。
 - **测试**：DB-free `pytest tests/aiqa tests/test_app.py` → **86 passed**；`ruff check`（两改文件）→ **All checks passed**。
-- **已知缺口**：RAG eval reject/extreme 两组在 BGE-M3 下的硬断言未单跑（全量太慢）；语料新增表述对 reject 用例的误召回影响待下次单独跑 `test_rag_reject_cases` 确认。LLM 答案组合存在采样方差（`--only 3,9` 定向抽样曾出现不同侧重），以全量复跑为准。
-- verified_commit：本次修复 commit 见下方关联（推送后回填）。
+- verified_commit：`c0640b0`（覆盖修复+复跑 38/38 达标，已推送 origin/master）。
+
+### reject/extreme 硬断言验证（2026-09-04 · 收尾，用户要求"单独跑确认新增表述无误召回"）
+
+- **执行**：WSL 真实 BGE-M3（`_EMBEDDING_REAL` 恢复硬断言）单独跑 `test_rag_eval.py` 的 reject/extreme，连带 false_reject/literal/semantic 健全性。
+- **结果（5/5 全绿）**：REJECT 10/10、EXTREME 9/9、FALSE_REJECT 10/10、LITERAL 22/22、SEMANTIC 22/22。
+- **发现并修复一处由覆盖修复引入的误召回**：轮次2 给 `jianli-evaluation-ci.md` 补的"越界集 10/10 拒答…无依据问题不再静默编造"表述 + 分块边界位移，使越界用例"今天天气怎么样？"在真实 BGE-M3 下 top1 命中 eval-ci 达 0.4713（≥ 0.47）→ 被放行，REJECT 跌到 9/10。改写（10/10 锚定改"版本化报告含越界用例结果"、删行为描述句、尾部 CI 句改写）后天气题 top1 回落 0.4496 < 0.47，REJECT 恢复 10/10。d79ceb9 对照探针确认回归**由覆盖修复引入**（非语料刷新遗留）。
+- **锚定回归确认**：改写后定向复跑 FQ-18/22（真实 LLM）均 OK（拒答率 100%/10/10、79/79 六类仍可点到）；DB-free 86 passed、ruff、mypy（53 files）全过。
+- verified_commit：见下方关联（本收尾 commit 已推送后回填）。
 
 ## 关联
 - Change Request：用户 2026-09-04 四条决策（等效批准）

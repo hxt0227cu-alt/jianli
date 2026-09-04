@@ -151,7 +151,7 @@
 
 ### FQ-26 · jianli 开发中有过什么值得记录的坑？
 - **期望事实**：Agent 模型自主决策上线后评测一度 8/8→6/8，根因是 greeting 判定里 'hi' 子串误匹配 'litchi'，改整词匹配修复。
-- **溯源**：CORPUS `jianli-reliability.md` / `persona.py` `_HI_RE`。
+- **溯源**：CORPUS `jianli-agent-rag.md`（2026-09-04 覆盖修复后补锚定） / `persona.py` `is_greeting`（整词匹配）。
 - **判定要点**：命中"greeting 'hi'⊂'litchi' 子串误匹配、改整词匹配" ✅；说成"没有任何坑"❌。
 
 ---

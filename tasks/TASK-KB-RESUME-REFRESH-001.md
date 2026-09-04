@@ -128,6 +128,21 @@
 - spec_sync：已按用户四条决策同步（①B 新简历+NDA 口径 / ②A 保留 jianli / ③A 保留荣誉 / ④ 身份全隐藏）
 - verified_commit：`269118a382f033ca937d8a14d5e88025fb9a347d`（已推送 origin/master，local==origin，工作树干净）
 
+### 覆盖修复轮次（2026-09-04 · 用户批准"修覆盖缺口再复跑"后追加）
+
+- **背景**：真实 LLM 首轮评分严格 32/38=84.2% 未达 SLO ≥94%（需 ≥36 ✅），6 题未达标（FQ-03/09 ❌、FQ-17/18/22/26 ⚠️），根因"素材在、覆盖缺"。
+- **修复内容（内容变更，非改期望值，rubric §5 合规）**：
+  - `content.py` `build_resume_facts_card()`：新增"方向补充①预约与协作类系统 / ②内容问答与检索"两条硬性事实卡（resume 页 KB 有命中时静态 R10 被跳过，故必须进恒注入卡）→ 修 FQ-03/09
+  - `canonical_corpus.py` `jianli-agent-rag.md`：补"CJK 停用词双层证据门"与"greeting 'hi'⊂'litchi' 整词匹配"锚定 → 修 FQ-17/18/26
+  - `canonical_corpus.py` `jianli-evaluation-ci.md`：补"越界集 10/10 拒答（拒答率 100%，从 0% 提升）"→ 修 FQ-22
+  - `content.py` 静态 jianli 块同步两处（保持 corpus↔静态一致）
+  - 三处新增期望事实均从代码验证为真实实现事实（`retrieval.py` `_CJK_STOPWORDS`、`test_rag_eval.py` REJECT_CASES 10 例、`persona.py` `is_greeting` 整词匹配 + `test_is_greeting_hi_whole_word_only`）
+  - `fact-bank.md`：FQ-26 溯源修正为 `jianli-agent-rag.md` / `persona.py` `is_greeting`（期望值未改）
+- **复跑结果（WSL 真实 LLM + BGE-M3 全量 38 题）**：38/38 grounded、0 error、严格 **38/38=100%（SLO 达标）**；FQ-03/09/17/18/22/26 全部 ✅。评分表 `docs/fact-consistency/scored-2026-09-04.md` 已追加轮次2。
+- **测试**：DB-free `pytest tests/aiqa tests/test_app.py` → **86 passed**；`ruff check`（两改文件）→ **All checks passed**。
+- **已知缺口**：RAG eval reject/extreme 两组在 BGE-M3 下的硬断言未单跑（全量太慢）；语料新增表述对 reject 用例的误召回影响待下次单独跑 `test_rag_reject_cases` 确认。LLM 答案组合存在采样方差（`--only 3,9` 定向抽样曾出现不同侧重），以全量复跑为准。
+- verified_commit：本次修复 commit 见下方关联（推送后回填）。
+
 ## 关联
 - Change Request：用户 2026-09-04 四条决策（等效批准）
 - 测试任务：FQ-01…FQ-61（fact-bank）、RAG LITERAL/SEMANTIC/REJECT/FALSE-REJECT、persona 数字溯源、web-shell

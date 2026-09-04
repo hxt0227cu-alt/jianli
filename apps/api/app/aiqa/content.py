@@ -199,10 +199,14 @@ def build_pages() -> dict[str, PageContentData]:
                 ),
                 (
                     "模型可自主生成检索词，但服务端同时检索模型词和用户原问题并去重合并，避免"
-                    "改写失真丢证据。BGE-M3 向量 top10 必须先过 0.47；没有向量候选时不会仅凭"
-                    "BM25 中文单字重叠硬答。通过后与 BM25 top10 做 RRF(k=60) 融合 top12，可选"
-                    "Cross-Encoder 再取 top6，并保持页面/项目域隔离。回答以 SSE 返回引用；无依据"
-                    "明确拒答。BGE-M3 纯向量 avg-rank 1.3，本地哈希 fallback 为 1.8。"
+                    "改写失真丢证据。BGE-M3 向量 top10 必须先过 0.47；拒答判定是 0.47 阈值 + "
+                    "BM25 CJK 停用词过滤（的/了/是等功能字不参与重叠计数）双层证据门，没有向量"
+                    "候选时不会仅凭 BM25 中文单字重叠硬答。通过后与 BM25 top10 做 RRF(k=60) "
+                    "融合 top12，可选 Cross-Encoder 再取 top6，并保持页面/项目域隔离。回答以 "
+                    "SSE 返回引用；无依据明确拒答。BGE-M3 纯向量 avg-rank 1.3，本地哈希 "
+                    "fallback 为 1.8。回答边界有个踩过的坑：问候语最初用子串包含，'hi' 会被 "
+                    "'litchi'、'this' 等词误判成打招呼，后来改为整词匹配——'hi' 必须独立成词"
+                    "才视为问候，含 'hi' 子串的工程问题照常走检索问答。"
                 ),
                 (
                     "避免智能体乱调用不能只靠 Prompt：Jianli Agent 最多循环 4 步，只注册检索、"
@@ -216,10 +220,11 @@ def build_pages() -> dict[str, PageContentData]:
                 (
                     "Jianli 评测中心读取带时间和 verified commit 的版本化报告；当前 79/79 分为"
                     "Agent/Trace 22、RAG 事实 38、Web 1、Reranker 协议 4、缓存/Provider 韧性 8、"
-                    "跨实例熔断 6。真实 RAG 门禁上传语料并走 BGE-M3、pgvector、命中/拒答/隐私。"
-                    "GitHub workflow 定义 backend→RAG→Web 三个串行 job，但现有证据是本地等价"
-                    "门禁通过，没有远端 Actions run，不能说云端流水线已跑绿；79/79 也不等于"
-                    "生产准确率。"
+                    "跨实例熔断 6。真实 RAG 门禁上传语料并走 BGE-M3、pgvector、命中/拒答/隐私；"
+                    "越界集 10/10 拒答（拒答率 100%，从早期 0% 提升）在真实 embedding + 0.47 "
+                    "阈值下验收。GitHub workflow 定义 backend→RAG→Web 三个串行 job，但现有证据"
+                    "是本地等价门禁通过，没有远端 Actions run，不能说云端流水线已跑绿；79/79 也"
+                    "不等于生产准确率。"
                 ),
                 (
                     "Jianli 显式启用 OpenTelemetry 后覆盖完整 HTTP 流式响应，并观测 AIQA 结果/耗时/"
@@ -496,6 +501,8 @@ def build_resume_facts_card() -> str:
         "- 技术方向：AI 应用开发工程师，关注业务落地的 AI Agent 工程、RAG 与云边端系统\n"
         "- 工程方法论：我偏好先设计后编码\n"
         "- 最看重的工程品质：重视可观测性、可演进性与契约测试\n"
+        "- 方向补充①：我曾负责预约与协作类系统的后端架构，落地过插槽快照、实时刷新与幂等写入\n"
+        "- 方向补充②：我也独立做过内容问答与检索相关的功能\n"
         "- 技术栈：Python / FastAPI、NestJS、PostgreSQL、Redis、TypeScript、React、"
         "LangGraph / Temporal、MCP、Kafka / Flink / ClickHouse\n"
         "- 熟悉的 AI 技术：RAG 与人格层问答、受策略/审批/持久化约束的 AI Agent 编排\n"

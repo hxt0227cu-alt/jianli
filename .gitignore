@@ -46,3 +46,9 @@ scripts/fact_consistency_results.json
 tsconfig.tsbuildinfo
 apps/web/dist-check/
 typescript-typescript-win32-x64-7.0.2.tgz
+
+# Python / 前端缓存与测试产物（非交付）
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+test-results/

@@ -6,6 +6,12 @@
 
 - 公开仓库初始化：数据脱敏、示例简历素材、README / LICENSE / CONTRIBUTING / SECURITY 补充。
 
+## 2026-09（知识库刷新 + 开源发布）
+
+- **知识库随新简历刷新**（TASK-KB-RESUME-REFRESH-001，2026-09-04）：CORPUS 扩至 23 篇真实语料、content.py 静态兜底与 persona few-shot 同步、seed_kb 分批上传修复（20+3）；
+- **RAG 评测全链路验证**：真实 LLM + BGE-M3 38 题严格一致率 38/38=100%（SLO ≥94% 达成）、越界拒答 reject 10/10、极端相似 extreme 9/9 硬断言通过；
+- **开源发布**：全历史 commit PII 脱敏重写（姓名 / 学校 / 手机号 / 邮箱 / 专利号 / open_id → 占位符），推送至公开 GitHub 仓库。
+
 ## 2026-08（M 系列里程碑）
 
 ### M6 · AI 问答域 + 知识库（2026-08-13）

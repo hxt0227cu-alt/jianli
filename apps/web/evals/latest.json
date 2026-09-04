@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "report_id": "agent-quality-2026-08-27",
-  "generated_at": "2026-08-27T21:17:00+08:00",
-  "verified_commit": "b8e973d",
+  "report_id": "agent-quality-2026-09-04",
+  "generated_at": "2026-09-04T12:00:00+08:00",
+  "verified_commit": "0811b4c",
   "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
     "passed": 79,
@@ -11,7 +11,7 @@
   "ci": {
     "provider": "GitHub Actions",
     "workflow": "agent-quality-gate.yml",
-    "status": "local_equivalent_passed_pending_authorized_push"
+    "status": "local_equivalent_passed"
   },
   "suites": [
     {
@@ -27,8 +27,8 @@
       "label": "RAG 事实一致性",
       "passed": 38,
       "total": 38,
-      "verified_commit": "7f33cf2",
-      "evidence": "真实知识库与 BGE-M3 / pgvector 复验"
+      "verified_commit": "0811b4c",
+      "evidence": "真实知识库与 BGE-M3 / pgvector 复验；真实 LLM 严格 38/38=100%（2026-09），reject 10/10 + extreme 9/9 硬断言通过"
     },
     {
       "id": "web-delivery",
@@ -117,6 +117,13 @@
       "title": "故障 Provider 在多副本间共享熔断，恢复窗口仅放行一个原子探针",
       "status": "verified",
       "test_id": "TC-AI-013"
+    },
+    {
+      "id": "rag-reject-extreme-2026-09",
+      "category": "regression",
+      "title": "语料扩产后越界拒答与极端相似问题无误召回（reject 10/10、extreme 9/9）",
+      "status": "verified",
+      "test_id": "test_rag_eval.py"
     }
   ]
 }

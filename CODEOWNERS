@@ -1,0 +1,9 @@
+# 默认代码所有者：仓库维护者
+# 所有 PR 默认需要维护者 review；关键路径单独指定。
+
+* @hxt0227cu-alt
+
+# 安全敏感路径：默认所有者 + 强制 review
+/docs/design/security.md @hxt0227cu-alt
+/docs/api/ @hxt0227cu-alt
+/.github/workflows/ @hxt0227cu-alt

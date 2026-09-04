@@ -123,10 +123,11 @@ python -m uvicorn app.main:app --reload
 
 未配置 `JIANLI_LLM_*` 时自动回退 Stub 网关与本地哈希 Embedding，无 LLM 也可跑通测试。
 
-### 3. 前端（apps/web）
+### 3. 前端（仓库根）
+
+前端工程（Vite + React + TypeScript）在**仓库根目录**，`vite.config.ts` 以 `apps/web` 为 root：
 
 ```bash
-cd apps/web
 pnpm install
 pnpm dev        # http://localhost:5173
 ```
@@ -138,8 +139,8 @@ pnpm dev        # http://localhost:5173
 cd apps/api && python -m pytest -q
 python -m ruff check . && python -m mypy app
 
-# 前端
-cd apps/web && pnpm test && pnpm typecheck && pnpm build
+# 前端（仓库根，vite root = apps/web）
+pnpm test && pnpm typecheck && pnpm build
 ```
 
 > 真实集成 / 迁移 / RAG 评测需真实 PG/Redis 与密钥，命令见 [docs/test/test-plan.md](docs/test/test-plan.md) 与 [docs/HARNESS.md](docs/HARNESS.md)。
@@ -158,12 +159,14 @@ jianli/
 │   │   │   └── admin/        # 管理端：预约/知识库/联系人配置
 │   │   ├── migrations/       # Alembic 迁移（0001–0010）
 │   │   └── tests/            # pytest 测试（单元/集成/迁移/安全）
-│   └── web/                  # React 前端（三页面 + admin + 登录）
+│   └── web/                  # React 前端源码（vite root；三页面 + admin + 登录）
 ├── deploy/                   # Nginx、Certbot、Observability（OTel/Prometheus/Grafana）
 ├── docs/                     # PRD/SRS/领域模型/架构/ADR/OpenAPI/测试计划
 ├── scripts/                  # dev/deploy/backup/restore/verify/评测脚本
 ├── tasks/                    # 任务单（AI 治理证据，TASK-*.md）
 ├── tests/web-shell/          # Playwright / Vitest 端到端
+├── package.json              # 前端工程入口（仓库根；vite root = apps/web）
+├── vite.config.ts            # 前端构建配置
 ├── AGENTS.md                 # AI 编码协作规范（治理约束）
 ├── PROJECT_STATE.md          # 项目状态与任务台账
 └── docs/baseline.yml         # 规范唯一真相源（版本/状态/门禁）

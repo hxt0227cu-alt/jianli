@@ -1,5 +1,7 @@
 # PROJECT_STATE.md — 当前项目状态（AI 会话起点）
 
+> **2026-09-04 全历史 PII 脱敏重写**：本仓库全部历史 commit 已做脱敏重写（真实姓名 / 学校 / 手机号 / 邮箱 / 专利号 / open_id 一律替换为脱敏占位符），**本文档中此前引用的 commit hash 均为重写前旧值、已失效**；当前有效锚点以文末「最后 verified commit」最新条目为准。
+>
 > 本文件**只记录任务态**：当前阶段 / 当前任务 / 本周阻塞 / 下一步 / 最后通过测试的 commit。
 > **不重复维护任何版本号、评审状态、优先级或延后项**——那些只存在于 `docs/baseline.yml`（唯一规范源）。
 > 每次会话先读 `AGENTS.md` → `docs/baseline.yml` → 本文件；仅在修改仓库时追加当前 TASK 文件。不依赖聊天记忆。
@@ -15,7 +17,7 @@
 
 ## 当前阶段
 
-- **TASK-CI-PUSH-READINESS-001**：**Implemented / Awaiting GitHub repository target（2026-08-27，verified_commit=`ae612a6`）**——保留三个冻结检查名并以 `needs` 严格串行，使任意时刻最多占用一个 GitHub-hosted runner；20/20/15 分钟超时，本地同构 pre-push 全绿。当前 Git 无 remote，已登录账号下无 jianli 仓库；待用户指定目标或仓库可见性。未执行 push。
+- **TASK-CI-PUSH-READINESS-001**：**Closed / 已开源发布（2026-09-04）**——GitHub Actions 三作业（backend-agent → rag-integration → web-delivery）串行门禁本地等价全绿；仓库已推送至公开 GitHub（`hxt0227cu-alt/jianli`，master）。2026-09-04 全历史 PII 脱敏重写完成后已重新验证通过并推送。
 
 - **TASK-AIQA-DISTRIBUTED-RESILIENCE-001**：**Closed（2026-08-27，verified_commit=`b8e973d`）**——Provider 熔断已升级为 Redis Lua 原子共享状态，跨副本共享失败/open/单探针恢复；Redis 失败退回本地 breaker，LLM 路径异步非阻塞。绑定验收 37 passed、GitHub backend 本地等价 40 passed、真实 PG/Redis RAG 等价 4 passed / 1 expected xfail、Web test/typecheck/build 全绿，公开评测 79/79。未执行 push。
 
@@ -254,5 +256,7 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 - **当前 master HEAD（2026-08-22 预约域 agent 收口）**：`b5a168d` —— TASK-FACTORY-FIX-001 回填（factory 修复 `7142212` + 治理回填 `b5a168d`）；介于 `2e0e939`→`b5a168d` 之间已提交闭合的任务——`TASK-CR-AIQA-BOOKING-001`(`d2a6411` 推翻 PRD#14 禁止)、`TASK-AIQA-BOOKING-001`(`4be9808` 面试官对话自主预约写工具 + `640d309` 前端 race 修复)、`TASK-AIQA-AGENT-CRUD-001`(`6d94be8` 多轮增删改 + `054e36b` 治理回填)。最新有效 verified commit = `b5a168d`。
 
 - **当前 master HEAD（2026-08-24 AIQA 简历刷新）**：`efe287f` —— TASK-AIQA-KB-RESUME-020 关闭（新简历 14.pdf 同步知识库+界面展示：CORPUS/content.py/persona.py/fact-bank.md/main.tsx/resume.pdf + `seed_kb.py` owner_admin 唯一约束 bug 修复；WSL `seed_kb.py` 重灌 jianli_dev ACTIVE=11 doc/37 chunk，旧简历事实 0 残留）；`369b282` 主交付（6 文件 122+/79-）+ `efe287f` 脚本修复（1 文件 14+/1-）。verified_commit=`369b282` / `efe287f`。最新有效 verified commit = `efe287f`。
+
+- **当前 master HEAD（2026-09-04 全历史 PII 脱敏重写 + 开源发布）**：`0811b4c` —— 全历史 commit 已脱敏重写（真实姓名 / 学校 / 手机号 / 邮箱 / 专利号 / open_id → 脱敏占位符；commit message 同步清洗；历史 resume.pdf 全部替换为匿名干净版；孤儿 codex refs 已删除并 GC 清对象）。重写后知识库刷新 / 真实 LLM 严格 38/38 / reject+extreme 硬断言验证链最新提交 = `0811b4c`（docs(task) 回填 TASK-KB-RESUME-REFRESH-001，verified_commit=`f2f54fb`）。**本文档此前所有 hash 均为重写前旧值、已失效**。最新有效 verified commit = `0811b4c`。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

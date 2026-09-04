@@ -298,10 +298,12 @@ async def test_slot_snapshot_is_authenticated_and_privacy_safe(real_stack) -> No
     other_user_id = _seed_user(engine)
     owner_id = _seed_user(engine, "owner_admin")
     now = datetime.now(UTC)
-    days_until_monday = -now.astimezone(ZoneInfo("Asia/Shanghai")).weekday()
-    start = (now + timedelta(days=days_until_monday)).replace(
-        hour=2, minute=0, second=0, microsecond=0
-    )
+    local_today = now.astimezone(ZoneInfo("Asia/Shanghai")).date()
+    start = datetime.combine(
+        local_today - timedelta(days=local_today.weekday()),
+        datetime.min.time(),
+        ZoneInfo("Asia/Shanghai"),
+    ).astimezone(UTC) + timedelta(hours=2)
     slot_ids = _seed_slots(engine, start)
     own_appointment = uuid4()
     other_appointment = uuid4()

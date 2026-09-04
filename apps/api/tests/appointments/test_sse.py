@@ -131,10 +131,12 @@ async def test_sse_propagates_slot_change_without_pii(real_stack) -> None:
     # slot_snapshot only derives state for week_offset 0/1 relative to now(), so 2030-dated slots
     # would never appear in the SSE baseline and the slot.changed event would never fire.
     now = datetime.now(UTC)
-    days_until_monday = -now.astimezone(ZoneInfo("Asia/Shanghai")).weekday()
-    start = (now + timedelta(days=days_until_monday)).replace(
-        hour=3, minute=0, second=0, microsecond=0
-    )
+    local_today = now.astimezone(ZoneInfo("Asia/Shanghai")).date()
+    start = datetime.combine(
+        local_today - timedelta(days=local_today.weekday()),
+        datetime.min.time(),
+        ZoneInfo("Asia/Shanghai"),
+    ).astimezone(UTC) + timedelta(hours=3)
     slots = _seed_slots(engine, start)
     draft = _draft(slots)
     principal = Principal(

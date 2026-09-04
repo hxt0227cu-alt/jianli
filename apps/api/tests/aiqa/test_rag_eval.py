@@ -21,6 +21,7 @@ import asyncio
 import json
 import os
 import secrets
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -173,6 +174,18 @@ FALSE_REJECT_CASES: list[str] = [
 # numbers come in (swap in a real embedding to compare).
 _MIN_HIT_RATE = 0.75
 
+# Whether a real (semantic) embedding is configured. Under the local hash baseline
+# the relevance threshold is disabled and zero-token-overlap paraphrases cannot be
+# recalled, so the reject/extreme discriminators are xfailed (see their markers);
+# configuring JIANLI_LLM_EMBEDDING_BASE_URL (e.g. BGE-M3) turns them into hard
+# assertions.
+_EMBEDDING_REAL = bool(os.environ.get("JIANLI_LLM_EMBEDDING_BASE_URL"))
+
+# Throttle for the 20 requests / 60s anonymous answer rate limit (see
+# _stream_answer): 3.5s between streams keeps <=19 in any 60s window.
+_STREAM_SPACING_SECONDS = 3.5
+_last_stream_at = 0.0
+
 # ---------------------------------------------------------------------------
 # Shared harness (self-contained copy of the test_knowledge.py pattern)
 # ---------------------------------------------------------------------------
@@ -277,12 +290,20 @@ def _authorized_client(
     return client
 
 
-def _upload(client: AsyncClient) -> Any:
-    payload = [
-        ("files", (name, content.encode("utf-8"), "text/markdown"))
-        for name, content in CORPUS.items()
-    ]
-    return client.post("/admin/knowledge-documents", files=payload)
+async def _upload(client: AsyncClient) -> list[Any]:
+    # The upload endpoint caps at 20 files per request (router _MAX_UPLOAD_FILES);
+    # the canonical corpus now has 23 docs, so upload in batches and require every
+    # batch to be accepted (202). Indexing is synchronous per request.
+    items = list(CORPUS.items())
+    responses: list[Any] = []
+    for i in range(0, len(items), 20):
+        batch = items[i : i + 20]
+        payload = [
+            ("files", (name, content.encode("utf-8"), "text/markdown"))
+            for name, content in batch
+        ]
+        responses.append(await client.post("/admin/knowledge-documents", files=payload))
+    return responses
 
 
 def _events(body: str) -> list[tuple[str, dict[str, object]]]:
@@ -301,6 +322,19 @@ def _events(body: str) -> list[tuple[str, dict[str, object]]]:
 
 
 async def _stream_answer(client: AsyncClient, question: str) -> list[tuple[str, dict[str, object]]]:
+    # Public answer rate limit is 20 requests / 60s per IP (AnswerRateLimiter,
+    # applies always, even with a valid session). This suite streams >20 answers
+    # per test (LITERAL/SEMANTIC have 22), so throttle so the fixed window never
+    # accumulates more than 20: spacing 3.5s keeps <= ceil(60/3.5)+1 = 19 in any
+    # 60s window. The throttle is module-global so it also protects the rate
+    # budget across tests in the same process.
+    global _last_stream_at
+    now = time.monotonic()
+    wait = _STREAM_SPACING_SECONDS - (now - _last_stream_at)
+    if wait > 0:
+        await asyncio.sleep(wait)
+    _last_stream_at = time.monotonic()
+
     response = await client.post(
         "/answers:stream", json={"question": question, "page_key": "resume"}
     )
@@ -333,8 +367,9 @@ async def test_rag_literal_hit_cases(real_stack: Any) -> None:
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
-        response = await _upload(client)
-        assert response.status_code == 202
+        responses = await _upload(client)
+        for response in responses:
+            assert response.status_code == 202
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         assert {item["name"] for item in listed} == set(CORPUS)
         assert all(item["status"] == "indexed" for item in listed)
@@ -374,6 +409,16 @@ async def test_rag_semantic_hit_cases(real_stack: Any) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.xfail(
+    not _EMBEDDING_REAL,
+    reason=(
+        "EVAL-002 discriminator (hash baseline): the extreme paraphrases share zero "
+        "low-frequency tokens with the target doc, so only the vector half can recall "
+        "them. Local hash has no semantic meaning -> expected doc drops out (rank 99); "
+        "BGE-M3 pulls it near the top. Green under a real semantic embedding."
+    ),
+    strict=False,
+)
 async def test_rag_extreme_semantic_hit_cases(real_stack: Any) -> None:
     """Direction-A discriminator: paraphrases with zero shared low-frequency tokens.
 
@@ -390,8 +435,9 @@ async def _run_rank_cases(
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
-        response = await _upload(client)
-        assert response.status_code == 202
+        responses = await _upload(client)
+        for response in responses:
+            assert response.status_code == 202
 
         ranks: list[int] = []
         results: list[str] = []
@@ -434,8 +480,9 @@ async def test_pure_vector_ranking(real_stack: Any) -> None:
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
-        response = await _upload(client)
-        assert response.status_code == 202
+        responses = await _upload(client)
+        for response in responses:
+            assert response.status_code == 202
         listed = (await client.get("/admin/knowledge-documents")).json()["items"]
         assert all(item["status"] == "indexed" for item in listed)
 
@@ -480,8 +527,7 @@ async def test_pure_vector_ranking(real_stack: Any) -> None:
 # P1 relevance threshold (TASK-KB-THRESHOLD-001): under a real semantic embedding the
 # threshold is active and reject cases must PASS (offtopic=True). Under the local hash
 # embedding the threshold stays 0 (no semantic meaning), so reject cases remain the
-# measured 0% defect baseline -> conditional xfail.
-_EMBEDDING_REAL = bool(os.environ.get("JIANLI_LLM_EMBEDDING_BASE_URL"))
+# measured 0% defect baseline -> conditional xfail. (_EMBEDDING_REAL is defined above.)
 
 
 @pytest.mark.asyncio
@@ -500,8 +546,9 @@ async def test_rag_reject_cases(real_stack: Any) -> None:
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
-        response = await _upload(client)
-        assert response.status_code == 202
+        responses = await _upload(client)
+        for response in responses:
+            assert response.status_code == 202
 
     # Probe the actual top-1 cosine similarity of each reject question (threshold
     # calibration, TASK-KB-THRESHOLD-001): the threshold must sit above the highest
@@ -573,8 +620,9 @@ async def test_rag_false_reject_cases(real_stack: Any) -> None:
     engine, app, settings = real_stack
     owner = _seed_owner(engine)
     async with _authorized_client(app, engine, settings, owner) as client:
-        response = await _upload(client)
-        assert response.status_code == 202
+        responses = await _upload(client)
+        for response in responses:
+            assert response.status_code == 202
 
         answered = 0
         results: list[str] = []

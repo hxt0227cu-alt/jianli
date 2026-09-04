@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.request
 from datetime import datetime, timezone
 
@@ -27,6 +28,10 @@ HOST = os.environ.get("JIANLI_AIQA_HOST", "127.0.0.1")
 PORT = os.environ.get("JIANLI_AIQA_PORT", "8000")
 ENDPOINT = f"http://{HOST}:{PORT}/answers:stream"
 TIMEOUT = float(os.environ.get("JIANLI_AIQA_TIMEOUT", "60"))
+# Public answer rate limit is 20 requests / 60s per IP (AnswerRateLimiter, applies
+# always). The 38-question bank exceeds it, so space requests 3.5s apart (keeps
+# <=19 in any 60s window) to let a real run complete without 429s.
+INTERVAL = float(os.environ.get("JIANLI_AIQA_MEASURE_INTERVAL", "3.5"))
 
 # Scope note: retrieval is page-isolated. Resume facts live under page_key=resume;
 # jianli project facts live under page_key=projects + project_key=jianli.
@@ -147,8 +152,10 @@ def main() -> int:
 
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fact_consistency_results.json")
     records = []
-    print(f"== measure_fact_consistency | endpoint={ENDPOINT} | {len(bank)} questions ==\n")
-    for item in bank:
+    print(f"== measure_fact_consistency | endpoint={ENDPOINT} | {len(bank)} questions | interval={INTERVAL}s ==\n")
+    for index, item in enumerate(bank):
+        if index > 0 and INTERVAL > 0:
+            time.sleep(INTERVAL)
         scope = item["page_key"] + (f"/{item['project_key']}" if item["project_key"] else "")
         res = _post_stream(item["q"], item["page_key"], item["project_key"])
         status = "ERR" if res.get("error") else ("OFFTOPIC" if res.get("offtopic") else "OK")

@@ -28,7 +28,8 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]] \
+             || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             BASE_SHA="$(git hash-object -t tree /dev/null)"
           fi
           git -c core.autocrlf=true diff --check "$BASE_SHA" HEAD

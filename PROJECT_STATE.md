@@ -257,6 +257,6 @@ SRS v1.0 → UI 线框 → 架构与 ADR → 安全设计 → OpenAPI/SSE 合同
 
 - **当前 master HEAD（2026-08-24 AIQA 简历刷新）**：`efe287f` —— TASK-AIQA-KB-RESUME-020 关闭（新简历 14.pdf 同步知识库+界面展示：CORPUS/content.py/persona.py/fact-bank.md/main.tsx/resume.pdf + `seed_kb.py` owner_admin 唯一约束 bug 修复；WSL `seed_kb.py` 重灌 jianli_dev ACTIVE=11 doc/37 chunk，旧简历事实 0 残留）；`369b282` 主交付（6 文件 122+/79-）+ `efe287f` 脚本修复（1 文件 14+/1-）。verified_commit=`369b282` / `efe287f`。最新有效 verified commit = `efe287f`。
 
-- **当前 master HEAD（2026-09-04 全历史 PII 脱敏重写 + 开源发布）**：`0811b4c` —— 全历史 commit 已脱敏重写（真实姓名 / 学校 / 手机号 / 邮箱 / 专利号 / open_id → 脱敏占位符；commit message 同步清洗；历史 resume.pdf 全部替换为匿名干净版；孤儿 codex refs 已删除并 GC 清对象）。重写后知识库刷新 / 真实 LLM 严格 38/38 / reject+extreme 硬断言验证链最新提交 = `0811b4c`（docs(task) 回填 TASK-KB-RESUME-REFRESH-001，verified_commit=`f2f54fb`）。**本文档此前所有 hash 均为重写前旧值、已失效**。最新有效 verified commit = `0811b4c`。
+- **当前 master HEAD（2026-09-04 全历史 PII 脱敏重写 + 开源发布）**：`3444a62` —— 全历史 commit 已脱敏重写（真实姓名 / 学校 / 手机号 / 邮箱 / 专利号 / open_id → 脱敏占位符；commit message 同步清洗；历史 resume.pdf 全部替换为匿名干净版；孤儿 codex refs 已删除并 GC 清对象）。重写后知识库刷新 / 真实 LLM 严格 38/38 / reject+extreme 硬断言验证链最新提交 = `3444a62`（docs(task) 回填 TASK-KB-RESUME-REFRESH-001，verified_commit=`3ae7255`）。**本文档此前所有 hash 均为重写前旧值、已失效**。最新有效 verified commit = `3444a62`。
 
 本锚点不重复任何版本号（版本只在 `docs/baseline.yml`）。

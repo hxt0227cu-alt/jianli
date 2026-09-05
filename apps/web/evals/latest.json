@@ -2,7 +2,7 @@
   "schema_version": 2,
   "report_id": "agent-quality-2026-09-04",
   "generated_at": "2026-09-04T12:00:00+08:00",
-  "verified_commit": "c92f47c",
+  "verified_commit": "2b562a5",
   "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
     "passed": 79,
@@ -19,7 +19,7 @@
       "label": "Agent / Trace 回归",
       "passed": 22,
       "total": 22,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "pytest: test_agent_lab + test_agent_tools + test_aiqa"
     },
     {
@@ -27,7 +27,7 @@
       "label": "RAG 事实一致性",
       "passed": 38,
       "total": 38,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "真实知识库与 BGE-M3 / pgvector 复验；真实 LLM 严格 38/38=100%（2026-09），reject 10/10 + extreme 9/9 硬断言通过"
     },
     {
@@ -35,7 +35,7 @@
       "label": "Web 交付门禁",
       "passed": 1,
       "total": 1,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "Vitest + TypeScript + production build"
     },
     {
@@ -43,7 +43,7 @@
       "label": "Cross-Encoder 协议与降级",
       "passed": 4,
       "total": 4,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "真实候选重排、失败回退、最小请求与越界响应校验"
     },
     {
@@ -51,7 +51,7 @@
       "label": "语义缓存与 Provider 韧性",
       "passed": 8,
       "total": 8,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "匿名 grounded 缓存、域隔离/失效/旁路与双 Provider 熔断状态机"
     },
     {
@@ -59,7 +59,7 @@
       "label": "多副本共享熔断",
       "passed": 6,
       "total": 6,
-      "verified_commit": "0811b4c",
+      "verified_commit": "3444a62",
       "evidence": "Redis Lua 跨实例失败计数/单探针/恢复、断连本地降级与异步非阻塞"
     }
   ],
@@ -72,7 +72,7 @@
       "sample_size": 5,
       "baseline": "MRR 0.3333 · Hit@1 0/5",
       "reranked": "MRR 1.0000 · Hit@1 5/5",
-      "verified_commit": "0811b4c"
+      "verified_commit": "3444a62"
     }
   ],
   "cases": [

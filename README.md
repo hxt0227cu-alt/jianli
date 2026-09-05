@@ -7,6 +7,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20%2B%20pgvector-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/hxt0227cu-alt/jianli/actions/workflows/agent-quality-gate.yml/badge.svg)](https://github.com/hxt0227cu-alt/jianli/actions/workflows/agent-quality-gate.yml)
 
 ---
 
@@ -16,11 +17,13 @@
 - [核心特性](#核心特性)
 - [技术栈](#技术栈)
 - [架构总览](#架构总览)
+- [界面预览](#界面预览)
 - [快速开始（本地开发）](#快速开始本地开发)
 - [项目结构](#项目结构)
 - [测试与质量门禁](#测试与质量门禁)
 - [部署](#部署)
 - [文档导航](#文档导航)
+- [贡献指南](#贡献指南)
 - [安全说明](#安全说明)
 - [License](#license)
 
@@ -86,6 +89,12 @@ Jianli 面向「求职者在线简历 + 面试预约」业务场景：访客浏�
 ```
 
 完整设计见 [docs/design/architecture.md](docs/design/architecture.md)、[docs/design/domain-model.md](docs/design/domain-model.md)、[docs/design/security.md](docs/design/security.md)。
+
+## 界面预览
+
+![脱敏示例简历预览](apps/web/public/resume-preview.png)
+
+> 图为仓库内置的**脱敏示例简历**渲染（个人信息已隐藏，可作演示数据）。完整前端包含简历问答、项目卡片、面试预约、管理后台与登录五类页面，UI 线框见 [docs/design/ui-wireframe.md](docs/design/ui-wireframe.md)。
 
 ## 快速开始（本地开发）
 
@@ -202,6 +211,17 @@ jianli/
 | [docs/api/sse.md](docs/api/sse.md) | SSE 事件协议 |
 | [docs/HARNESS.md](docs/HARNESS.md) | 评测 / Harness 工程实践 |
 | [docs/test/test-plan.md](docs/test/test-plan.md) | 测试计划 |
+
+## 贡献指南
+
+欢迎任何形式的贡献：提 Issue、报 Bug、补文档、加测试或改进功能。提交前请先阅读：
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — 贡献流程与代码规范
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — 社区行为准则
+- [AGENTS.md](AGENTS.md) — 本仓库的 AI 协作治理约束（任务单驱动、双角色审查、规范唯一真相源）
+- [PROJECT_STATE.md](PROJECT_STATE.md) — 当前阶段、任务与阻塞项
+
+**基本要求**：任何改动须附带测试；提交前本地跑通 `ruff check`、`mypy` 与 `pytest`；涉及架构、外部依赖或公开契约变更时，先在 `docs/adr/` 发起 ADR 评审并经维护者确认。CI 中 `agent-quality-gate` 门禁全绿是合并的前提。
 
 ## 安全说明
 

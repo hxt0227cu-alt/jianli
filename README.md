@@ -18,6 +18,7 @@
 - [技术栈](#技术栈)
 - [架构总览](#架构总览)
 - [界面预览](#界面预览)
+- [在线体验](#在线体验)
 - [快速开始（本地开发）](#快速开始本地开发)
 - [项目结构](#项目结构)
 - [测试与质量门禁](#测试与质量门禁)
@@ -92,9 +93,37 @@ Jianli 面向「求职者在线简历 + 面试预约」业务场景：访客浏�
 
 ## 界面预览
 
+**简历问答页** —— 左侧为脱敏示例简历的 PDF 高清预览，右侧为基于知识库的 AI 追问面板（RAG 有据回答，越界拒绝）：
+
+![简历问答页](apps/web/public/screenshots/01-resume-chat.png)
+
+**项目说明页** —— 三个项目的核心价值与可验证证据，可继续追问实现细节（工具权限、检索门禁、并发安全）：
+
+![项目说明页](apps/web/public/screenshots/02-projects.png)
+
+**示例简历渲染** —— 仓库内置的脱敏示例简历（个人信息已隐藏，可作演示数据）：
+
 ![脱敏示例简历预览](apps/web/public/resume-preview.png)
 
-> 图为仓库内置的**脱敏示例简历**渲染（个人信息已隐藏，可作演示数据）。完整前端包含简历问答、项目卡片、面试预约、管理后台与登录五类页面，UI 线框见 [docs/design/ui-wireframe.md](docs/design/ui-wireframe.md)。
+完整前端包含简历问答、项目说明、面试预约、我的预约与知识库管理五类页面，UI 线框见 [docs/design/ui-wireframe.md](docs/design/ui-wireframe.md)。
+
+## 在线体验
+
+本项目**不提供公网演示实例**：系统承载真实简历语料、业务数据与密钥，仅支持自托管部署（见 [部署](#部署)）。本地体验的最快路径：
+
+```bash
+# 1. 基础设施（PostgreSQL/pgvector + Redis）
+docker compose -f docker-compose.dev.yml up -d
+
+# 2. 后端（apps/api）
+cd apps/api && source ../scripts/dev-env.sh   # 生成 gitignore 的 .env.local
+alembic upgrade head && python -m uvicorn app.main:app --reload
+
+# 3. 前端（仓库根）
+cd ../.. && pnpm install && pnpm dev          # http://localhost:5173
+```
+
+> 未配置 `JIANLI_LLM_*` 时自动回退 Stub 网关与本地哈希 Embedding：界面、推荐问题、预约流程均可完整体验；真实模型问答需自备 OpenAI 兼容 Key（DeepSeek / 硅基流动等），经 `JIANLI_LLM_API_KEY` 等环境变量注入。
 
 ## 快速开始（本地开发）
 

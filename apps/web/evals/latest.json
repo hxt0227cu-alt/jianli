@@ -1,9 +1,9 @@
-{
+﻿{
   "schema_version": 2,
   "report_id": "agent-quality-2026-09-04",
   "generated_at": "2026-09-04T12:00:00+08:00",
-  "verified_commit": "4643ffd",
-  "environment": "WSL · Python 3.12 · deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
+  "verified_commit": "ab530a9",
+  "environment": "WSL 路 Python 3.12 路 deterministic gates + BGE-M3 / Qwen3-Reranker provider evidence",
   "overall": {
     "passed": 79,
     "total": 79
@@ -16,7 +16,7 @@
   "suites": [
     {
       "id": "agent-trace",
-      "label": "Agent / Trace 回归",
+      "label": "Agent / Trace 鍥炲綊",
       "passed": 22,
       "total": 22,
       "verified_commit": "3444a62",
@@ -24,15 +24,15 @@
     },
     {
       "id": "fact-consistency",
-      "label": "RAG 事实一致性",
+      "label": "RAG 浜嬪疄涓€鑷存€?,
       "passed": 38,
       "total": 38,
       "verified_commit": "3444a62",
-      "evidence": "真实知识库与 BGE-M3 / pgvector 复验；真实 LLM 严格 38/38=100%（2026-09），reject 10/10 + extreme 9/9 硬断言通过"
+      "evidence": "鐪熷疄鐭ヨ瘑搴撲笌 BGE-M3 / pgvector 澶嶉獙锛涚湡瀹?LLM 涓ユ牸 38/38=100%锛?026-09锛夛紝reject 10/10 + extreme 9/9 纭柇瑷€閫氳繃"
     },
     {
       "id": "web-delivery",
-      "label": "Web 交付门禁",
+      "label": "Web 浜や粯闂ㄧ",
       "passed": 1,
       "total": 1,
       "verified_commit": "3444a62",
@@ -40,38 +40,38 @@
     },
     {
       "id": "cross-encoder-protocol",
-      "label": "Cross-Encoder 协议与降级",
+      "label": "Cross-Encoder 鍗忚涓庨檷绾?,
       "passed": 4,
       "total": 4,
       "verified_commit": "3444a62",
-      "evidence": "真实候选重排、失败回退、最小请求与越界响应校验"
+      "evidence": "鐪熷疄鍊欓€夐噸鎺掋€佸け璐ュ洖閫€銆佹渶灏忚姹備笌瓒婄晫鍝嶅簲鏍￠獙"
     },
     {
       "id": "semantic-cache-resilience",
-      "label": "语义缓存与 Provider 韧性",
+      "label": "璇箟缂撳瓨涓?Provider 闊ф€?,
       "passed": 8,
       "total": 8,
       "verified_commit": "3444a62",
-      "evidence": "匿名 grounded 缓存、域隔离/失效/旁路与双 Provider 熔断状态机"
+      "evidence": "鍖垮悕 grounded 缂撳瓨銆佸煙闅旂/澶辨晥/鏃佽矾涓庡弻 Provider 鐔旀柇鐘舵€佹満"
     },
     {
       "id": "distributed-resilience",
-      "label": "多副本共享熔断",
+      "label": "澶氬壇鏈叡浜啍鏂?,
       "passed": 6,
       "total": 6,
       "verified_commit": "3444a62",
-      "evidence": "Redis Lua 跨实例失败计数/单探针/恢复、断连本地降级与异步非阻塞"
+      "evidence": "Redis Lua 璺ㄥ疄渚嬪け璐ヨ鏁?鍗曟帰閽?鎭㈠銆佹柇杩炴湰鍦伴檷绾т笌寮傛闈為樆濉?
     }
   ],
   "comparisons": [
     {
       "id": "rrf-vs-cross-encoder",
-      "label": "RRF → Cross-Encoder",
+      "label": "RRF 鈫?Cross-Encoder",
       "evidence_level": "real_provider_component_benchmark",
       "provider_model": "Qwen/Qwen3-Reranker-8B",
       "sample_size": 5,
-      "baseline": "MRR 0.3333 · Hit@1 0/5",
-      "reranked": "MRR 1.0000 · Hit@1 5/5",
+      "baseline": "MRR 0.3333 路 Hit@1 0/5",
+      "reranked": "MRR 1.0000 路 Hit@1 5/5",
       "verified_commit": "3444a62"
     }
   ],
@@ -79,49 +79,49 @@
     {
       "id": "permission-boundary",
       "category": "expected_block",
-      "title": "匿名预约工具请求被登录与 RBAC 阻断",
+      "title": "鍖垮悕棰勭害宸ュ叿璇锋眰琚櫥褰曚笌 RBAC 闃绘柇",
       "status": "verified",
       "test_id": "TC-AI-010"
     },
     {
       "id": "no-evidence",
       "category": "expected_block",
-      "title": "知识库无依据时拒绝生成经历",
+      "title": "鐭ヨ瘑搴撴棤渚濇嵁鏃舵嫆缁濈敓鎴愮粡鍘?,
       "status": "verified",
       "test_id": "test_grounded_and_blocked_paths_emit_monotonic_safe_traces"
     },
     {
       "id": "hash-threshold",
       "category": "known_limitation",
-      "title": "生产 BGE-M3 阈值评测已通过；本地哈希仅保留为确定性离线 fallback",
+      "title": "鐢熶骇 BGE-M3 闃堝€艰瘎娴嬪凡閫氳繃锛涙湰鍦板搱甯屼粎淇濈暀涓虹‘瀹氭€х绾?fallback",
       "status": "resolved",
       "test_id": "test_rag_reject_cases"
     },
     {
       "id": "remote-run",
       "category": "known_limitation",
-      "title": "GitHub 三作业已完成本地等价门禁，远端记录仅待授权 push",
+      "title": "GitHub 涓変綔涓氬凡瀹屾垚鏈湴绛変环闂ㄧ锛岃繙绔褰曚粎寰呮巿鏉?push",
       "status": "verified",
       "test_id": "agent-quality-gate"
     },
     {
       "id": "reranker-fallback",
       "category": "expected_block",
-      "title": "Cross-Encoder 故障时完整回退 RRF 原顺序",
+      "title": "Cross-Encoder 鏁呴殰鏃跺畬鏁村洖閫€ RRF 鍘熼『搴?,
       "status": "verified",
       "test_id": "TC-AI-012"
     },
     {
       "id": "provider-circuit-breaker",
       "category": "expected_block",
-      "title": "故障 Provider 在多副本间共享熔断，恢复窗口仅放行一个原子探针",
+      "title": "鏁呴殰 Provider 鍦ㄥ鍓湰闂村叡浜啍鏂紝鎭㈠绐楀彛浠呮斁琛屼竴涓師瀛愭帰閽?,
       "status": "verified",
       "test_id": "TC-AI-013"
     },
     {
       "id": "rag-reject-extreme-2026-09",
       "category": "regression",
-      "title": "语料扩产后越界拒答与极端相似问题无误召回（reject 10/10、extreme 9/9）",
+      "title": "璇枡鎵╀骇鍚庤秺鐣屾嫆绛斾笌鏋佺鐩镐技闂鏃犺鍙洖锛坮eject 10/10銆乪xtreme 9/9锛?,
       "status": "verified",
       "test_id": "test_rag_eval.py"
     }

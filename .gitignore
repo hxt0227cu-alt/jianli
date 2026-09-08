@@ -53,3 +53,9 @@ typescript-typescript-win32-x64-7.0.2.tgz
 .mypy_cache/
 .ruff_cache/
 test-results/
+
+# 本地开发启动脚本与日志（含本机路径/进程状态，绝不入库）
+dev.log
+dev.err
+start-dev.ps1
+start_api.sh
